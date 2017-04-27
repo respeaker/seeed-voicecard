@@ -9,7 +9,7 @@ sudo BRANCH=next rpi-update
 sudo reboot
 ```
 
-Install matching kernel header files:
+Install matching kernel header files(come from https://www.raspberrypi.org/forums/):
 eg. Get your kernel verson "uname -r", then
 ```
 wget  https://www.niksula.hut.fi/~mhiienka/Rpi/linux-headers-rpi/linux-headers-4.9.13-v7%2B_4.9.13-v7%2B-2_armhf.deb 
@@ -54,8 +54,9 @@ pi@raspberrypi:~/seeed-voicecard$
 ```
 Next apply the alsa controls setting
 ```
-alsactl --file ./asound.state restore
+sudo alsactl --file ./asound.state restore
 ```
+If you want to change the alsa settings, You can use "sudo alsactl --file ./asound.state store 1" to save it.
 
 Test:
 ``` 
