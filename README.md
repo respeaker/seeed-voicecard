@@ -29,6 +29,13 @@ sudo reboot
 sudo modprobe  wm8960
 sudo dtoverlay seeed-voicecard
 ```
+Load the driver default. 
+```
+echo 'wm8960' | sudo tee --append /etc/modules > /dev/null
+```
+Invoke usage by adding this to /boot/config.txt:
+dtoverlay=seeed-voicecard
+
 Check that the sound card name matches the source code seeed-voicecard.
 
 ```
