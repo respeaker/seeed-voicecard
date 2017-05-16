@@ -2,7 +2,7 @@ state.ALSA {
 	control.1 {
 		iface MIXER
 		name 'PCM Playback Volume'
-		value -2000
+		value -1995
 		comment {
 			access 'read write'
 			type INTEGER
@@ -10,7 +10,7 @@ state.ALSA {
 			range '-10239 - 400'
 			dbmin -9999999
 			dbmax 400
-			dbvalue.0 -2000
+			dbvalue.0 -1995
 		}
 	}
 	control.2 {
@@ -69,8 +69,8 @@ state.seeedvoicecard {
 	control.1 {
 		iface MIXER
 		name 'Capture Volume'
-		value.0 58
-		value.1 58
+		value.0 63
+		value.1 63
 		comment {
 			access 'read write'
 			type INTEGER
@@ -78,8 +78,8 @@ state.seeedvoicecard {
 			range '0 - 63'
 			dbmin -1725
 			dbmax 3000
-			dbvalue.0 2625
-			dbvalue.1 2625
+			dbvalue.0 3000
+			dbvalue.1 3000
 		}
 	}
 	control.2 {
@@ -208,8 +208,8 @@ state.seeedvoicecard {
 	control.11 {
 		iface MIXER
 		name 'Headphone Playback Volume'
-		value.0 103
-		value.1 103
+		value.0 122
+		value.1 122
 		comment {
 			access 'read write'
 			type INTEGER
@@ -217,8 +217,8 @@ state.seeedvoicecard {
 			range '0 - 127'
 			dbmin -9999999
 			dbmax 600
-			dbvalue.0 -1800
-			dbvalue.1 -1800
+			dbvalue.0 100
+			dbvalue.1 100
 		}
 	}
 	control.12 {
@@ -598,7 +598,7 @@ state.seeedvoicecard {
 	control.43 {
 		iface MIXER
 		name 'Left Boost Mixer LINPUT2 Switch'
-		value true
+		value false
 		comment {
 			access 'read write'
 			type BOOLEAN
@@ -628,7 +628,7 @@ state.seeedvoicecard {
 	control.46 {
 		iface MIXER
 		name 'Right Boost Mixer RINPUT2 Switch'
-		value true
+		value false
 		comment {
 			access 'read write'
 			type BOOLEAN
