@@ -9,7 +9,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
+#define DEBUG 1
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -616,7 +616,7 @@ static int wm8960_configure_clocking(struct snd_soc_codec *codec)
 	if (!(iface1 & (1<<6))) {
 		dev_dbg(codec->dev,
 			"Codec is slave mode, no need to configure clock\n");
-		return 0;
+		//return 0;
 	}
 
 	if (wm8960->clk_id != WM8960_SYSCLK_MCLK && !wm8960->freq_in) {
@@ -627,6 +627,9 @@ static int wm8960_configure_clocking(struct snd_soc_codec *codec)
 	freq_in = wm8960->freq_in;
 	bclk = wm8960->bclk;
 	lrclk = wm8960->lrclk;
+
+	printk("clk_id %d freq_in: %d bclk: %d  lrclk: %d\n",wm8960->clk_id ,freq_in, bclk,lrclk);
+
 	/*
 	 * If it's sysclk auto mode, check if the MCLK can provide sysclk or
 	 * not. If MCLK can provide sysclk, using MCLK to provide sysclk
@@ -955,6 +958,7 @@ static int wm8960_set_bias_level_capless(struct snd_soc_codec *codec,
 			 * If it's sysclk auto mode, and the pll is enabled,
 			 * disable the pll
 			 */
+			printk("SND_SOC_BIAS_ON");
 			if (wm8960->clk_id == WM8960_SYSCLK_AUTO && (pm2 & 0x1))
 				wm8960_set_pll(codec, 0, 0);
 
@@ -1134,6 +1138,8 @@ static int wm8960_set_pll(struct snd_soc_codec *codec,
 static int wm8960_set_dai_pll(struct snd_soc_dai *codec_dai, int pll_id,
 		int source, unsigned int freq_in, unsigned int freq_out)
 {
+	printk("wm8960_set_dai_pll:%d %d\n",freq_in, freq_out);
+
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct wm8960_priv *wm8960 = snd_soc_codec_get_drvdata(codec);
 
@@ -1141,7 +1147,6 @@ static int wm8960_set_dai_pll(struct snd_soc_dai *codec_dai, int pll_id,
 
 	if (pll_id == WM8960_SYSCLK_AUTO)
 		return 0;
-
 	return wm8960_set_pll(codec, freq_in, freq_out);
 }
 
@@ -1150,6 +1155,8 @@ static int wm8960_set_dai_clkdiv(struct snd_soc_dai *codec_dai,
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
 	u16 reg;
+
+	printk("wm8960_set_dai_clkdiv div_id: %d div: %d\n",div_id, div);
 
 	switch (div_id) {
 	case WM8960_SYSCLKDIV:
@@ -1190,9 +1197,11 @@ static int wm8960_set_bias_level(struct snd_soc_codec *codec,
 static int wm8960_set_dai_sysclk(struct snd_soc_dai *dai, int clk_id,
 					unsigned int freq, int dir)
 {
+
 	struct snd_soc_codec *codec = dai->codec;
 	struct wm8960_priv *wm8960 = snd_soc_codec_get_drvdata(codec);
-
+	clk_id = WM8960_SYSCLK_PLL;
+	printk("wm8960_set_dai_sysclk: %d %d ",freq, clk_id);
 	switch (clk_id) {
 	case WM8960_SYSCLK_MCLK:
 		snd_soc_update_bits(codec, WM8960_CLOCK1,
@@ -1207,7 +1216,7 @@ static int wm8960_set_dai_sysclk(struct snd_soc_dai *dai, int clk_id,
 	default:
 		return -EINVAL;
 	}
-
+	wm8960->freq_in = 24000000;
 	wm8960->sysclk = freq;
 	wm8960->clk_id = clk_id;
 
@@ -1307,7 +1316,10 @@ static int wm8960_i2c_probe(struct i2c_client *i2c,
 	if (wm8960 == NULL)
 		return -ENOMEM;
 
+	wm8960->clk_id = WM8960_SYSCLK_PLL;
+
 	wm8960->mclk = devm_clk_get(&i2c->dev, "mclk");
+
 	if (IS_ERR(wm8960->mclk)) {
 		if (PTR_ERR(wm8960->mclk) == -EPROBE_DEFER)
 			return -EPROBE_DEFER;
