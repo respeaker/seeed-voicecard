@@ -4,30 +4,21 @@ Firstly, get an updated kernel 4.9 :
 ```
 sudo apt update
 sudo apt dist-upgrade
-sudo apt install git rpi-update bc dkms
-sudo BRANCH=next rpi-update
-sudo reboot
+sudo apt install  raspberrypi-kernel-headers
 ```
 
-Install matching kernel header files(come from https://www.raspberrypi.org/forums/):
-eg. Get your kernel verson "uname -r", then
-```
-wget  https://www.niksula.hut.fi/~mhiienka/Rpi/linux-headers-rpi/linux-headers-4.9.13-v7%2B_4.9.13-v7%2B-2_armhf.deb 
-```
 Next, while the upstream wm8960 codec is not currently supported by current Pi kernel builds, upstream wm8960 has some bugs, we had fixed it. we must it build manually.
 
 Get the seeed voice card source code.
 ```
 git clone http://git.oschina.net/seeed-se/seeed-voicecard
 cd seeed-voicecard
-sudo  make all install
+make all
 ```
+
 Next, copy then voice card overlay to boot dir, then apply it.
 ```
 sudo cp seeed-voicecard.dtbo /boot/overlays
-sudo reboot
-sudo modprobe  wm8960
-sudo dtoverlay seeed-voicecard
 ```
 Load the driver default. 
 ```
@@ -61,9 +52,9 @@ pi@raspberrypi:~/seeed-voicecard$
 ```
 Next apply the alsa controls setting
 ```
-sudo alsactl --file ./asound.state restore
+sudo alsactl --file=asound.state restore
 ```
-If you want to change the alsa settings, You can use "sudo alsactl --file ./asound.state store 1" to save it.
+If you want to change the alsa settings, You can use "sudo alsactl --file=asound.state store " to save it.
 
 Test:
 ``` 
