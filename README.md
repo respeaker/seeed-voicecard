@@ -3,8 +3,7 @@
 Firstly, get an updated kernel 4.9 :
 ```
 sudo apt update
-sudo apt dist-upgrade
-sudo apt install  raspberrypi-kernel-headers
+sudo apt install  raspberrypi-kernel-headers  raspberrypi-kernel
 ```
 
 Next, while the upstream wm8960 codec is not currently supported by current Pi kernel builds, upstream wm8960 has some bugs, we had fixed it. we must it build manually.
