@@ -1,30 +1,14 @@
-#seeed-voicecard
+##seeed-voicecard
 
-Firstly, get an updated kernel 4.9 :
-```
-sudo apt update
-sudo apt install  raspberrypi-kernel-headers  raspberrypi-kernel
-```
-
-Next, while the upstream wm8960 codec is not currently supported by current Pi kernel builds, upstream wm8960 has some bugs, we had fixed it. we must it build manually.
+While the upstream wm8960 codec is not currently supported by current Pi kernel builds, upstream wm8960 has some bugs, we had fixed it. we must it build manually.
 
 Get the seeed voice card source code.
 ```
 git clone http://git.oschina.net/seeed-se/seeed-voicecard
 cd seeed-voicecard
-make all
+sudo ./install.sh
+reboot
 ```
-
-Next, copy then voice card overlay to boot dir, then apply it.
-```
-sudo cp seeed-voicecard.dtbo /boot/overlays
-```
-Load the driver default. 
-```
-echo 'wm8960' | sudo tee --append /etc/modules > /dev/null
-```
-Invoke usage by adding this to /boot/config.txt:
-dtoverlay=seeed-voicecard
 
 Check that the sound card name matches the source code seeed-voicecard.
 
