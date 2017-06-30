@@ -1,4 +1,4 @@
-##seeed-voicecard
+# seeed-voicecard
 
 While the upstream wm8960 codec is not currently supported by current Pi kernel builds, upstream wm8960 has some bugs, we had fixed it. we must it build manually.
 
@@ -37,11 +37,10 @@ Next apply the alsa controls setting
 ```
 sudo alsactl --file=asound.state restore
 ```
-If you want to change the alsa settings, You can use "sudo alsactl --file=asound.state store " to save it.
+If you want to change the alsa settings, You can use `sudo alsactl --file=asound.state store` to save it.
 
 Test:
 ``` 
 arecord -f cd -Dhw:1 | aplay -Dhw:1
-
 ```
 Enjoy !
