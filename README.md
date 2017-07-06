@@ -4,7 +4,7 @@ While the upstream wm8960 codec is not currently supported by current Pi kernel 
 
 Get the seeed voice card source code.
 ```
-git clone http://git.oschina.net/seeed-se/seeed-voicecard
+git clone https://github.com/respeaker/seeed-voicecard
 cd seeed-voicecard
 sudo ./install.sh
 reboot
