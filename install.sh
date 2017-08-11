@@ -18,7 +18,7 @@ apt-get -y install  dkms
 
 # locate currently installed kernels (may be different to running kernel if
 # it's just been updated)
-kernel="$(uname -r)"
+kernels=$(ls /lib/modules | sed "s/^/-k /")
 
 function install_module {
   src=$1
@@ -35,7 +35,7 @@ function install_module {
   mkdir -p /usr/src/$mod-$ver
   cp -a $src/* /usr/src/$mod-$ver/
   dkms add -m $mod -v $ver
-  dkms build -k $kernel -m $mod -v $ver && dkms install -k $kernel -m $mod -v $ver
+  dkms build $kernels -m $mod -v $ver && dkms install $kernels -m $mod -v $ver
 
   mkdir -p /var/lib/dkms/$mod/$ver/$marker
 }
