@@ -43,4 +43,13 @@ Test:
 ``` 
 arecord -f cd -Dhw:1 | aplay -Dhw:1
 ```
+
+### with Google Assistant
+if you run the assistant but the playback is speed up considerably, try to configure alsa:
+
+```
+sudo cp asound.conf /etc/asound.conf
+```
+
+
 Enjoy !
