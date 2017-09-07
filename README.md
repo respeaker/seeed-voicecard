@@ -51,5 +51,7 @@ if you run the assistant but the playback is speed up considerably, try to confi
 sudo cp asound.conf /etc/asound.conf
 ```
 
+If the alsa configuration doesn't solve the issue, try to use pulseaudio. See [#4](https://github.com/respeaker/seeed-voicecard/issues/4)
+
 
 Enjoy !
