@@ -78,8 +78,10 @@ has_2mic=$(grep seeed-2mic-voicecard /boot/config.txt)
 has_4mic=$(grep seeed-2mic-voicecard /boot/config.txt)
 case "${card}" in
    "2mic") 
+    echo "cp wm8960_asound.state /var/lib/alsa/asound.state"
     cp wm8960_asound.state /var/lib/alsa/asound.state
     if [ "x${has_4mic}" != x ] ; then
+      echo "has 4mic before, now remove it"
       sed -i "s/dtoverlay=seeed-4mic-voicecard//g" /boot/config.txt
     fi
     grep -q "dtoverlay=seeed-2mic-voicecard" /boot/config.txt || \
@@ -87,8 +89,10 @@ case "${card}" in
       
    ;;
    "4mic") 
+    echo "cp ac108_asound.state /var/lib/alsa/asound.state"
     cp ac108_asound.state /var/lib/alsa/asound.state
     if [ "x${has_2mic}" != x ] ; then
+      echo "has 2mic before, now remove it"
       sed -i "s/dtoverlay=seeed-2mic-voicecard//g" /boot/config.txt
     fi
     grep -q "dtoverlay=seeed-4mic-voicecard" /boot/config.txt || \
