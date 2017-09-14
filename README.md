@@ -4,17 +4,23 @@
 
 While the upstream wm8960 codec is not currently supported by current Pi kernel builds, upstream wm8960 has some bugs, we had fixed it. we must it build manually.
 
+We also write ac108 rapberry pi linux kernel driver.
+
 Get the seeed voice card source code.
 ```
 git clone https://github.com/respeaker/seeed-voicecard
 cd seeed-voicecard
-sudo ./install.sh
+#2mic
+sudo ./install.sh 2mic
+#4mic
+sudo ./install.sh 4mic
 reboot
 ```
 
 Check that the sound card name matches the source code seeed-voicecard.
 
 ```
+#2mic
 pi@raspberrypi:~/seeed-voicecard$ aplay -l
 **** List of PLAYBACK Hardware Devices ****
 card 0: ALSA [bcm2835 ALSA], device 0: bcm2835 ALSA [bcm2835 ALSA]
@@ -34,16 +40,45 @@ card 1: seeedvoicecard [seeed-voicecard], device 0: bcm2835-i2s-wm8960-hifi wm89
   Subdevices: 1/1
   Subdevice #0: subdevice #0
 pi@raspberrypi:~/seeed-voicecard$ 
-```
-Next apply the alsa controls setting
-```
-sudo alsactl --file=asound.state restore
+
+#4mic
+pi@raspberrypi:~ $ arecord -L
+null
+    Discard all samples (playback) or generate zero samples (capture)
+playback
+capture
+dmixed
+array
+ac108
+default:CARD=seeed4micvoicec
+    seeed-4mic-voicecard, 
+    Default Audio Device
+sysdefault:CARD=seeed4micvoicec
+    seeed-4mic-voicecard, 
+    Default Audio Device
+dmix:CARD=seeed4micvoicec,DEV=0
+    seeed-4mic-voicecard, 
+    Direct sample mixing device
+dsnoop:CARD=seeed4micvoicec,DEV=0
+    seeed-4mic-voicecard, 
+    Direct sample snooping device
+hw:CARD=seeed4micvoicec,DEV=0
+    seeed-4mic-voicecard, 
+    Direct hardware device without any conversions
+plughw:CARD=seeed4micvoicec,DEV=0
+    seeed-4mic-voicecard, 
+    Hardware device with all software conversions
+pi@raspberrypi:~ $ 
 ```
 If you want to change the alsa settings, You can use `sudo alsactl --file=asound.state store` to save it.
 
 Test:
-``` 
+```
+#2mic 
 arecord -f cd -Dhw:1 | aplay -Dhw:1
+
+#4mic
+arecord -Dac108 -f S32_LE -r 16000 -c 4 a.wav
 ```
 
 ### with Google Assistant
