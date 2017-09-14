@@ -5,8 +5,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-
-ver="0.1"
+ver="0.2"
 
 # we create a dir with this version to ensure that 'dkms remove' won't delete
 # the sources during kernel updates
@@ -42,22 +41,19 @@ function install_module {
 
 install_module "./" "seeed-voicecard"
 
-
 (
-  cp seeed-voicecard.dtbo /boot/overlays
-  cp asound.state /var/lib/alsa/asound.state
+  cp seeed-2mic-voicecard.dtbo /boot/overlays
+  cp seeed-4mic-voicecard.dtbo /boot/overlays
 )
 
-echo 'wm8960' | sudo tee --append /etc/modules > /dev/null
+echo 'snd-soc-ac108' | sudo tee --append /etc/modules > /dev/null
+echo 'snd-soc-wm8960' | sudo tee --append /etc/modules > /dev/null
 
-sed -i \
-  -e "s/^dtparam=audio=on/#\0/" \
-  -e "s/^#\(dtparam=i2s=on\)/\1/" \
-  /boot/config.txt
+
 grep -q "dtoverlay=i2s-mmap" /boot/config.txt || \
   echo "dtoverlay=i2s-mmap" >> /boot/config.txt
-grep -q "dtoverlay=seeed-voicecard" /boot/config.txt || \
-  echo "dtoverlay=seeed-voicecard" >> /boot/config.txt
+
+
 grep -q "dtparam=i2s=on" /boot/config.txt || \
   echo "dtparam=i2s=on" >> /boot/config.txt
 
