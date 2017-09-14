@@ -43,7 +43,7 @@
         master_overlay: __dormant__ {
             compatible = "simple-audio-card";
             simple-audio-card,format = "i2s";
-            simple-audio-card,name = "seeed-voicecard";
+            simple-audio-card,name = "seeed-2mic-voicecard";
             simple-audio-card,bitclock-master = <&dailink0_master>;
             simple-audio-card,frame-master = <&dailink0_master>;
             status = "okay";
@@ -80,7 +80,7 @@
         slave_overlay: __overlay__ {
                 compatible = "simple-audio-card";
                 simple-audio-card,format = "i2s";
-                simple-audio-card,name = "seeed-voicecard"; 
+                simple-audio-card,name = "seeed-2mic-voicecard"; 
                 status = "okay";
                 simple-audio-card,widgets =
                         "Microphone", "Mic Jack",
