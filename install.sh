@@ -80,19 +80,19 @@ case "${card}" in
    "2mic") 
     cp wm8960_asound.state /var/lib/alsa/asound.state
     if [ "x${has_4mic}" != x ] ; then
-      sed -i "s/dtparam=seeed-4mic-voicecard//g" /boot/config.txt
+      sed -i "s/dtoverlay=seeed-4mic-voicecard//g" /boot/config.txt
     fi
-    grep -q "dtparam=seeed-2mic-voicecard" /boot/config.txt || \
-      echo "dtparam=seeed-2mic-voicecard" >> /boot/config.txt
+    grep -q "dtoverlay=seeed-2mic-voicecard" /boot/config.txt || \
+      echo "dtoverlay=seeed-2mic-voicecard" >> /boot/config.txt
       
    ;;
    "4mic") 
     cp ac108_asound.state /var/lib/alsa/asound.state
     if [ "x${has_2mic}" != x ] ; then
-      sed -i "s/dtparam=seeed-2mic-voicecard//g" /boot/config.txt
+      sed -i "s/dtoverlay=seeed-2mic-voicecard//g" /boot/config.txt
     fi
-    grep -q "dtparam=seeed-4mic-voicecard" /boot/config.txt || \
-      echo "dtparam=seeed-4mic-voicecard" >> /boot/config.txt    
+    grep -q "dtoverlay=seeed-4mic-voicecard" /boot/config.txt || \
+      echo "dtoverlay=seeed-4mic-voicecard" >> /boot/config.txt    
    ;;
    *) 
     echo "Please use 2mic or 4mic"
