@@ -6,6 +6,12 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 ver="0.2"
+card=$1
+
+if [ "x${card}" = "x" ] ; then
+  echo "Usage: ./install 2mic|4mic"
+  exit 1
+fi
 
 # we create a dir with this version to ensure that 'dkms remove' won't delete
 # the sources during kernel updates
@@ -18,6 +24,7 @@ apt-get -y install  dkms
 # locate currently installed kernels (may be different to running kernel if
 # it's just been updated)
 kernels=$(ls /lib/modules | sed "s/^/-k /")
+uname_r=$(uname -r)
 
 function install_module {
   src=$1
@@ -38,17 +45,20 @@ function install_module {
 
   mkdir -p /var/lib/dkms/$mod/$ver/$marker
 }
-
-install_module "./" "seeed-voicecard"
-
-(
+if [ ! -f "/boot/overlays/seeed-4mic-voicecard.dtbo" ] && [ ! -f "/lib/modules/$(uname_r)/kernel/sound/soc/codecs/snd-soc-ac108.ko" ] ; then
+  install_module "./" "seeed-voicecard"
   cp seeed-2mic-voicecard.dtbo /boot/overlays
   cp seeed-4mic-voicecard.dtbo /boot/overlays
-  cp ac108_plugin/libasound_module_pcm_ac108.so   /usr/lib/arm-linux-gnueabihf/alsa-lib/
-)
+  cp ac108_plugin/libasound_module_pcm_ac108.so   /usr/lib/arm-linux-gnueabihf/alsa-lib/  
+  cp asound.conf /etc/
+else
+  echo "card driver already installed"
+fi
 
-echo 'snd-soc-ac108' | sudo tee --append /etc/modules > /dev/null
-echo 'snd-soc-wm8960' | sudo tee --append /etc/modules > /dev/null
+grep -q "snd-soc-ac108" /etc/modules || \
+  echo "snd-soc-ac108" >> /etc/modules
+grep -q "snd-soc-wm8960" /etc/modules || \
+  echo "snd-soc-wm8960" >> /etc/modules  
 
 
 grep -q "dtoverlay=i2s-mmap" /boot/config.txt || \
@@ -57,6 +67,19 @@ grep -q "dtoverlay=i2s-mmap" /boot/config.txt || \
 
 grep -q "dtparam=i2s=on" /boot/config.txt || \
   echo "dtparam=i2s=on" >> /boot/config.txt
+
+
+case "${card}" in
+   "2mic") 
+    cp wm8960_asound.state /var/lib/alsa/asound.state
+   ;;
+   "4mic") 
+    cp ac108_asound.state /var/lib/alsa/asound.state
+   ;;
+   *) 
+    echo "Please use 2mic or 4mic"
+   ;;
+esac
 
 echo "------------------------------------------------------"
 echo "Please reboot your raspberry pi to apply all settings"
