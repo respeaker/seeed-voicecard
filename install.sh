@@ -44,6 +44,7 @@ install_module "./" "seeed-voicecard"
 (
   cp seeed-2mic-voicecard.dtbo /boot/overlays
   cp seeed-4mic-voicecard.dtbo /boot/overlays
+  cp ac108_plugin/libasound_module_pcm_ac108.so   /usr/lib/arm-linux-gnueabihf/alsa-lib/
 )
 
 echo 'snd-soc-ac108' | sudo tee --append /etc/modules > /dev/null
