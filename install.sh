@@ -5,6 +5,12 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+is_Raspberry=$(cat /proc/device-tree/model | awk  '{print $1}')
+if [ "x${is_Raspberry}" != "xRaspberry" ] ; then
+  echo "Sorry, this drivers only works on raspberry pi"
+  exit 1
+fi
+
 ver="0.2"
 card=$1
 
@@ -68,13 +74,25 @@ grep -q "dtoverlay=i2s-mmap" /boot/config.txt || \
 grep -q "dtparam=i2s=on" /boot/config.txt || \
   echo "dtparam=i2s=on" >> /boot/config.txt
 
-
+has_2mic=$(grep seeed-2mic-voicecard /boot/config.txt)
+has_4mic=$(grep seeed-2mic-voicecard /boot/config.txt)
 case "${card}" in
    "2mic") 
     cp wm8960_asound.state /var/lib/alsa/asound.state
+    if [ "x${has_4mic}" != x ] ; then
+      sed -i "s/dtparam=seeed-4mic-voicecard//g" /boot/config.txt
+    fi
+    grep -q "dtparam=seeed-2mic-voicecard" /boot/config.txt || \
+      echo "dtparam=seeed-2mic-voicecard" >> /boot/config.txt
+      
    ;;
    "4mic") 
     cp ac108_asound.state /var/lib/alsa/asound.state
+    if [ "x${has_2mic}" != x ] ; then
+      sed -i "s/dtparam=seeed-2mic-voicecard//g" /boot/config.txt
+    fi
+    grep -q "dtparam=seeed-4mic-voicecard" /boot/config.txt || \
+      echo "dtparam=seeed-4mic-voicecard" >> /boot/config.txt    
    ;;
    *) 
     echo "Please use 2mic or 4mic"
