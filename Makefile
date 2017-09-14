@@ -13,6 +13,6 @@ clean:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 
 install:
-	sudo cp snd-soc-ac108.ko /lib/modules/$(shell uname -r)/sound/soc/codecs/
-	sudo cp snd-soc-wm8960.ko /lib/modules/$(shell uname -r)/sound/soc/codecs/
+	sudo cp snd-soc-ac108.ko /lib/modules/$(shell uname -r)/kernel/sound/soc/codecs/
+	sudo cp snd-soc-wm8960.ko /lib/modules/$(shell uname -r)/kernel/sound/soc/codecs/
 	sudo depmod -a
