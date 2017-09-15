@@ -21,7 +21,7 @@ Check that the sound card name matches the source code seeed-voicecard.
 
 ```
 #2mic
-pi@raspberrypi:~/seeed-voicecard$ aplay -l
+pi@raspberrypi:~/seeed-voicecard $ aplay -l
 **** List of PLAYBACK Hardware Devices ****
 card 0: ALSA [bcm2835 ALSA], device 0: bcm2835 ALSA [bcm2835 ALSA]
   Subdevices: 8/8
@@ -36,10 +36,15 @@ card 0: ALSA [bcm2835 ALSA], device 0: bcm2835 ALSA [bcm2835 ALSA]
 card 0: ALSA [bcm2835 ALSA], device 1: bcm2835 ALSA [bcm2835 IEC958/HDMI]
   Subdevices: 1/1
   Subdevice #0: subdevice #0
-card 1: seeedvoicecard [seeed-voicecard], device 0: bcm2835-i2s-wm8960-hifi wm8960-hifi-0 []
+card 1: seeed2micvoicec [seeed-2mic-voicecard], device 0: bcm2835-i2s-wm8960-hifi wm8960-hifi-0 []
   Subdevices: 1/1
   Subdevice #0: subdevice #0
-pi@raspberrypi:~/seeed-voicecard$ 
+pi@raspberrypi:~/seeed-voicecard $ arecord -l
+**** List of CAPTURE Hardware Devices ****
+card 1: seeed2micvoicec [seeed-2mic-voicecard], device 0: bcm2835-i2s-wm8960-hifi wm8960-hifi-0 []
+  Subdevices: 1/1
+  Subdevice #0: subdevice #0
+pi@raspberrypi:~/seeed-voicecard $ 
 
 #4mic
 pi@raspberrypi:~ $ arecord -L
