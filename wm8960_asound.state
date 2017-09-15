@@ -2,7 +2,7 @@ state.ALSA {
 	control.1 {
 		iface MIXER
 		name 'PCM Playback Volume'
-		value -1995
+		value -1994
 		comment {
 			access 'read write'
 			type INTEGER
@@ -10,7 +10,7 @@ state.ALSA {
 			range '-10239 - 400'
 			dbmin -9999999
 			dbmax 400
-			dbvalue.0 -1995
+			dbvalue.0 -1994
 		}
 	}
 	control.2 {
@@ -65,12 +65,12 @@ state.ALSA {
 		}
 	}
 }
-state.seeedvoicecard {
+state.seeed2micvoicec {
 	control.1 {
 		iface MIXER
 		name 'Capture Volume'
-		value.0 63
-		value.1 63
+		value.0 39
+		value.1 39
 		comment {
 			access 'read write'
 			type INTEGER
@@ -78,8 +78,8 @@ state.seeedvoicecard {
 			range '0 - 63'
 			dbmin -1725
 			dbmax 3000
-			dbvalue.0 3000
-			dbvalue.1 3000
+			dbvalue.0 1200
+			dbvalue.1 1200
 		}
 	}
 	control.2 {

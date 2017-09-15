@@ -75,7 +75,7 @@ grep -q "dtparam=i2s=on" /boot/config.txt || \
   echo "dtparam=i2s=on" >> /boot/config.txt
 
 has_2mic=$(grep seeed-2mic-voicecard /boot/config.txt)
-has_4mic=$(grep seeed-2mic-voicecard /boot/config.txt)
+has_4mic=$(grep seeed-4mic-voicecard /boot/config.txt)
 case "${card}" in
    "2mic") 
     echo "cp wm8960_asound.state /var/lib/alsa/asound.state"
