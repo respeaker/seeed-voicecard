@@ -7,20 +7,23 @@ While the upstream wm8960 codec is not currently supported by current Pi kernel 
 We also write ac108 rapberry pi linux kernel driver.
 
 Get the seeed voice card source code.
-```
+```bash
 git clone https://github.com/respeaker/seeed-voicecard
 cd seeed-voicecard
-#2mic
+#for ReSpeaker 2-mic
 sudo ./install.sh 2mic
-#4mic
+
+#for ReSpeaker 4-mic
 sudo ./install.sh 4mic
+
+#reboot your Raspbian OS
 reboot
 ```
 
 Check that the sound card name matches the source code seeed-voicecard.
 
-```
-#2mic
+```bash
+#for ReSpeaker 2-mic
 pi@raspberrypi:~/seeed-voicecard $ aplay -l
 **** List of PLAYBACK Hardware Devices ****
 card 0: ALSA [bcm2835 ALSA], device 0: bcm2835 ALSA [bcm2835 ALSA]
@@ -45,8 +48,10 @@ card 1: seeed2micvoicec [seeed-2mic-voicecard], device 0: bcm2835-i2s-wm8960-hif
   Subdevices: 1/1
   Subdevice #0: subdevice #0
 pi@raspberrypi:~/seeed-voicecard $ 
+```
 
-#4mic
+```bash
+#for ReSpeaker 4-mic
 pi@raspberrypi:~ $ arecord -L
 null
     Discard all samples (playback) or generate zero samples (capture)
@@ -78,18 +83,22 @@ pi@raspberrypi:~ $
 If you want to change the alsa settings, You can use `sudo alsactl --file=asound.state store` to save it.
 
 Test:
-```
-#2mic 
+```bash
+#for ReSpeaker 2-mic
+#It will capture sound an playback on hw:1
 arecord -f cd -Dhw:1 | aplay -Dhw:1
+```
 
-#4mic
+```bash
+#for ReSpeaker 4-mic
+#It will capture sound on AC108 and save as a.wav
 arecord -Dac108 -f S32_LE -r 16000 -c 4 a.wav
 ```
 
 ### with Google Assistant
 if you run the assistant but the playback is speed up considerably, try to configure alsa:
 
-```
+```bash
 sudo cp asound.conf /etc/asound.conf
 ```
 
