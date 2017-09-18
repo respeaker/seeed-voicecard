@@ -267,7 +267,7 @@ static int ac108_hw_params(snd_pcm_ioplug_t *io) {
 	snd_pcm_uframes_t buffer_size;
 	int err;
 	if (!rec->hw_params) {
-		err = ac108_slave_hw_params_half(rec, io->rate*2,io->format);
+		err = ac108_slave_hw_params_half(rec, 2*io->rate,io->format);
 		if (err < 0) {
 			fprintf(stderr, "ac108_slave_hw_params_half error\n");
 			return err;
@@ -363,6 +363,12 @@ static int ac108_set_hw_constraint(struct ac108_t  *rec) {
 	};
 	unsigned int formats[] = { SND_PCM_FORMAT_S32,
 							   SND_PCM_FORMAT_S16 };
+
+	unsigned int  rates[] = {
+		8000,
+		16000,
+		48000
+	};
 	int err;
 	snd_pcm_uframes_t buffer_max;
 	unsigned int period_bytes, max_periods;
@@ -377,9 +383,9 @@ static int ac108_set_hw_constraint(struct ac108_t  *rec) {
 	if ((err = snd_pcm_ioplug_set_param_list(&rec->io, SND_PCM_IOPLUG_HW_FORMAT,
 											 ARRAY_SIZE(formats), formats)) < 0 ||
 		(err = snd_pcm_ioplug_set_param_minmax(&rec->io, SND_PCM_IOPLUG_HW_CHANNELS,
-											   1, 4)) < 0 ||
-		(err = snd_pcm_ioplug_set_param_minmax(&rec->io, SND_PCM_IOPLUG_HW_RATE,
-											   8000, 96000)) < 0) return err;
+											   4, 4)) < 0 ||
+		(err = snd_pcm_ioplug_set_param_list(&rec->io, SND_PCM_IOPLUG_HW_RATE,
+												ARRAY_SIZE(rates), rates)) < 0) return err;
 	err = snd_pcm_ioplug_set_param_minmax(&rec->io,
 										  SND_PCM_IOPLUG_HW_BUFFER_BYTES,
 										  1, 4 * 1024 * 1024);
