@@ -105,4 +105,60 @@ sudo cp asound.conf /etc/asound.conf
 If the alsa configuration doesn't solve the issue, try to use pulseaudio. See [#4](https://github.com/respeaker/seeed-voicecard/issues/4)
 
 
+If you want dump wm8960 runtime reg value
+```bash
+sudo su
+root@raspberrypi:~# cat /sys/devices/platform/soc/3f804000.i2c/i2c-1/1-001a/wm8960_debug/wm8960
+#Usage:
+root@raspberrypi:~# dmesg | tail
+
+[  418.279499] echo flag|reg|val > wm8960
+[  418.279512] eg read star addres=0x06,count 0x10:echo 0610 >wm8960
+[  418.279516] eg write value:0xfe to address:0x06 :echo 106fe > wm8960
+root@raspberrypi:~# echo 0020 > /sys/devices/platform/soc/3f804000.i2c/i2c-1/1-001a/wm8960_debug/wm8960
+root@raspberrypi:~# dmesg 
+               Read: start REG:0x00,count:0x20
+[  520.402765] REG[0x00]: 0x27;  
+[  520.402773] REG[0x01]: 0x27;  
+[  520.402778] REG[0x02]: 0x7f;  
+[  520.402784] REG[0x03]: 0x7f;  
+
+[  520.402792] REG[0x04]: 0x69;  
+[  520.402797] REG[0x05]: 0x08;  
+[  520.402802] REG[0x06]: 0x00;  
+[  520.402808] REG[0x07]: 0x0e;  
+
+[  520.402816] REG[0x08]: 0xcb;  
+[  520.402821] REG[0x09]: 0x00;  
+[  520.402826] REG[0x0a]: 0xff;  
+[  520.402832] REG[0x0b]: 0xff;  
+
+[  520.402840] REG[0x0c]: 0xff;  
+[  520.402846] REG[0x0d]: 0xff;  
+[  520.402850] REG[0x0e]: 0xff;  
+[  520.402856] REG[0x0f]: 0xff;  
+
+[  520.402864] REG[0x10]: 0x00;  
+[  520.402870] REG[0x11]: 0x7b;  
+[  520.402875] REG[0x12]: 0x00;  
+[  520.402880] REG[0x13]: 0x32;  
+
+[  520.402888] REG[0x14]: 0x00;  
+[  520.402895] REG[0x15]: 0xc3;  
+[  520.402900] REG[0x16]: 0xc3;  
+[  520.402905] REG[0x17]: 0xc0;  
+
+[  520.402913] REG[0x18]: 0x00;  
+[  520.402919] REG[0x19]: 0x40;  
+[  520.402923] REG[0x1a]: 0x01;  
+[  520.402929] REG[0x1b]: 0x03;  
+
+[  520.402937] REG[0x1c]: 0x08;  
+[  520.402943] REG[0x1d]: 0x00;  
+[  520.402948] REG[0x1e]: 0xff;  
+[  520.402953] REG[0x1f]: 0xff;
+.......
+
+```
+
 Enjoy !
