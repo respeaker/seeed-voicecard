@@ -105,7 +105,7 @@ sudo cp asound.conf /etc/asound.conf
 If the alsa configuration doesn't solve the issue, try to use pulseaudio. See [#4](https://github.com/respeaker/seeed-voicecard/issues/4)
 
 
-If you want dump wm8960 runtime reg value
+### If you want dump wm8960 runtime reg value
 ```bash
 sudo su
 root@raspberrypi:~# cat /sys/devices/platform/soc/3f804000.i2c/i2c-1/1-001a/wm8960_debug/wm8960
