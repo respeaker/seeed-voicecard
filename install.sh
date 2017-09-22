@@ -51,7 +51,7 @@ function install_module {
 
   mkdir -p /var/lib/dkms/$mod/$ver/$marker
 }
-if [ ! -f "/boot/overlays/seeed-4mic-voicecard.dtbo" ] && [ ! -f "/lib/modules/$(uname_r)/kernel/sound/soc/codecs/snd-soc-ac108.ko" ] ; then
+if [ ! -f "/boot/overlays/seeed-4mic-voicecard.dtbo" ] && [ ! -f "/lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-ac108.ko" ] ; then
   install_module "./" "seeed-voicecard"
   cp seeed-2mic-voicecard.dtbo /boot/overlays
   cp seeed-4mic-voicecard.dtbo /boot/overlays
