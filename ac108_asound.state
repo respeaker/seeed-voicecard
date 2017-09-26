@@ -277,7 +277,7 @@ state.seeed4micvoicec {
 	control.15 {
 		iface MIXER
 		name 'Tx1 Channels'
-		value '1 channels '
+		value '4 channels '
 		comment {
 			access 'read write'
 			type ENUMERATED

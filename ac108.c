@@ -848,7 +848,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 static int ac108_set_sysclk(struct snd_soc_dai *dai, int clk_id, unsigned int freq, int dir) {
 
 	struct ac108_priv *ac108 = snd_soc_dai_get_drvdata(dai);
-
+	freq = 24000000;
+	clk_id = SYSCLK_SRC_PLL;
 	pr_info("%s  :%d\n", __FUNCTION__, freq);
 	switch (clk_id) {
 	case SYSCLK_SRC_MCLK:
