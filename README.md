@@ -94,6 +94,27 @@ arecord -f cd -Dhw:1 | aplay -Dhw:1
 #It will capture sound on AC108 and save as a.wav
 arecord -Dac108 -f S32_LE -r 16000 -c 4 a.wav
 ```
+### uninstall seeed-voicecard
+If you want to upgrade the driver , you need uninstall the driver first.
+
+```
+pi@raspberrypi:~/seeed-voicecard $ sudo ./uninstall.sh 4mic
+delete dtoverlay=seeed-4mic-voicecard in /boot/config.txt
+delete snd-soc-ac108 in /etc/modules
+------------------------------------------------------
+Please reboot your raspberry pi to apply all settings
+Thank you!
+------------------------------------------------------
+pi@raspberrypi:~/seeed-voicecard $ sudo ./uninstall.sh 2mic
+delete dtoverlay=seeed-2mic-voicecard in /boot/config.txt
+remove seeed-2mic-voicecard.dtbo in /boot/overlays
+remove snd-soc-wm8960.ko
+delete snd-soc-wm8960 in /etc/modules
+------------------------------------------------------
+Please reboot your raspberry pi to apply all settings
+Thank you!
+------------------------------------------------------
+```
 
 ### with Google Assistant
 if you run the assistant but the playback is speed up considerably, try to configure alsa:
