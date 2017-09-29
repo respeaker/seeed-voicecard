@@ -50,6 +50,9 @@ card 1: seeed2micvoicec [seeed-2mic-voicecard], device 0: bcm2835-i2s-wm8960-hif
 pi@raspberrypi:~/seeed-voicecard $ 
 ```
 
+#### Next step
+Go to https://github.com/respeaker/mic_hat to build voice enabled projects with Google Assistant SDK or Alexa Voice Service.
+
 ## ReSpeaker 4 Mic Array
 
 [![](https://github.com/SeeedDocument/ReSpeaker-4-Mic-Array-for-Raspberry-Pi/blob/master/img/features.png?raw=true)](https://www.seeedstudio.com/ReSpeaker-4-Mic-Array-for-Raspberry-Pi-p-2941.html)
