@@ -2,9 +2,14 @@
 
 [![Join the chat at https://gitter.im/seeed-voicecard/Lobby](https://badges.gitter.im/seeed-voicecard/Lobby.svg)](https://gitter.im/seeed-voicecard/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-While the upstream wm8960 codec is not currently supported by current Pi kernel builds, upstream wm8960 has some bugs, we had fixed it. we must it build manually.
+The drivers of [ReSpeaker Mic Hat](https://www.seeedstudio.com/ReSpeaker-2-Mics-Pi-HAT-p-2874.html) and [ReSpeaker 4 Mic Array](https://www.seeedstudio.com/ReSpeaker-4-Mic-Array-for-Raspberry-Pi-p-2941.html) for Raspberry Pi.
 
-We also write ac108 rapberry pi linux kernel driver.
+## ReSpeaker Mic Hat
+
+[![](https://github.com/SeeedDocument/MIC_HATv1.0_for_raspberrypi/blob/master/img/mic_hatv1.0.png?raw=true)](https://www.seeedstudio.com/ReSpeaker-2-Mics-Pi-HAT-p-2874.html)
+
+
+While the upstream wm8960 codec is not currently supported by current Pi kernel builds, upstream wm8960 has some bugs, we had fixed it. we must it build manually.
 
 Get the seeed voice card source code.
 ```bash
@@ -12,12 +17,7 @@ git clone https://github.com/respeaker/seeed-voicecard
 cd seeed-voicecard
 #for ReSpeaker 2-mic
 sudo ./install.sh 2mic
-
-#for ReSpeaker 4-mic
-sudo ./install.sh 4mic
-
-#reboot your Raspbian OS
-reboot
+sudo reboot
 ```
 
 Check that the sound card name matches the source code seeed-voicecard.
@@ -49,6 +49,23 @@ card 1: seeed2micvoicec [seeed-2mic-voicecard], device 0: bcm2835-i2s-wm8960-hif
   Subdevice #0: subdevice #0
 pi@raspberrypi:~/seeed-voicecard $ 
 ```
+
+## ReSpeaker 4 Mic Array
+
+[![](https://github.com/SeeedDocument/ReSpeaker-4-Mic-Array-for-Raspberry-Pi/blob/master/img/features.png?raw=true)](https://www.seeedstudio.com/ReSpeaker-4-Mic-Array-for-Raspberry-Pi-p-2941.html)
+
+The 4 Mic Array uses ac108 which includes 4 ADCs, we also write ac108 rapberry pi linux kernel driver.
+
+```bash
+git clone https://github.com/respeaker/seeed-voicecard
+cd seeed-voicecard
+sudo ./install.sh 4mic
+
+#reboot your Raspbian OS
+sudo reboot
+```
+
+Check that the sound card name matches the source code seeed-voicecard.
 
 ```bash
 #for ReSpeaker 4-mic
