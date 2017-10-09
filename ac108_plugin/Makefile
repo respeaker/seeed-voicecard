@@ -9,7 +9,7 @@ CFLAGS += -I. -Wall -funroll-loops -ffast-math -fPIC -DPIC -O0 -g
 LD := gcc
 LDFLAGS += -Wall -shared -lasound
 
-SND_PCM_OBJECTS = pcm_ac108.o
+SND_PCM_OBJECTS = pcm_ac108.o ac108_help.o
 SND_PCM_LIBS =
 SND_PCM_BIN = libasound_module_pcm_ac108.so
 
