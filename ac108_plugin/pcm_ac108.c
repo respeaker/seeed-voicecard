@@ -5,193 +5,247 @@
 #include <alsa/asoundlib.h>
 #include <alsa/pcm_external.h>
 #include <alsa/pcm_plugin.h>
-
+#include "ac108_help.h"
 #include <math.h>
 
 #define ARRAY_SIZE(ary)	(sizeof(ary)/sizeof(ary[0]))
-#define  AC108_FRAME_SIZE 4096
+#define  AC108_FRAME_SIZE 40960
 struct ac108_t {
 	snd_pcm_ioplug_t io;
-	snd_pcm_t *slave;
+	snd_pcm_t *pcm;
 	snd_pcm_hw_params_t *hw_params;
 	unsigned int last_size;
 	unsigned int ptr;
-	void *buf;
 	unsigned int        latency;         // Delay in usec
 	unsigned int        bufferSize;      // Size of sample buffer
 };
-
-/* set up the fixed parameters of slave PCM hw_parmas */
-static int ac108_slave_hw_params_half(struct ac108_t *rec, unsigned int rate,snd_pcm_format_t format) {
+static unsigned char capture_buf[AC108_FRAME_SIZE];
+/* set up the fixed parameters of pcm PCM hw_parmas */
+static int ac108_slave_hw_params_half(struct ac108_t *capture, unsigned int rate,snd_pcm_format_t format) {
 	int err;
-    snd_pcm_uframes_t bufferSize = rec->bufferSize;
-    unsigned int latency = rec->latency;
+    snd_pcm_uframes_t bufferSize = capture->bufferSize;
+    unsigned int latency = capture->latency;
 
     unsigned int buffer_time = 0;
     unsigned int period_time = 0;
-	if ((err = snd_pcm_hw_params_malloc(&rec->hw_params)) < 0) return err;
+	if ((err = snd_pcm_hw_params_malloc(&capture->hw_params)) < 0) return err;
 
-	if ((err = snd_pcm_hw_params_any(rec->slave, rec->hw_params)) < 0) {
-		SNDERR("Cannot get slave hw_params");
+	if ((err = snd_pcm_hw_params_any(capture->pcm, capture->hw_params)) < 0) {
+		SNDERR("Cannot get pcm hw_params");
 		goto out;
 	}
-	if ((err = snd_pcm_hw_params_set_access(rec->slave, rec->hw_params,
+	if ((err = snd_pcm_hw_params_set_access(capture->pcm, capture->hw_params,
 											SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
-		SNDERR("Cannot set slave access RW_INTERLEAVED");
+		SNDERR("Cannot set pcm access RW_INTERLEAVED");
 		goto out;
 	}
-	if ((err = snd_pcm_hw_params_set_channels(rec->slave, rec->hw_params, 2)) < 0) {
-		SNDERR("Cannot set slave channels 2");
+	if ((err = snd_pcm_hw_params_set_channels(capture->pcm, capture->hw_params, 2)) < 0) {
+		SNDERR("Cannot set pcm channels 2");
 		goto out;
 	}
-	if ((err = snd_pcm_hw_params_set_format(rec->slave, rec->hw_params,
+	if ((err = snd_pcm_hw_params_set_format(capture->pcm, capture->hw_params,
 											format)) < 0) {
-		SNDERR("Cannot set slave format");
+		SNDERR("Cannot set pcm format");
 		goto out;
 	}
-	if ((err = snd_pcm_hw_params_set_rate(rec->slave, rec->hw_params, rate, 0)) < 0) {
-		SNDERR("Cannot set slave rate %d", rate);
+	if ((err = snd_pcm_hw_params_set_rate(capture->pcm, capture->hw_params, rate, 0)) < 0) {
+		SNDERR("Cannot set pcm rate %d", rate);
 		goto out;
 	}
 
-    err = snd_pcm_hw_params_get_buffer_time_max(rec->hw_params,
+    err = snd_pcm_hw_params_get_buffer_time_max(capture->hw_params,
             &buffer_time, 0);
     if (buffer_time > 80000)
         buffer_time = 80000;
     period_time = buffer_time / 4;
 
-    err = snd_pcm_hw_params_set_period_time_near(rec->slave, rec->hw_params,
+    err = snd_pcm_hw_params_set_period_time_near(capture->pcm, capture->hw_params,
             &period_time, 0);
     if (err < 0) {
-        fprintf(stderr,"Unable to set_period_time_near");
+        SNDERR("Unable to set_period_time_near");
         goto out;
     }
-    err = snd_pcm_hw_params_set_buffer_time_near(rec->slave, rec->hw_params,
+    err = snd_pcm_hw_params_set_buffer_time_near(capture->pcm, capture->hw_params,
             &buffer_time, 0);
     if (err < 0) {
-        fprintf(stderr,"Unable to set_buffer_time_near");
+        SNDERR("Unable to set_buffer_time_near");
         goto out;
     }
 
-    rec->bufferSize = bufferSize;
-    rec->latency = latency;
+    capture->bufferSize = bufferSize;
+    capture->latency = latency;
 
 	return 0;
 
 out:
-	free(rec->hw_params);
-	rec->hw_params = NULL;
+	free(capture->hw_params);
+	capture->hw_params = NULL;
 	return err;
 }
 
 /*
- * start and stop callbacks - just trigger slave PCM
+ * start and stop callbacks - just trigger pcm PCM
  */
 static int ac108_start(snd_pcm_ioplug_t *io) {
-	struct ac108_t *rec = io->private_data;
+	struct ac108_t *capture = io->private_data;
+    if(!capture->pcm) {
+		SNDERR( "pcm is lost\n");
+	}	
 
-    if(!rec->slave) {
-			fprintf(stderr, "slave is lost\n");
-    }
-
-	return snd_pcm_start(rec->slave);
+	return snd_pcm_start(capture->pcm);
 }
 
 static int ac108_stop(snd_pcm_ioplug_t *io) {
-	struct ac108_t *rec = io->private_data;
+	struct ac108_t *capture = io->private_data;
 
-	return snd_pcm_drop(rec->slave);
+	return snd_pcm_drop(capture->pcm);
 }
 /*
  * pointer callback
  *
- * Calculate the current position from the delay of slave PCM
+ * Calculate the current position from the delay of pcm PCM
  */
 static snd_pcm_sframes_t ac108_pointer(snd_pcm_ioplug_t *io) {
-	struct ac108_t *rec = io->private_data;
-	int err, size;
 
-	assert(rec);
+	struct ac108_t *capture = io->private_data;
+	int  size;
+	
+	assert(capture);
 
 
-	size = snd_pcm_avail(rec->slave);
-	if (size < 0) return size;
-	size = size /2;
-	if (size > rec->last_size) {
-			rec->ptr += size - rec->last_size;
-			rec->ptr %= io->buffer_size;
+	size = snd_pcm_avail(capture->pcm);
+	if (size < 0) 
+		return size;
+
+	size = size/2;
+
+	if (size > capture->last_size) {
+			capture->ptr += size - capture->last_size;
+			capture->ptr %= io->buffer_size;
 	}
 
-	rec->last_size = size;
-
-	//fprintf(stderr, "%s :%d %d %d %d\n", __func__, rec->ptr,size, io->appl_ptr, io->hw_ptr);
-	return rec->ptr;
+	//fprintf(stderr, "%s :%d %d %d %d %d %d\n", __func__,capture->ptr ,capture->last_size,size,  io->buffer_size,io->appl_ptr, io->hw_ptr);
+	capture->last_size = size;
+	
+	return capture->ptr;
 }
 
 /*
  * transfer callback
  */
 static snd_pcm_sframes_t ac108_transfer(snd_pcm_ioplug_t *io,
-										const snd_pcm_channel_area_t *areas,
-										snd_pcm_uframes_t offset,
+										const snd_pcm_channel_area_t *dst_areas,
+										snd_pcm_uframes_t dst_offset,
 										snd_pcm_uframes_t size) {
-	struct ac108_t *rec = io->private_data;
-	char *buf;
-	ssize_t result;
-	int err;
+	struct ac108_t *capture = io->private_data;
+	int chn;
+	unsigned char *dst_samples[io->channels];
+	int dst_steps[io->channels];
+	int bps = snd_pcm_format_width(io->format) / 8;  /* bytes per sample */
+	int i;
+	int count = 0;	
+	int err = 0;
+	unsigned char *src_buf;
+	unsigned char src_data[4][4];
 
+	
+	memset(capture_buf,0,AC108_FRAME_SIZE);
 
-	/* we handle only an interleaved buffer */
-	buf = (char *)areas->addr + (areas->first + areas->step * offset) / 8;
-	result = snd_pcm_readi(rec->slave, buf, size*2);
-	if (result <= 0) {
-		fprintf(stderr, "%s out error:%d %d\n", __func__, result);
-		return result;
+	if(snd_pcm_avail(capture->pcm) > size*2){
+		if ((err = snd_pcm_readi (capture->pcm, capture_buf, size*2)) != size*2) {
+			SNDERR("read from audio interface failed %ld %d  %s!\n",size,err,snd_strerror (err));
+			exit(EXIT_FAILURE);
+			size = 0 ;
+		}
+	}else{
+		size = 0;
 	}
-	rec->last_size -= size;
+#if 1	
+	/* verify and prepare the contents of areas */
+	for (chn = 0; chn < io->channels; chn++) {
+		if ((dst_areas[chn].first % 8) != 0) {
+			SNDERR("dst_areas[%i].first == %i, aborting...\n", chn, dst_areas[chn].first);
+			exit(EXIT_FAILURE);
+		}
+		dst_samples[chn] = /*(signed short *)*/(((unsigned char *)dst_areas[chn].addr) + (dst_areas[chn].first / 8));
+		if ((dst_areas[chn].step % 16) != 0) {
+			SNDERR("dst_areas[%i].step == %i, aborting...\n", chn, dst_areas[chn].step);
+			exit(EXIT_FAILURE);
+		}
+		dst_steps[chn] = dst_areas[chn].step / 8;
+		dst_samples[chn] += dst_offset * dst_steps[chn];
+	}
+#endif	
+	//  for(i = 0; i < size*2*bps;i++){
+	// 	fprintf(stderr,"%x ",capture_buf[i]);
+	// 	if(i%4 == 0)
+	// 		fprintf(stderr,"\n");
+	// }
 
+	//generate_sine(dst_areas, dst_offset,size, &count);
+	src_buf = capture_buf;
+#if 1
+	while(count < size){
+		for(chn = 0; chn < 4; chn++){
+			for (i = 0; i < bps; i++){
+				src_data[chn][i] = src_buf[i];
+			}
+			src_buf += bps ;						
+		}
 
+		for(chn = 0; chn < io->channels; chn++){
+			for (i = 0; i < bps; i++){
+				*(dst_samples[chn] + i) = src_data[chn][i];
+				//fprintf(stderr,"%x ",*(dst_samples[chn] + i));
+			}
+			//fprintf(stderr,"\n");
+			dst_samples[chn] += dst_steps[chn];	
+		}
+		count++;
+	}
+
+#endif
+
+	capture->last_size -= size;
+	
 	return size;
-
 }
 
 /*
- * poll-related callbacks - just pass to slave PCM
+ * poll-related callbacks - just pass to pcm PCM
  */
 static int ac108_poll_descriptors_count(snd_pcm_ioplug_t *io) {
-	struct ac108_t *rec = io->private_data;
+	struct ac108_t *capture = io->private_data;
 
-	//fprintf(stderr, "%s\n", __FUNCTION__);
-	return snd_pcm_poll_descriptors_count(rec->slave);
+	return snd_pcm_poll_descriptors_count(capture->pcm);
 }
 
 static int ac108_poll_descriptors(snd_pcm_ioplug_t *io, struct pollfd *pfd,
 								  unsigned int space) {
-	struct ac108_t *rec = io->private_data;
+	struct ac108_t *capture = io->private_data;
 
-	//fprintf(stderr, "%s\n", __FUNCTION__);
-	return snd_pcm_poll_descriptors(rec->slave, pfd, space);
+	return snd_pcm_poll_descriptors(capture->pcm, pfd, space);
 }
 
 static int ac108_poll_revents(snd_pcm_ioplug_t *io, struct pollfd *pfd,
 							  unsigned int nfds, unsigned short *revents) {
-	struct ac108_t *rec = io->private_data;
+	struct ac108_t *capture = io->private_data;
 
-	//fprintf(stderr, "%s\n", __FUNCTION__);
-	return snd_pcm_poll_descriptors_revents(rec->slave, pfd, nfds, revents);
+	return snd_pcm_poll_descriptors_revents(capture->pcm, pfd, nfds, revents);
 }
 
 /*
  * close callback
  */
 static int ac108_close(snd_pcm_ioplug_t *io) {
-	struct ac108_t *rec = io->private_data;
+	struct ac108_t *capture = io->private_data;
+	if (capture->pcm)  
+		snd_pcm_close(capture->pcm);
 
-	if (rec->slave) return snd_pcm_close(rec->slave);
 	return 0;
 }
 
-static int setSoftwareParams(struct ac108_t *rec) {
+static int setSoftwareParams(struct ac108_t *capture) {
 	snd_pcm_sw_params_t *softwareParams;
 	int err;
 
@@ -201,49 +255,49 @@ static int setSoftwareParams(struct ac108_t *rec) {
 	snd_pcm_sw_params_alloca(&softwareParams);
 
 	// Get the current software parameters
-	err = snd_pcm_sw_params_current(rec->slave, softwareParams);
+	err = snd_pcm_sw_params_current(capture->pcm, softwareParams);
 	if (err < 0) {
-		fprintf(stderr, "Unable to get software parameters: %s", snd_strerror(err));
+		SNDERR("Unable to get software parameters: %s", snd_strerror(err));
 		goto done;
 	}
 
 	// Configure ALSA to start the transfer when the buffer is almost full.
-	snd_pcm_get_params(rec->slave, &bufferSize, &periodSize);
+	snd_pcm_get_params(capture->pcm, &bufferSize, &periodSize);
 
 
 	startThreshold = 1;
 	stopThreshold = bufferSize;
 
 
-	err = snd_pcm_sw_params_set_start_threshold(rec->slave, softwareParams,
+	err = snd_pcm_sw_params_set_start_threshold(capture->pcm, softwareParams,
 												startThreshold);
 	if (err < 0) {
-		fprintf(stderr, "Unable to set start threshold to %lu frames: %s",
+		SNDERR("Unable to set start threshold to %lu frames: %s",
 				startThreshold, snd_strerror(err));
 		goto done;
 	}
 
-	err = snd_pcm_sw_params_set_stop_threshold(rec->slave, softwareParams,
+	err = snd_pcm_sw_params_set_stop_threshold(capture->pcm, softwareParams,
 											   stopThreshold);
 	if (err < 0) {
-		fprintf(stderr, "Unable to set stop threshold to %lu frames: %s",
+		SNDERR("Unable to set stop threshold to %lu frames: %s",
 				stopThreshold, snd_strerror(err));
 		goto done;
 	}
 	// Allow the transfer to start when at least periodSize samples can be
 	// processed.
-	err = snd_pcm_sw_params_set_avail_min(rec->slave, softwareParams,
+	err = snd_pcm_sw_params_set_avail_min(capture->pcm, softwareParams,
 										  periodSize);
 	if (err < 0) {
-		fprintf(stderr, "Unable to configure available minimum to %lu: %s",
+		SNDERR("Unable to configure available minimum to %lu: %s",
 				periodSize, snd_strerror(err));
 		goto done;
 	}
 
 	// Commit the software parameters back to the device.
-	err = snd_pcm_sw_params(rec->slave, softwareParams);
-	if (err < 0) fprintf(stderr, "Unable to configure software parameters: %s",
-						 snd_strerror(err));
+	err = snd_pcm_sw_params(capture->pcm, softwareParams);
+	if (err < 0) 
+		SNDERR("Unable to configure software parameters: %s",snd_strerror(err));
 
 
 
@@ -256,81 +310,68 @@ done:
 /*
  * hw_params callback
  *
- * Set up slave PCM according to the current parameters
+ * Set up pcm PCM according to the current parameters
  */
-//static int ac108_hw_params(snd_pcm_ioplug_t *io,
-//						   snd_pcm_hw_params_t *params ATTRIBUTE_UNUSED) {
-static int ac108_hw_params(snd_pcm_ioplug_t *io) {
-	struct ac108_t *rec = io->private_data;
-	snd_pcm_sw_params_t *sparams;
+static int ac108_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params) {
+	struct ac108_t *capture = io->private_data;
 	snd_pcm_uframes_t period_size;
 	snd_pcm_uframes_t buffer_size;
 	int err;
-	if (!rec->hw_params) {
-		err = ac108_slave_hw_params_half(rec, 2*io->rate,io->format);
+	if (!capture->hw_params) {
+		err = ac108_slave_hw_params_half(capture, 2*io->rate,io->format);
 		if (err < 0) {
-			fprintf(stderr, "ac108_slave_hw_params_half error\n");
+			SNDERR("ac108_slave_hw_params_half error\n");
 			return err;
 		}
 	}
 	period_size = io->period_size;
-	if ((err = snd_pcm_hw_params_set_period_size_near(rec->slave, rec->hw_params,
+	if ((err = snd_pcm_hw_params_set_period_size_near(capture->pcm, capture->hw_params,
 													  &period_size, NULL)) < 0) {
-		SNDERR("Cannot set slave period size %ld", period_size);
+		SNDERR("Cannot set pcm period size %ld", period_size);
 		return err;
 	}
 	buffer_size = io->buffer_size;
-	if ((err = snd_pcm_hw_params_set_buffer_size_near(rec->slave, rec->hw_params,
+	if ((err = snd_pcm_hw_params_set_buffer_size_near(capture->pcm, capture->hw_params,
 													  &buffer_size)) < 0) {
-		SNDERR("Cannot set slave buffer size %ld", buffer_size);
+		SNDERR("Cannot set pcm buffer size %ld", buffer_size);
 		return err;
 	}
-	if ((err = snd_pcm_hw_params(rec->slave, rec->hw_params)) < 0) {
-		SNDERR("Cannot set slave hw_params");
+	if ((err = snd_pcm_hw_params(capture->pcm, capture->hw_params)) < 0) {
+		SNDERR("Cannot set pcm hw_params");
 		return err;
 	}
-
-	setSoftwareParams(rec);
-
+	setSoftwareParams(capture);
 	return 0;
 }
 /*
  * hw_free callback
  */
 static int ac108_hw_free(snd_pcm_ioplug_t *io) {
-	struct ac108_t *rec = io->private_data;
-	free(rec->hw_params);
-	if (rec->buf != NULL) {
-		free(rec->buf);
-		rec->buf = NULL;
-	}
-	rec->hw_params = NULL;
-
-	return snd_pcm_hw_free(rec->slave);
+	struct ac108_t *capture = io->private_data;
+	free(capture->hw_params);
+	capture->hw_params = NULL;
+	
+	return snd_pcm_hw_free(capture->pcm);
 
 }
 
 
 static int ac108_prepare(snd_pcm_ioplug_t *io) {
-	struct ac108_t *rec = io->private_data;
-	rec->ptr = 0;
-	rec->last_size =0;
-	if (rec->buf == NULL) {
-		rec->buf = malloc(io->buffer_size);
-	}
-
-	return snd_pcm_prepare(rec->slave);
+	struct ac108_t *capture = io->private_data;
+	capture->ptr = 0;
+	capture->last_size =0;
+	return snd_pcm_prepare(capture->pcm);
 }
 static int ac108_drain(snd_pcm_ioplug_t *io) {
-	struct ac108_t *rec = io->private_data;
-	return snd_pcm_drain(rec->slave);
+	struct ac108_t *capture = io->private_data;
+	
+	return snd_pcm_drain(capture->pcm);
 }
+#if 0
 static int ac108_sw_params(snd_pcm_ioplug_t *io, snd_pcm_sw_params_t *params) {
-	struct ac108_t *rec = io->private_data;
-
 	return 0;
 }
-
+#endif 
 static int ac108_delay(snd_pcm_ioplug_t * io, snd_pcm_sframes_t * delayp){
 
 	return 0;
@@ -356,10 +397,9 @@ static snd_pcm_ioplug_callback_t a108_ops = {
 };
 
 
-static int ac108_set_hw_constraint(struct ac108_t  *rec) {
+static int ac108_set_hw_constraint(struct ac108_t  *capture) {
 	static unsigned int accesses[] = {
-		SND_PCM_ACCESS_RW_INTERLEAVED,
-		SND_PCM_ACCESS_RW_NONINTERLEAVED 
+		SND_PCM_ACCESS_RW_INTERLEAVED 
 	};
 	unsigned int formats[] = { SND_PCM_FORMAT_S32,
 							   SND_PCM_FORMAT_S16 };
@@ -367,54 +407,64 @@ static int ac108_set_hw_constraint(struct ac108_t  *rec) {
 	unsigned int  rates[] = {
 		8000,
 		16000,
-		48000
+		32000,
+		44100,
+		48000,
+		96000
 	};
 	int err;
-	snd_pcm_uframes_t buffer_max;
-	unsigned int period_bytes, max_periods;
 
 
-	err = snd_pcm_ioplug_set_param_list(&rec->io,
+	err = snd_pcm_ioplug_set_param_list(&capture->io,
 										SND_PCM_IOPLUG_HW_ACCESS,
 										ARRAY_SIZE(accesses),
 										accesses);
-	if (err < 0) return err;
+	if (err < 0){
+		SNDERR("ioplug cannot set ac108 hw access");
+		return err;
+	} 
 
-	if ((err = snd_pcm_ioplug_set_param_list(&rec->io, SND_PCM_IOPLUG_HW_FORMAT,
+	if ((err = snd_pcm_ioplug_set_param_list(&capture->io, SND_PCM_IOPLUG_HW_FORMAT,
 											 ARRAY_SIZE(formats), formats)) < 0 ||
-		(err = snd_pcm_ioplug_set_param_minmax(&rec->io, SND_PCM_IOPLUG_HW_CHANNELS,
-											   4, 4)) < 0 ||
-		(err = snd_pcm_ioplug_set_param_list(&rec->io, SND_PCM_IOPLUG_HW_RATE,
-												ARRAY_SIZE(rates), rates)) < 0) return err;
-	err = snd_pcm_ioplug_set_param_minmax(&rec->io,
-										  SND_PCM_IOPLUG_HW_BUFFER_BYTES,
+		(err = snd_pcm_ioplug_set_param_minmax(&capture->io, SND_PCM_IOPLUG_HW_CHANNELS,
+											   1, 4)) < 0 ||
+		(err = snd_pcm_ioplug_set_param_list(&capture->io, SND_PCM_IOPLUG_HW_RATE,
+												ARRAY_SIZE(rates), rates)) < 0) 
+												{
+		SNDERR("ioplug cannot set ac108 format channel rate!");											
+		return err;
+	}
+	err = snd_pcm_ioplug_set_param_minmax(&capture->io,SND_PCM_IOPLUG_HW_BUFFER_BYTES,
 										  1, 4 * 1024 * 1024);
-	if (err < 0) return err;
+	if (err < 0){ 
+		SNDERR("ioplug cannot set ac108 hw buffer bytes");		
+		return err;
+	}
 
-	err = snd_pcm_ioplug_set_param_minmax(&rec->io,
-										  SND_PCM_IOPLUG_HW_PERIOD_BYTES,
+	err = snd_pcm_ioplug_set_param_minmax(&capture->io,SND_PCM_IOPLUG_HW_PERIOD_BYTES,
 										  128, 2 * 1024 * 1024);
-	if (err < 0) return err;
+	if (err < 0) {
+		SNDERR("ioplug cannot set ac108 hw period bytes");		
+		return err;
+	}
 
-	err = snd_pcm_ioplug_set_param_minmax(&rec->io, SND_PCM_IOPLUG_HW_PERIODS,
-										  3, 1024);
+	err = snd_pcm_ioplug_set_param_minmax(&capture->io, SND_PCM_IOPLUG_HW_PERIODS,3, 1024);
+	if (err < 0) {
+		SNDERR("ioplug cannot set ac108 hw periods");		
+		return err;
+	}									  
 	return 0;
 }
 
-/*
 /*
  * Main entry point
  */
 SND_PCM_PLUGIN_DEFINE_FUNC(ac108) {
 	snd_config_iterator_t i, next;
 	int err;
-	const char *card = NULL;
 	const char *pcm_string = NULL;
-	snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
-	char devstr[128], tmpcard[8];
-	struct ac108_t *rec;
+	struct ac108_t *capture;
 	int channels;
-	struct pollfd fds;
 	if (stream != SND_PCM_STREAM_CAPTURE) {
 		SNDERR("a108 is only for capture");
 		return -EINVAL;
@@ -449,36 +499,37 @@ SND_PCM_PLUGIN_DEFINE_FUNC(ac108) {
 		}
 	}
 
-	rec = calloc(1, sizeof(*rec));
-	if (!rec) {
+
+	capture = calloc(1, sizeof(*capture));
+	if (!capture) {
 		SNDERR("cannot allocate");
 		return -ENOMEM;
 	}
-	err = snd_pcm_open(&rec->slave, pcm_string, stream, mode);
+	err = snd_pcm_open(&capture->pcm, pcm_string, stream, mode);
 	if (err < 0) goto error;
 
 
-
+	
 	//SND_PCM_NONBLOCK
-	rec->io.version = SND_PCM_IOPLUG_VERSION;
-	rec->io.name = "AC108 decode Plugin";
-	rec->io.mmap_rw = 0;
-	rec->io.callback = &a108_ops;
-	rec->io.private_data = rec;
+	capture->io.version = SND_PCM_IOPLUG_VERSION;
+	capture->io.name = "AC108 decode Plugin";
+	capture->io.mmap_rw = 0;
+	capture->io.callback = &a108_ops;
+	capture->io.private_data = capture;
 
-	err = snd_pcm_ioplug_create(&rec->io, name, stream, mode);
+	err = snd_pcm_ioplug_create(&capture->io, name, stream, mode);
 	if (err < 0) goto error;
 
-	if ((err = ac108_set_hw_constraint(rec)) < 0) {
-		snd_pcm_ioplug_delete(&rec->io);
+	if ((err = ac108_set_hw_constraint(capture)) < 0) {
+		snd_pcm_ioplug_delete(&capture->io);
 		return err;
 	}
-	*pcmp = rec->io.pcm;
+	*pcmp = capture->io.pcm;
 	return 0;
 	
 error:
-	if (rec->slave) snd_pcm_close(rec->slave);
-	free(rec);
+	if (capture->pcm) snd_pcm_close(capture->pcm);
+	free(capture);
 	return err;
 }
 

@@ -8,7 +8,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#define DEBUG 1
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -777,7 +776,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 
 	dev_dbg(dai->dev,"rate:%d \n", params_rate(params));
 	for (i = 0; i < ARRAY_SIZE(ac108_sample_rate); i++) {
-		if (ac108_sample_rate[i].real_val == params_rate(params)) {
+		if (ac108_sample_rate[i].real_val ==( params_rate(params)/2)) {
 			rate = i;
 			break;
 		}
@@ -840,8 +839,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 * ADC Sample Rate synchronised with I2S1 clock zone 
 	 */
 	ac108_multi_chips_update_bits(ADC_SPRC, 0x0f << ADC_FS_I2S1, ac108_sample_rate[rate].reg_val << ADC_FS_I2S1, ac108);
-
-	ac108_configure_clocking(ac108, rate);
+	ac108_multi_chips_write(HPF_EN,0x0f,ac108);
+	ac108_configure_clocking(ac108, ac108_sample_rate[rate].real_val);
 	return 0;
 }
 
