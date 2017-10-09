@@ -841,7 +841,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 */
 	ac108_multi_chips_update_bits(ADC_SPRC, 0x0f << ADC_FS_I2S1, ac108_sample_rate[rate].reg_val << ADC_FS_I2S1, ac108);
 	ac108_multi_chips_write(HPF_EN,0x0f,ac108);
-	ac108_configure_clocking(ac108, rate);
+	ac108_configure_clocking(ac108, ac108_sample_rate[rate].real_val);
 	return 0;
 }
 
