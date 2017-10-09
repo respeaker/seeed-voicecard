@@ -9,7 +9,7 @@
 #include <math.h>
 
 #define ARRAY_SIZE(ary)	(sizeof(ary)/sizeof(ary[0]))
-#define  AC108_FRAME_SIZE 4096
+#define  AC108_FRAME_SIZE 40960
 struct ac108_t {
 	snd_pcm_ioplug_t io;
 	snd_pcm_t *pcm;
@@ -62,13 +62,13 @@ static int ac108_slave_hw_params_half(struct ac108_t *capture, unsigned int rate
     err = snd_pcm_hw_params_set_period_time_near(capture->pcm, capture->hw_params,
             &period_time, 0);
     if (err < 0) {
-        fprintf(stderr,"Unable to set_period_time_near");
+        SNDERR("Unable to set_period_time_near");
         goto out;
     }
     err = snd_pcm_hw_params_set_buffer_time_near(capture->pcm, capture->hw_params,
             &buffer_time, 0);
     if (err < 0) {
-        fprintf(stderr,"Unable to set_buffer_time_near");
+        SNDERR("Unable to set_buffer_time_near");
         goto out;
     }
 
@@ -88,9 +88,8 @@ out:
  */
 static int ac108_start(snd_pcm_ioplug_t *io) {
 	struct ac108_t *capture = io->private_data;
-	fprintf(stderr,"ac108_start: %d\n",io->buffer_size);
     if(!capture->pcm) {
-			fprintf(stderr, "pcm is lost\n");
+		SNDERR( "pcm is lost\n");
 	}	
 
 	return snd_pcm_start(capture->pcm);
@@ -98,7 +97,6 @@ static int ac108_start(snd_pcm_ioplug_t *io) {
 
 static int ac108_stop(snd_pcm_ioplug_t *io) {
 	struct ac108_t *capture = io->private_data;
-	fprintf(stderr,"ac108_stop!\n");
 
 	return snd_pcm_drop(capture->pcm);
 }
@@ -110,8 +108,7 @@ static int ac108_stop(snd_pcm_ioplug_t *io) {
 static snd_pcm_sframes_t ac108_pointer(snd_pcm_ioplug_t *io) {
 
 	struct ac108_t *capture = io->private_data;
-	int bps = snd_pcm_format_width(io->format) / 8;
-	int err, size;
+	int  size;
 	
 	assert(capture);
 
@@ -145,22 +142,18 @@ static snd_pcm_sframes_t ac108_transfer(snd_pcm_ioplug_t *io,
 	unsigned char *dst_samples[io->channels];
 	int dst_steps[io->channels];
 	int bps = snd_pcm_format_width(io->format) / 8;  /* bytes per sample */
-	//int phys_bps = snd_pcm_format_physical_width(capture->format) / 8;
-	//int big_endian = snd_pcm_format_big_endian(capture->format) == 1;
-	//int to_unsigned = snd_pcm_format_unsigned(capture->format) == 1;
-	//int is_float = (capture->format == SND_PCM_FORMAT_FLOAT_LE ||capture->format == SND_PCM_FORMAT_FLOAT_BE);
 	int i;
 	int count = 0;	
 	int err = 0;
 	unsigned char *src_buf;
-	unsigned char *src_data[4][4];
+	unsigned char src_data[4][4];
 
 	
 	memset(capture_buf,0,AC108_FRAME_SIZE);
 
 	if(snd_pcm_avail(capture->pcm) > size*2){
 		if ((err = snd_pcm_readi (capture->pcm, capture_buf, size*2)) != size*2) {
-			fprintf (stderr, "read from audio interface failed %d %d  %s!\n",size,err,snd_strerror (err));
+			SNDERR("read from audio interface failed %ld %d  %s!\n",size,err,snd_strerror (err));
 			exit(EXIT_FAILURE);
 			size = 0 ;
 		}
@@ -171,20 +164,18 @@ static snd_pcm_sframes_t ac108_transfer(snd_pcm_ioplug_t *io,
 	/* verify and prepare the contents of areas */
 	for (chn = 0; chn < io->channels; chn++) {
 		if ((dst_areas[chn].first % 8) != 0) {
-			fprintf(stderr,"dst_areas[%i].first == %i, aborting...\n", chn, dst_areas[chn].first);
+			SNDERR("dst_areas[%i].first == %i, aborting...\n", chn, dst_areas[chn].first);
 			exit(EXIT_FAILURE);
 		}
 		dst_samples[chn] = /*(signed short *)*/(((unsigned char *)dst_areas[chn].addr) + (dst_areas[chn].first / 8));
 		if ((dst_areas[chn].step % 16) != 0) {
-			fprintf(stderr,"dst_areas[%i].step == %i, aborting...\n", chn, dst_areas[chn].step);
+			SNDERR("dst_areas[%i].step == %i, aborting...\n", chn, dst_areas[chn].step);
 			exit(EXIT_FAILURE);
 		}
 		dst_steps[chn] = dst_areas[chn].step / 8;
 		dst_samples[chn] += dst_offset * dst_steps[chn];
 	}
 #endif	
-	//fprintf(stderr,"ac108_transfer: %d %d %d %d\n", size,dst_offset,io->channels,bps);
-
 	//  for(i = 0; i < size*2*bps;i++){
 	// 	fprintf(stderr,"%x ",capture_buf[i]);
 	// 	if(i%4 == 0)
@@ -193,13 +184,6 @@ static snd_pcm_sframes_t ac108_transfer(snd_pcm_ioplug_t *io,
 
 	//generate_sine(dst_areas, dst_offset,size, &count);
 	src_buf = capture_buf;
-	// while(1){
-	// 	if(src_buf[0] == 0 && src_buf[0 + bps] == 1 &&
-	// 	   src_buf[0 + 2*bps] == 2 && src_buf[0 + 3*bps] == 3)
-	// 	   break;
-	// 	else
-	// 	   src_buf += 4*bps;
-	// }
 #if 1
 	while(count < size){
 		for(chn = 0; chn < 4; chn++){
@@ -214,7 +198,6 @@ static snd_pcm_sframes_t ac108_transfer(snd_pcm_ioplug_t *io,
 				*(dst_samples[chn] + i) = src_data[chn][i];
 				//fprintf(stderr,"%x ",*(dst_samples[chn] + i));
 			}
-			//fprintf(stderr,"%x %x %x %x\n",src_buf[3],src_buf[2],src_buf[1],src_buf[0]);
 			//fprintf(stderr,"\n");
 			dst_samples[chn] += dst_steps[chn];	
 		}
@@ -225,29 +208,6 @@ static snd_pcm_sframes_t ac108_transfer(snd_pcm_ioplug_t *io,
 
 	capture->last_size -= size;
 	
-#if 0
-	/* we handle only an interleaved buffer */
-	dst_buf = (char *)areas->addr + (areas->first + areas->step * offset) / 8;
-	buf = dst_buf;
-
-	snd_pcm_readi(capture->pcm, capture_buf, size/2);
-#if 1
-	for(a = 0; a < size*2;a++){
-		fprintf(stderr,"%x ",capture_buf[a]);
-		if(a%4 == 0)
-			fprintf(stderr,"\n");
-	}
-#endif	
-	memcpy((char*)dst_buf,capture_buf,size/2);
-										
-	fprintf(stderr,"ac108_transfer: %d %d %d \n", size,offset,io->channels);
-
-	if (result <= 0) {
-		fprintf(stderr, "%s out error:%d %d\n", __func__, result);
-		return result;
-	}
-	capture->last_size -= size;
-#endif
 	return size;
 }
 
@@ -257,7 +217,6 @@ static snd_pcm_sframes_t ac108_transfer(snd_pcm_ioplug_t *io,
 static int ac108_poll_descriptors_count(snd_pcm_ioplug_t *io) {
 	struct ac108_t *capture = io->private_data;
 
-	//fprintf(stderr, "%s\n", __FUNCTION__);
 	return snd_pcm_poll_descriptors_count(capture->pcm);
 }
 
@@ -265,7 +224,6 @@ static int ac108_poll_descriptors(snd_pcm_ioplug_t *io, struct pollfd *pfd,
 								  unsigned int space) {
 	struct ac108_t *capture = io->private_data;
 
-	//fprintf(stderr, "%s\n", __FUNCTION__);
 	return snd_pcm_poll_descriptors(capture->pcm, pfd, space);
 }
 
@@ -273,7 +231,6 @@ static int ac108_poll_revents(snd_pcm_ioplug_t *io, struct pollfd *pfd,
 							  unsigned int nfds, unsigned short *revents) {
 	struct ac108_t *capture = io->private_data;
 
-	//fprintf(stderr, "%s\n", __FUNCTION__);
 	return snd_pcm_poll_descriptors_revents(capture->pcm, pfd, nfds, revents);
 }
 
@@ -282,7 +239,6 @@ static int ac108_poll_revents(snd_pcm_ioplug_t *io, struct pollfd *pfd,
  */
 static int ac108_close(snd_pcm_ioplug_t *io) {
 	struct ac108_t *capture = io->private_data;
-	fprintf(stderr,"ac108_close\n");		
 	if (capture->pcm)  
 		snd_pcm_close(capture->pcm);
 
@@ -301,7 +257,7 @@ static int setSoftwareParams(struct ac108_t *capture) {
 	// Get the current software parameters
 	err = snd_pcm_sw_params_current(capture->pcm, softwareParams);
 	if (err < 0) {
-		fprintf(stderr, "Unable to get software parameters: %s", snd_strerror(err));
+		SNDERR("Unable to get software parameters: %s", snd_strerror(err));
 		goto done;
 	}
 
@@ -316,7 +272,7 @@ static int setSoftwareParams(struct ac108_t *capture) {
 	err = snd_pcm_sw_params_set_start_threshold(capture->pcm, softwareParams,
 												startThreshold);
 	if (err < 0) {
-		fprintf(stderr, "Unable to set start threshold to %lu frames: %s",
+		SNDERR("Unable to set start threshold to %lu frames: %s",
 				startThreshold, snd_strerror(err));
 		goto done;
 	}
@@ -324,7 +280,7 @@ static int setSoftwareParams(struct ac108_t *capture) {
 	err = snd_pcm_sw_params_set_stop_threshold(capture->pcm, softwareParams,
 											   stopThreshold);
 	if (err < 0) {
-		fprintf(stderr, "Unable to set stop threshold to %lu frames: %s",
+		SNDERR("Unable to set stop threshold to %lu frames: %s",
 				stopThreshold, snd_strerror(err));
 		goto done;
 	}
@@ -333,15 +289,15 @@ static int setSoftwareParams(struct ac108_t *capture) {
 	err = snd_pcm_sw_params_set_avail_min(capture->pcm, softwareParams,
 										  periodSize);
 	if (err < 0) {
-		fprintf(stderr, "Unable to configure available minimum to %lu: %s",
+		SNDERR("Unable to configure available minimum to %lu: %s",
 				periodSize, snd_strerror(err));
 		goto done;
 	}
 
 	// Commit the software parameters back to the device.
 	err = snd_pcm_sw_params(capture->pcm, softwareParams);
-	if (err < 0) fprintf(stderr, "Unable to configure software parameters: %s",
-						 snd_strerror(err));
+	if (err < 0) 
+		SNDERR("Unable to configure software parameters: %s",snd_strerror(err));
 
 
 
@@ -356,18 +312,15 @@ done:
  *
  * Set up pcm PCM according to the current parameters
  */
-//static int ac108_hw_params(snd_pcm_ioplug_t *io,
-//						   snd_pcm_hw_params_t *params ATTRIBUTE_UNUSED) {
-static int ac108_hw_params(snd_pcm_ioplug_t *io) {
+static int ac108_hw_params(snd_pcm_ioplug_t *io, snd_pcm_hw_params_t *params) {
 	struct ac108_t *capture = io->private_data;
-	snd_pcm_sw_params_t *sparams;
 	snd_pcm_uframes_t period_size;
 	snd_pcm_uframes_t buffer_size;
 	int err;
 	if (!capture->hw_params) {
 		err = ac108_slave_hw_params_half(capture, 2*io->rate,io->format);
 		if (err < 0) {
-			fprintf(stderr, "ac108_slave_hw_params_half error\n");
+			SNDERR("ac108_slave_hw_params_half error\n");
 			return err;
 		}
 	}
@@ -388,7 +341,6 @@ static int ac108_hw_params(snd_pcm_ioplug_t *io) {
 		return err;
 	}
 	setSoftwareParams(capture);
-	fprintf(stderr, "ac108_hw_params\n");
 	return 0;
 }
 /*
@@ -398,7 +350,6 @@ static int ac108_hw_free(snd_pcm_ioplug_t *io) {
 	struct ac108_t *capture = io->private_data;
 	free(capture->hw_params);
 	capture->hw_params = NULL;
-	fprintf(stderr,"ac108_hw_free\n");
 	
 	return snd_pcm_hw_free(capture->pcm);
 
@@ -409,7 +360,6 @@ static int ac108_prepare(snd_pcm_ioplug_t *io) {
 	struct ac108_t *capture = io->private_data;
 	capture->ptr = 0;
 	capture->last_size =0;
-	fprintf(stderr,"ac108_prepare\n");
 	return snd_pcm_prepare(capture->pcm);
 }
 static int ac108_drain(snd_pcm_ioplug_t *io) {
@@ -417,12 +367,11 @@ static int ac108_drain(snd_pcm_ioplug_t *io) {
 	
 	return snd_pcm_drain(capture->pcm);
 }
+#if 0
 static int ac108_sw_params(snd_pcm_ioplug_t *io, snd_pcm_sw_params_t *params) {
-	struct ac108_t *capture = io->private_data;
-
 	return 0;
 }
-
+#endif 
 static int ac108_delay(snd_pcm_ioplug_t * io, snd_pcm_sframes_t * delayp){
 
 	return 0;
@@ -458,11 +407,12 @@ static int ac108_set_hw_constraint(struct ac108_t  *capture) {
 	unsigned int  rates[] = {
 		8000,
 		16000,
-		48000
+		32000,
+		44100,
+		48000,
+		96000
 	};
 	int err;
-	snd_pcm_uframes_t buffer_max;
-	unsigned int period_bytes, max_periods;
 
 
 	err = snd_pcm_ioplug_set_param_list(&capture->io,
@@ -479,7 +429,8 @@ static int ac108_set_hw_constraint(struct ac108_t  *capture) {
 		(err = snd_pcm_ioplug_set_param_minmax(&capture->io, SND_PCM_IOPLUG_HW_CHANNELS,
 											   1, 4)) < 0 ||
 		(err = snd_pcm_ioplug_set_param_list(&capture->io, SND_PCM_IOPLUG_HW_RATE,
-												ARRAY_SIZE(rates), rates)) < 0) {
+												ARRAY_SIZE(rates), rates)) < 0) 
+												{
 		SNDERR("ioplug cannot set ac108 format channel rate!");											
 		return err;
 	}
@@ -506,19 +457,14 @@ static int ac108_set_hw_constraint(struct ac108_t  *capture) {
 }
 
 /*
-/*
  * Main entry point
  */
 SND_PCM_PLUGIN_DEFINE_FUNC(ac108) {
 	snd_config_iterator_t i, next;
 	int err;
-	const char *card = NULL;
 	const char *pcm_string = NULL;
-	snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;
-	char devstr[128], tmpcard[8];
 	struct ac108_t *capture;
 	int channels;
-	struct pollfd fds;
 	if (stream != SND_PCM_STREAM_CAPTURE) {
 		SNDERR("a108 is only for capture");
 		return -EINVAL;
