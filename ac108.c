@@ -777,7 +777,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 
 	dev_dbg(dai->dev,"rate:%d \n", params_rate(params));
 	for (i = 0; i < ARRAY_SIZE(ac108_sample_rate); i++) {
-		if (ac108_sample_rate[i].real_val == params_rate(params)) {
+		if (ac108_sample_rate[i].real_val ==( params_rate(params)/2)) {
 			rate = i;
 			break;
 		}
