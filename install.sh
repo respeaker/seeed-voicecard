@@ -56,7 +56,6 @@ if [ ! -f "/boot/overlays/seeed-4mic-voicecard.dtbo" ] && [ ! -f "/lib/modules/$
   cp seeed-2mic-voicecard.dtbo /boot/overlays
   cp seeed-4mic-voicecard.dtbo /boot/overlays
   cp ac108_plugin/libasound_module_pcm_ac108.so   /usr/lib/arm-linux-gnueabihf/alsa-lib/  
-  cp asound.conf /etc/
 else
   echo "card driver already installed"
 fi
@@ -80,6 +79,7 @@ case "${card}" in
    "2mic") 
     echo "cp wm8960_asound.state /var/lib/alsa/asound.state"
     cp wm8960_asound.state /var/lib/alsa/asound.state
+    cp asound_2mic.conf /etc/asound.conf
     if [ "x${has_4mic}" != x ] ; then
       echo "has 4mic before, now remove it"
       sed -i "s/dtoverlay=seeed-4mic-voicecard//g" /boot/config.txt
@@ -91,6 +91,7 @@ case "${card}" in
    "4mic") 
     echo "cp ac108_asound.state /var/lib/alsa/asound.state"
     cp ac108_asound.state /var/lib/alsa/asound.state
+    cp asound_4mic.conf /etc/asound.conf
     if [ "x${has_2mic}" != x ] ; then
       echo "has 2mic before, now remove it"
       sed -i "s/dtoverlay=seeed-2mic-voicecard//g" /boot/config.txt

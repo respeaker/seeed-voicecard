@@ -43,6 +43,11 @@ if [ x${card} = "x2mic" ] ; then
 		echo  "remove wm8960_asound.state"
 		rm /var/lib/alsa/asound.state
 	fi
+
+	if [ -f /etc/asound.conf ] ; then
+        echo  "remove asound_2mic.conf"
+        rm /etc/asound.conf
+	fi	
 fi
 
 if [ x${card} = "x4mic" ] ; then
@@ -50,13 +55,13 @@ if [ x${card} = "x4mic" ] ; then
         sed -i "s/dtoverlay=seeed-4mic-voicecard//g" /boot/config.txt
 	
 	if [ -f /boot/overlays/seeed-4mic-voicecard.dtbo ] ; then
-        	echo "remove seeed-4mic-voicecard.dtbo in /boot/overlays"
-        	rm /boot/overlays/seeed-4mic-voicecard.dtbo
+        echo "remove seeed-4mic-voicecard.dtbo in /boot/overlays"
+        rm /boot/overlays/seeed-4mic-voicecard.dtbo
 	fi
 
 	if [ -f /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-ac108.ko ] ; then
-        	echo "remove snd-soc-ac108.ko"
-        	rm  /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-ac108.ko
+        echo "remove snd-soc-ac108.ko"
+        rm  /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-ac108.ko
 	fi
 
 	if [ -d /var/lib/dkms/seeed-voicecard ] ; then
@@ -68,10 +73,15 @@ if [ x${card} = "x4mic" ] ; then
         sed -i "s/snd-soc-ac108//g" /etc/modules                
 
 	if [ -f /var/lib/alsa/asound.state ] ; then
-        	echo  "remove ac108_asound.state"
-        	rm /var/lib/alsa/asound.state
+        echo  "remove ac108_asound.state"
+        rm /var/lib/alsa/asound.state
 	fi
-	
+
+	if [ -f /etc/asound.conf ] ; then
+        echo  "remove asound_4mic.conf"
+        rm /etc/asound.conf
+	fi
+
 	if [ -f /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so ] ; then
 		echo "remove libasound_module_pcm_ac108.so in /usr/lib/arm-linux-gnueabihf/alsa-lib/ "
 		rm  /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
