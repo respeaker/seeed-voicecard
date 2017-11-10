@@ -125,6 +125,11 @@ static int asoc_simple_card_startup(struct snd_pcm_substream *substream)
 	if (ret)
 		clk_disable_unprepare(dai_props->cpu_dai.clk);
 
+	rtd->cpu_dai->driver->playback.channels_min = 4;
+	rtd->cpu_dai->driver->playback.channels_max = 4;
+	rtd->cpu_dai->driver->capture.channels_min = 4;
+	rtd->cpu_dai->driver->capture.channels_max = 4;
+
 	return ret;
 }
 
@@ -134,6 +139,11 @@ static void asoc_simple_card_shutdown(struct snd_pcm_substream *substream)
 	struct simple_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
 	struct simple_dai_props *dai_props =
 		simple_priv_to_props(priv, rtd->num);
+
+	rtd->cpu_dai->driver->playback.channels_min = 2;
+	rtd->cpu_dai->driver->playback.channels_max = 2;
+	rtd->cpu_dai->driver->capture.channels_min = 2;
+	rtd->cpu_dai->driver->capture.channels_max = 2;
 
 	clk_disable_unprepare(dai_props->cpu_dai.clk);
 
@@ -268,6 +278,10 @@ static int asoc_simple_card_dai_link_of(struct device_node *node,
 						&cpu_dai->rx_slot_mask,
 						&cpu_dai->slots,
 						&cpu_dai->slot_width);
+	dev_dbg(dev, "cpu_dai : slot,width,tx,rx = %d,%d,%d,%d\n", 
+			cpu_dai->slots, cpu_dai->slot_width,
+			cpu_dai->tx_slot_mask, cpu_dai->rx_slot_mask
+			);
 	if (ret < 0)
 		goto dai_link_of_err;
 

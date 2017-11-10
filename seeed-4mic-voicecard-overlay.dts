@@ -2,25 +2,28 @@
 /plugin/;
 
 / {
-    compatible = "brcm,bcm2708";
+	compatible = "brcm,bcm2708";
+
 	fragment@0 {
 		target = <&i2s>;
 		__overlay__ {
 			#sound-dai-cells = <0>;
 			status = "okay";
-        	};
+		};
 	};
-    fragment@1 {
-        target-path = "/clocks";
-        __overlay__ {
-            ac108_mclk: codec-mclk {
-                compatible = "fixed-clock";
-                #clock-cells = <0>;
-                clock-frequency = <24000000>;
-            };  
-        };
-    };
-    fragment@2 {
+
+	fragment@1 {
+		target-path = "/clocks";
+		__overlay__ {
+			ac108_mclk: codec-mclk {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <24000000>;
+			};  
+		};
+	};
+
+	fragment@2 {
 		target = <&i2c1>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -31,36 +34,40 @@
 				compatible = "x-power,ac108_0";
 				reg = <0x3b>;
 				#sound-dai-cells = <0>;
-                data-protocol = <1>;
+				data-protocol = <0>;
 			};
 		};
-    };
+	};
 
 
+	fragment@3 {
+		target = <&sound>;
 
-    fragment@3 {
-        target = <&sound>;
-        sound_overlay: __overlay__ {
-                compatible = "simple-audio-card";
-                simple-audio-card,format = "i2s";
-                simple-audio-card,name = "seeed-4mic-voicecard"; 
-                status = "okay";
-                
-                simple-audio-card,bitclock-master = <&dailink0_slave>;
-                simple-audio-card,frame-slave = <&dailink0_slave>;               
-                dailink0_slave: simple-audio-card,cpu {
-                    sound-dai = <&i2s>;
-                };
-                codec_dai: simple-audio-card,codec {
-                    sound-dai = <&ac108_a>;
-                    clocks =  <&ac108_mclk>;
-                };
-        };
-    };
-    __overrides__ {
-        card-name = <&sound_overlay>,"seeed-voicecard,name";
-    };    
+		sound_overlay: __overlay__ {
+			compatible = "simple-audio-card";
+			simple-audio-card,format = "dsp_a";
+			simple-audio-card,name = "seeed-4mic-voicecard"; 
+			status = "okay";
+		
+			simple-audio-card,bitclock-master = <&codec_dai>;
+			simple-audio-card,frame-master = <&codec_dai>;
 
-    
+			cpu_dai: simple-audio-card,cpu {
+				sound-dai = <&i2s>;
+				dai-tdm-slot-num     = <2>;
+				dai-tdm-slot-width   = <32>;
+				dai-tdm-slot-tx-mask = <1 1 0 0>;
+				dai-tdm-slot-rx-mask = <1 1 0 0>;
+			};
+			codec_dai: simple-audio-card,codec {
+				sound-dai = <&ac108_a>;
+				clocks =  <&ac108_mclk>;
+			};
+		};
+	};
+
+	__overrides__ {
+		card-name = <&sound_overlay>,"seeed-voicecard,name";
+	};
 };
 

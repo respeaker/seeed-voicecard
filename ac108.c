@@ -48,6 +48,7 @@ struct ac108_priv {
 	struct i2c_client *i2c[4];
 	int codec_index;
 	int sysclk;
+	unsigned mclk;	/* master clock or aif_clock/aclk */
 	int clk_id;
 	unsigned char i2s_mode;
 	unsigned char data_protocol;
@@ -80,6 +81,13 @@ static const struct real_val_to_reg_val ac108_sample_resolution[] = {
 	{ 24, 5 },
 	{ 28, 6 },
 	{ 32, 7 },
+};
+
+static const unsigned ac108_bclkdivs[] = {
+	 0,   1,   2,   4,
+	 6,   8,  12,  16,
+	24,  32,  48,  64,
+	96, 128, 176, 192,
 };
 
 /* FOUT =(FIN * N) / [(M1+1) * (M2+1)*(K1+1)*(K2+1)] ;	M1[0,31],  M2[0,1],  N[0,1023],  K1[0,31],  K2[0,1] */
@@ -700,6 +708,7 @@ static void ac108_configure_power(struct ac108_priv *ac108) {
 static int ac108_configure_clocking(struct ac108_priv *ac108, unsigned int rate) {
 	unsigned int i = 0;
 	struct pll_div ac108_pll_div = { 0 };
+
 	if (ac108->clk_id == SYSCLK_SRC_PLL) {
 		/* FOUT =(FIN * N) / [(M1+1) * (M2+1)*(K1+1)*(K2+1)] */
 		for (i = 0; i < ARRAY_SIZE(ac108_pll_div_list); i++) {
@@ -729,6 +738,7 @@ static int ac108_configure_clocking(struct ac108_priv *ac108, unsigned int rate)
 		 */
 		ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x01 << PLLCLK_EN | 0x03 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN,
 									  0x01 << PLLCLK_EN | 0x00 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac108);
+		ac108->mclk = ac108_pll_div.freq_out;
 	}
 	if (ac108->clk_id == SYSCLK_SRC_MCLK) {
 		/**
@@ -736,6 +746,7 @@ static int ac108_configure_clocking(struct ac108_priv *ac108, unsigned int rate)
 		 */
 		ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x01 << PLLCLK_EN | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN,
 									  0x00 << PLLCLK_EN | 0x00 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac108);
+		ac108->mclk = ac108->sysclk;
 	}
 	/*0x21: Module clock enable<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
 	ac108_multi_chips_write(MOD_CLK_EN, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac108);
@@ -748,7 +759,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	unsigned int i, channels, sample_resolution, rate;
 	struct snd_soc_codec *codec = dai->codec;
 	struct ac108_priv *ac108 = snd_soc_codec_get_drvdata(codec);
-	rate = 99;
+	unsigned bclkdiv;
+
 	dev_dbg(dai->dev, "%s\n", __FUNCTION__);
 
 	channels = params_channels(params);
@@ -774,14 +786,17 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 		return -EINVAL;
 	}
 
-	dev_dbg(dai->dev,"rate:%d \n", params_rate(params));
+	dev_dbg(dai->dev, "rate:%d \n", params_rate(params));
+
 	for (i = 0; i < ARRAY_SIZE(ac108_sample_rate); i++) {
-		if (ac108_sample_rate[i].real_val ==( params_rate(params)/2)) {
+		if (ac108_sample_rate[i].real_val == params_rate(params) / (ac108->data_protocol + 1UL)) {
 			rate = i;
 			break;
 		}
 	}
-	if (rate == 99) return -EINVAL;
+	if (i >= ARRAY_SIZE(ac108_sample_rate)) {
+		return -EINVAL;
+	}
 
 
 	dev_dbg(dai->dev, "rate: %d , channels: %d , sample_resolution: %d",
@@ -817,12 +832,13 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 			/**
 			 * TODO: need test.
 			 */
+			ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac108);
 		}
 
 	} else {
-		/**
-		 * TODO: need test.
-		 */
+		/*TDM mode or normal mode*/
+		ac108_multi_chips_write(I2S_LRCK_CTRL2, ac108_sample_resolution[sample_resolution].real_val * channels - 1, ac108);
+		ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac108);
 	}
 
 	/**
@@ -841,6 +857,18 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	ac108_multi_chips_update_bits(ADC_SPRC, 0x0f << ADC_FS_I2S1, ac108_sample_rate[rate].reg_val << ADC_FS_I2S1, ac108);
 	ac108_multi_chips_write(HPF_EN,0x0f,ac108);
 	ac108_configure_clocking(ac108, ac108_sample_rate[rate].real_val);
+
+	/*
+	 * master mode only
+	 */
+	bclkdiv = ac108->mclk / (ac108_sample_rate[rate].real_val * channels * ac108_sample_resolution[sample_resolution].real_val);
+	for (i = 0; i < ARRAY_SIZE(ac108_bclkdivs) - 1; i++) {
+		if (ac108_bclkdivs[i] >= bclkdiv) {
+			break;
+		}
+	}
+
+	ac108_multi_chips_update_bits(I2S_BCLK_CTRL,  0x0F << BCLKDIV, i << BCLKDIV, ac108);
 	return 0;
 }
 
@@ -888,7 +916,8 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		/**
 		 * 0x30:chip is master mode ,BCLK & LRCK output
 		 */
-		ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x03 << LRCK_IOEN, ac108);
+		ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
+							0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac108);
 		/* multi_chips: only one chip set as Master, and the others also need to set as Slave */
 		if (ac108->codec_index > 1) ac108_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x0 << LRCK_IOEN, ac108->i2c[1]);
 
@@ -900,7 +929,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		 *  SDO2_EN, Transmitter Block Enable, Globe Enable
 		 */
 		ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
-									  0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac108);
+							0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac108);
 		break;
 	default:
 		pr_err("AC108 Master/Slave mode config error:%u\n\n", (fmt & SND_SOC_DAIFMT_MASTER_MASK) >> 12);
@@ -1003,7 +1032,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 	 * TODO:pcm mode, bit[0:1] and bit[2] is special
 	 */
 	ac108_multi_chips_update_bits(I2S_FMT_CTRL3, 0x01 << TX_MLS | 0x03 << SEXT  | 0x01 << LRCK_WIDTH | 0x03 << TX_PDM,
-								  0x00 << TX_MLS | 0x03 << SEXT  | 0x00 << LRCK_WIDTH | 0x00 << TX_PDM, ac108);
+						     0x00 << TX_MLS | 0x03 << SEXT  | 0x00 << LRCK_WIDTH | 0x00 << TX_PDM, ac108);
 
 	/**???*/
 	ac108_multi_chips_write(HPF_EN,0x00,ac108);
