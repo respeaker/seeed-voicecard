@@ -22,7 +22,6 @@
 #include <sound/soc.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
-#include <sound/wm8960.h>
 
 #include "ac108.h"
 
@@ -755,6 +754,34 @@ static int ac108_configure_clocking(struct ac108_priv *ac108, unsigned int rate)
 	return 0;
 }
 
+/*
+ * support no more than 16 slots.
+ */
+static int ac108_multi_chips_slots(struct ac108_priv *ac, int slots) {
+	int i;
+
+	/* codec0 enable slots 1,2,3,4
+	 * codec1 enable slots 5,6,7,8 etc
+	 */
+	for (i = 0; i < ac->codec_index; i++) {
+		unsigned vec;
+
+		/* 0x38-0x3A I2S_TX1_CTRLx */
+		vec = 0xFUL << (i << 2);
+		ac108_write(I2S_TX1_CTRL1, slots - 1, ac->i2c[i]);
+		ac108_write(I2S_TX1_CTRL2, (vec >> 0) & 0xFF, ac->i2c[i]);
+		ac108_write(I2S_TX1_CTRL3, (vec >> 8) & 0xFF, ac->i2c[i]);
+
+		/* 0x3C-0x3F I2S_TX1_CHMP_CTRLx */
+		vec = (0x0 << 0 | 0x1 << 2 | 0x2 << 4 | 0x3 << 6) << (i << 3);
+		ac108_write(I2S_TX1_CHMP_CTRL1, (vec >>  0) & 0xFF, ac->i2c[i]);
+		ac108_write(I2S_TX1_CHMP_CTRL2, (vec >>  8) & 0xFF, ac->i2c[i]);
+		ac108_write(I2S_TX1_CHMP_CTRL3, (vec >> 16) & 0xFF, ac->i2c[i]);
+		ac108_write(I2S_TX1_CHMP_CTRL4, (vec >> 24) & 0xFF, ac->i2c[i]);
+	}
+	return 0;
+}
+
 static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_hw_params *params, struct snd_soc_dai *dai) {
 	unsigned int i, channels, sample_resolution, rate;
 	struct snd_soc_codec *codec = dai->codec;
@@ -867,8 +894,12 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 			break;
 		}
 	}
-
 	ac108_multi_chips_update_bits(I2S_BCLK_CTRL,  0x0F << BCLKDIV, i << BCLKDIV, ac108);
+
+	/*
+	 * slots allocation for each chip
+	 */
+	ac108_multi_chips_slots(ac108, channels);
 	return 0;
 }
 
@@ -910,6 +941,8 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 
 	unsigned char tx_offset, lrck_polarity, brck_polarity;
 	struct ac108_priv *ac108 = dev_get_drvdata(dai->dev);
+	int i;
+
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:    /*AC108 Master*/
 		dev_dbg(dai->dev, "AC108 set to work as Master\n");
@@ -919,8 +952,9 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
 							0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac108);
 		/* multi_chips: only one chip set as Master, and the others also need to set as Slave */
-		if (ac108->codec_index > 1) ac108_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x0 << LRCK_IOEN, ac108->i2c[1]);
-
+		for (i = 1; i < ac108->codec_index; i++) {
+			ac108_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x0 << LRCK_IOEN, ac108->i2c[i]);
+		}
 		break;
 	case SND_SOC_DAIFMT_CBS_CFS:    /*AC108 Slave*/
 		dev_dbg(dai->dev, "AC108 set to work as Slave\n");
@@ -1183,7 +1217,7 @@ static const struct snd_soc_codec_driver ac108_soc_codec_driver = {
 
 static ssize_t ac108_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
 	int val = 0, flag = 0;
-	u8 i = 0, reg, num, value_w, value_r;
+	u8 i = 0, reg, num, value_w, value_r[4];
 
 	val = simple_strtol(buf, NULL, 16);
 	flag = (val >> 16) & 0xF;
@@ -1199,12 +1233,23 @@ static ssize_t ac108_store(struct device *dev, struct device_attribute *attr, co
 		printk("\nRead: start REG:0x%02x,count:0x%02x\n", reg, num);
 
 		do {
-			value_r = 0;
-			ac108_multi_chips_read(reg, &value_r, ac108);
-			printk("REG[0x%02x]: 0x%02x;  ", reg, value_r);
+			int k;
+
+			memset(value_r, 0, sizeof value_r);
+
+			for (k = 0; k < ac108->codec_index; k++) {
+				ac108_read(reg, &value_r[k], ac108->i2c[k]);
+			}
+			if (ac108->codec_index >= 2) {
+				printk("REG[0x%02x]: 0x%02x 0x%02x", reg, value_r[0], value_r[1]);
+			} else {
+				printk("REG[0x%02x]: 0x%02x", reg, value_r[0]);
+			}
 			reg++;
-			i++;
-			if ((i == num) || (i % 4 == 0))	printk("\n");
+
+			if ((++i == num) || (i % 4 == 0)) {
+				printk("\n");
+			}
 		} while (i < num);
 	}
 
@@ -1261,6 +1306,10 @@ static int ac108_i2c_probe(struct i2c_client *i2c,
 	ac108->data_protocol = val;
 
 
+	/*Writing this register 0x12 resets all register to their default state.*/
+	ac108_write(CHIP_RST, CHIP_RST_VAL, i2c);
+	msleep(1);
+
 	pr_err(" i2c_id number :%d\n", (int)(i2c_id->driver_data));
 	pr_err(" ac108  codec_index :%d\n", ac108->codec_index);
 	pr_err(" ac108  I2S data protocol type :%d\n", ac108->data_protocol);
@@ -1274,9 +1323,6 @@ static int ac108_i2c_probe(struct i2c_client *i2c,
 	}
 
 	ac108->codec_index++;
-
-	/*Writing this register 0x12 resets all register to their default state.*/
-	ac108_write(CHIP_RST, CHIP_RST_VAL, i2c);
 
 	ret = sysfs_create_group(&i2c->dev.kobj, &ac108_debug_attr_group);
 	if (ret) {

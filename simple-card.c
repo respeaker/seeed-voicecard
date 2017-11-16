@@ -125,10 +125,10 @@ static int asoc_simple_card_startup(struct snd_pcm_substream *substream)
 	if (ret)
 		clk_disable_unprepare(dai_props->cpu_dai.clk);
 
-	rtd->cpu_dai->driver->playback.channels_min = 4;
-	rtd->cpu_dai->driver->playback.channels_max = 4;
-	rtd->cpu_dai->driver->capture.channels_min = 4;
-	rtd->cpu_dai->driver->capture.channels_max = 4;
+	rtd->cpu_dai->driver->playback.channels_min = 8;
+	rtd->cpu_dai->driver->playback.channels_max = 8;
+	rtd->cpu_dai->driver->capture.channels_min = 8;
+	rtd->cpu_dai->driver->capture.channels_max = 8;
 
 	return ret;
 }
