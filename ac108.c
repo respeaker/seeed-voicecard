@@ -16,13 +16,13 @@
 #include <linux/clk.h>
 #include <linux/i2c.h>
 #include <linux/slab.h>
+#include <linux/workqueue.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
-
 #include "ac108.h"
 
 /**
@@ -42,7 +42,6 @@ struct pll_div {
 	unsigned int k2;
 };
 
-
 struct ac108_priv {
 	struct i2c_client *i2c[4];
 	int codec_index;
@@ -51,6 +50,7 @@ struct ac108_priv {
 	int clk_id;
 	unsigned char i2s_mode;
 	unsigned char data_protocol;
+	struct delayed_work dlywork;
 };
 static struct ac108_priv *ac108;
 
@@ -155,7 +155,6 @@ static const struct pll_div ac108_pll_div_list[] = {
 	{ 22579200 / 32,  22579200, 0,  0, 640, 9, 1 }, //705600
 	{ 22579200 / 48,  22579200, 0,  0, 960, 9, 1 }, //470400
 };
-
 
 
 //AC108 define
@@ -378,7 +377,6 @@ static const struct soc_enum ac108_enum[] = {
 	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC1_SRS, 4, analog_adc_mux_text),
 
 };
-
 
 static const struct snd_kcontrol_new ac108_snd_controls[] = {
 
@@ -747,10 +745,7 @@ static int ac108_configure_clocking(struct ac108_priv *ac108, unsigned int rate)
 									  0x00 << PLLCLK_EN | 0x00 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac108);
 		ac108->mclk = ac108->sysclk;
 	}
-	/*0x21: Module clock enable<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
-	ac108_multi_chips_write(MOD_CLK_EN, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac108);
-	/*0x22: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
-	ac108_multi_chips_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac108);
+
 	return 0;
 }
 
@@ -787,10 +782,17 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	struct snd_soc_codec *codec = dai->codec;
 	struct ac108_priv *ac108 = snd_soc_codec_get_drvdata(codec);
 	unsigned bclkdiv;
+	u8 r;
 
 	dev_dbg(dai->dev, "%s\n", __FUNCTION__);
 
 	channels = params_channels(params);
+
+	/* Master mode, to clear cpu_dai fifos, output bclk without lrck */
+	ac108_read(I2S_CTRL, &r, ac108->i2c[0]);
+	if (r & (0x02 << LRCK_IOEN)) {
+		ac108_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x02 << LRCK_IOEN, ac108->i2c[0]);
+	}
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S8:
@@ -900,15 +902,19 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 * slots allocation for each chip
 	 */
 	ac108_multi_chips_slots(ac108, channels);
+
 	return 0;
 }
 
 static int ac108_set_sysclk(struct snd_soc_dai *dai, int clk_id, unsigned int freq, int dir) {
 
 	struct ac108_priv *ac108 = snd_soc_dai_get_drvdata(dai);
+
 	freq = 24000000;
 	clk_id = SYSCLK_SRC_PLL;
+
 	pr_info("%s  :%d\n", __FUNCTION__, freq);
+
 	switch (clk_id) {
 	case SYSCLK_SRC_MCLK:
 		ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x1 << SYSCLK_SRC, SYSCLK_SRC_MCLK << SYSCLK_SRC, ac108);
@@ -943,6 +949,8 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 	struct ac108_priv *ac108 = dev_get_drvdata(dai->dev);
 	int i;
 
+	dev_dbg(dai->dev, "%s\n", __FUNCTION__);
+
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:    /*AC108 Master*/
 		dev_dbg(dai->dev, "AC108 set to work as Master\n");
@@ -950,7 +958,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		 * 0x30:chip is master mode ,BCLK & LRCK output
 		 */
 		ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
-							0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac108);
+							0x02 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac108);
 		/* multi_chips: only one chip set as Master, and the others also need to set as Slave */
 		for (i = 1; i < ac108->codec_index; i++) {
 			ac108_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x0 << LRCK_IOEN, ac108->i2c[i]);
@@ -1068,32 +1076,81 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 	ac108_multi_chips_update_bits(I2S_FMT_CTRL3, 0x01 << TX_MLS | 0x03 << SEXT  | 0x01 << LRCK_WIDTH | 0x03 << TX_PDM,
 						     0x00 << TX_MLS | 0x03 << SEXT  | 0x00 << LRCK_WIDTH | 0x00 << TX_PDM, ac108);
 
-	/**???*/
-	ac108_multi_chips_write(HPF_EN,0x00,ac108);
+	ac108_multi_chips_write(HPF_EN, 0x00, ac108);
+
 	return 0;
 }
+
+/*
+ * due to miss channels order in cpu_dai, we meed defer the clock starting.
+ */
+static void ac108_work_start_clock(struct work_struct *work) {
+	struct ac108_priv *ac108 = container_of(work, struct ac108_priv, dlywork.work);
+	u8 r;
+
+	/* enable lrck clock */
+	ac108_read(I2S_CTRL, &r, ac108->i2c[0]);
+	if (r & (0x02 << LRCK_IOEN)) {
+		ac108_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x03 << LRCK_IOEN, ac108->i2c[0]);
+	}
+
+	/* enable global clock */
+	ac108_multi_chips_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac108);
+
+	return;
+}
+
+static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
+			     struct snd_soc_dai *dai)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	struct ac108_priv *ac108 = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
+
+	dev_dbg(dai->dev, "%s()\n", __FUNCTION__);
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		/* disable global clock */
+		ac108_multi_chips_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac108);
+
+		/*0x21: Module clock enable<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
+		ac108_multi_chips_write(MOD_CLK_EN, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac108);
+
+		/*0x22: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
+		ac108_multi_chips_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac108);
+
+		/* delayed clock starting */
+		schedule_delayed_work(&ac108->dlywork, msecs_to_jiffies(50));
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
 
 static const struct snd_soc_dai_ops ac108_dai_ops = {
 	/*DAI clocking configuration*/
 	.set_sysclk = ac108_set_sysclk,
 
-
 	/*ALSA PCM audio operations*/
 	.hw_params = ac108_hw_params,
-//	.trigger = ac108_trigger,
-//	.hw_free = ac108_hw_free,
-//
-//	/*DAI format configuration*/
+	.trigger = ac108_trigger,
+
+	// .hw_free = ac108_hw_free,
+
+	/*DAI format configuration*/
 	.set_fmt = ac108_set_fmt,
 };
 
-
-static const struct regmap_config ac108_regmap_config = {
-	.reg_bits = 8,
-	.val_bits = 8,
-	.max_register = PRNG_CLK_CTRL,
-	.cache_type = REGCACHE_RBTREE,
-};
 static  struct snd_soc_dai_driver ac108_dai0 = {
 	.name = "ac108-codec0",
 	.capture = {
@@ -1283,8 +1340,6 @@ static struct attribute_group ac108_debug_attr_group = {
 };
 
 
-
-
 static int ac108_i2c_probe(struct i2c_client *i2c,
 						   const struct i2c_device_id *i2c_id) {
 	int ret = 0;
@@ -1297,14 +1352,15 @@ static int ac108_i2c_probe(struct i2c_client *i2c,
 			dev_err(&i2c->dev, "Unable to allocate ac108 private data\n");
 			return -ENOMEM;
 		}
+		INIT_DELAYED_WORK(&ac108->dlywork, ac108_work_start_clock);
 	}
+
 	ret = of_property_read_u32(np, "data-protocol", &val);
 	if (ret) {
 		pr_err("Please set data-protocol.\n");
 		return -EINVAL;
 	}
 	ac108->data_protocol = val;
-
 
 	/*Writing this register 0x12 resets all register to their default state.*/
 	ac108_write(CHIP_RST, CHIP_RST_VAL, i2c);
