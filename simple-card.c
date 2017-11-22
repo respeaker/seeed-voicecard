@@ -35,6 +35,10 @@ struct simple_card_data {
 		unsigned int mclk_fs;
 	} *dai_props;
 	unsigned int mclk_fs;
+	unsigned channels_playback_default;
+	unsigned channels_playback_override;
+	unsigned channels_capture_default;
+	unsigned channels_capture_override;
 	struct asoc_simple_jack hp_jack;
 	struct asoc_simple_jack mic_jack;
 	struct snd_soc_dai_link *dai_link;
@@ -125,10 +129,16 @@ static int asoc_simple_card_startup(struct snd_pcm_substream *substream)
 	if (ret)
 		clk_disable_unprepare(dai_props->cpu_dai.clk);
 
-	rtd->cpu_dai->driver->playback.channels_min = 8;
-	rtd->cpu_dai->driver->playback.channels_max = 8;
-	rtd->cpu_dai->driver->capture.channels_min = 8;
-	rtd->cpu_dai->driver->capture.channels_max = 8;
+	if (rtd->cpu_dai->driver->playback.channels_min) {
+		priv->channels_playback_default = rtd->cpu_dai->driver->playback.channels_min;
+	}
+	if (rtd->cpu_dai->driver->capture.channels_min) {
+		priv->channels_capture_default = rtd->cpu_dai->driver->capture.channels_min;
+	}
+	rtd->cpu_dai->driver->playback.channels_min = priv->channels_playback_override;
+	rtd->cpu_dai->driver->playback.channels_max = priv->channels_playback_override;
+	rtd->cpu_dai->driver->capture.channels_min = priv->channels_capture_override;
+	rtd->cpu_dai->driver->capture.channels_max = priv->channels_capture_override;
 
 	return ret;
 }
@@ -140,10 +150,10 @@ static void asoc_simple_card_shutdown(struct snd_pcm_substream *substream)
 	struct simple_dai_props *dai_props =
 		simple_priv_to_props(priv, rtd->num);
 
-	rtd->cpu_dai->driver->playback.channels_min = 2;
-	rtd->cpu_dai->driver->playback.channels_max = 2;
-	rtd->cpu_dai->driver->capture.channels_min = 2;
-	rtd->cpu_dai->driver->capture.channels_max = 2;
+	rtd->cpu_dai->driver->playback.channels_min = priv->channels_playback_default;
+	rtd->cpu_dai->driver->playback.channels_max = priv->channels_playback_default;
+	rtd->cpu_dai->driver->capture.channels_min = priv->channels_capture_default;
+	rtd->cpu_dai->driver->capture.channels_max = priv->channels_capture_default;
 
 	clk_disable_unprepare(dai_props->cpu_dai.clk);
 
@@ -420,6 +430,19 @@ static int asoc_simple_card_parse_of(struct device_node *node,
 		goto card_parse_end;
 
 	ret = asoc_simple_card_parse_aux_devs(node, priv);
+
+	priv->channels_playback_default  = 0;
+	priv->channels_playback_override = 2;
+	priv->channels_capture_default   = 0;
+	priv->channels_capture_override  = 2;
+	of_property_read_u32(node, PREFIX "channels-playback-default",
+				    &priv->channels_playback_default);
+	of_property_read_u32(node, PREFIX "channels-playback-override",
+				    &priv->channels_playback_override);
+	of_property_read_u32(node, PREFIX "channels-capture-default",
+				    &priv->channels_capture_default);
+	of_property_read_u32(node, PREFIX "channels-capture-override",
+				    &priv->channels_capture_override);
 
 card_parse_end:
 	of_node_put(dai_link);
