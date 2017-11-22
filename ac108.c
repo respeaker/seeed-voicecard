@@ -1153,6 +1153,13 @@ static const struct snd_soc_dai_ops ac108_dai_ops = {
 
 static  struct snd_soc_dai_driver ac108_dai0 = {
 	.name = "ac108-codec0",
+	.playback = {
+		.stream_name = "Playback",
+		.channels_min = 1,
+		.channels_max = AC108_CHANNELS_MAX,
+		.rates = AC108_RATES,
+		.formats = AC108_FORMATS,
+	},
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
