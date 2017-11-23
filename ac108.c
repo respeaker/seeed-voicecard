@@ -8,6 +8,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#define DEBUG
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -51,6 +52,7 @@ struct ac108_priv {
 	unsigned char i2s_mode;
 	unsigned char data_protocol;
 	struct delayed_work dlywork;
+	int trgr_cnt;
 };
 static struct ac108_priv *ac108;
 
@@ -619,15 +621,16 @@ static int ac108_update_bits(u8 reg, u8 mask, u8 val, struct i2c_client *client)
 	return 0;
 }
 
+#if 0
 static int ac108_multi_chips_read(u8 reg, u8 *rt_value, struct ac108_priv *ac108) {
 	u8 i;
+
 	for (i = 0; i < ac108->codec_index; i++) {
 		ac108_read(reg, rt_value++, ac108->i2c[i]);
 	}
-
 	return 0;
 }
-
+#endif
 
 static int ac108_multi_chips_write(u8 reg, u8 val, struct ac108_priv *ac108) {
 	u8 i;
@@ -784,7 +787,13 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	unsigned bclkdiv;
 	u8 r;
 
-	dev_dbg(dai->dev, "%s\n", __FUNCTION__);
+	dev_dbg(dai->dev, "%s() stream=%d\n",
+		__FUNCTION__, substream->stream);
+
+	/* nothing should be done when it isn't capturing stream. */
+	if (substream->stream != SNDRV_PCM_STREAM_CAPTURE) {
+		return 0;
+	}
 
 	channels = params_channels(params);
 
@@ -902,6 +911,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 * slots allocation for each chip
 	 */
 	ac108_multi_chips_slots(ac108, channels);
+
+	ac108->trgr_cnt = 0;
 
 	return 0;
 }
@@ -1107,12 +1118,16 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 	struct ac108_priv *ac108 = snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
 
-	dev_dbg(dai->dev, "%s()\n", __FUNCTION__);
+	dev_dbg(dai->dev, "%s() stream=%d  cmd=%d\n",
+		__FUNCTION__, substream->stream, cmd);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		if (ac108->trgr_cnt++ > 0) {
+			break;
+		}
 		/* disable global clock */
 		ac108_multi_chips_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac108);
 
@@ -1123,7 +1138,7 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 		ac108_multi_chips_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac108);
 
 		/* delayed clock starting */
-		schedule_delayed_work(&ac108->dlywork, msecs_to_jiffies(50));
+		schedule_delayed_work(&ac108->dlywork, msecs_to_jiffies(30));
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
@@ -1170,9 +1185,15 @@ static  struct snd_soc_dai_driver ac108_dai0 = {
 	.ops = &ac108_dai_ops,
 };
 
-
 static  struct snd_soc_dai_driver ac108_dai1 = {
 	.name = "ac108-codec1",
+	.playback = {
+		.stream_name = "Playback",
+		.channels_min = 1,
+		.channels_max = AC108_CHANNELS_MAX,
+		.rates = AC108_RATES,
+		.formats = AC108_FORMATS,
+	},
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
@@ -1185,6 +1206,13 @@ static  struct snd_soc_dai_driver ac108_dai1 = {
 
 static  struct snd_soc_dai_driver ac108_dai2 = {
 	.name = "ac108-codec2",
+	.playback = {
+		.stream_name = "Playback",
+		.channels_min = 1,
+		.channels_max = AC108_CHANNELS_MAX,
+		.rates = AC108_RATES,
+		.formats = AC108_FORMATS,
+	},
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
@@ -1197,6 +1225,13 @@ static  struct snd_soc_dai_driver ac108_dai2 = {
 
 static  struct snd_soc_dai_driver ac108_dai3 = {
 	.name = "ac108-codec3",
+	.playback = {
+		.stream_name = "Playback",
+		.channels_min = 1,
+		.channels_max = AC108_CHANNELS_MAX,
+		.rates = AC108_RATES,
+		.formats = AC108_FORMATS,
+	},
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
