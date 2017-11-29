@@ -8,7 +8,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#define DEBUG
+#undef DEBUG
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -164,20 +164,10 @@ static const struct pll_div ac108_pll_div_list[] = {
 #define AC108_RATES 			(SNDRV_PCM_RATE_8000_96000 | SNDRV_PCM_RATE_KNOT)
 #define AC108_FORMATS			(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
-static const DECLARE_TLV_DB_SCALE(adc1_pga_gain_tlv, 0, 100, 0);
-static const DECLARE_TLV_DB_SCALE(adc2_pga_gain_tlv, 0, 100, 0);
-static const DECLARE_TLV_DB_SCALE(adc3_pga_gain_tlv, 0, 100, 0);
-static const DECLARE_TLV_DB_SCALE(adc4_pga_gain_tlv, 0, 100, 0);
+static const DECLARE_TLV_DB_SCALE(tlv_adc_pga_gain, 0, 100, 0);
+static const DECLARE_TLV_DB_SCALE(tlv_ch_digital_vol, -11925,75,0);
 
-static const DECLARE_TLV_DB_SCALE(ch1_digital_vol_tlv, -11925,75,0);
-static const DECLARE_TLV_DB_SCALE(ch2_digital_vol_tlv, -11925,75,0);
-static const DECLARE_TLV_DB_SCALE(ch3_digital_vol_tlv, -11925,75,0);
-static const DECLARE_TLV_DB_SCALE(ch4_digital_vol_tlv, -11925,75,0);
-
-static const DECLARE_TLV_DB_SCALE(digital_mix_vol_tlv, -600,600,0);
-
-static const DECLARE_TLV_DB_SCALE(channel_enable_tlv, -1500, 100, 0);
-
+#if 0
 /* Analog ADC */
 static const char *analog_adc_mux_text[] = {
 	"Analog ADC1",
@@ -322,8 +312,10 @@ static SOC_VALUE_ENUM_SINGLE_DECL(ac108_adc4_data_gc_enum,
 static const struct soc_enum ac108_enum[] = {
 	/*0x38:TX1 Channel (slot) number Select for each output*/
 	SOC_ENUM_SINGLE(I2S_TX1_CTRL1, TX1_CHSEL, 16, channels_src_mux_text),
+
 	/*0x40:TX1 Channel (slot) number Select for each output*/
 	SOC_ENUM_SINGLE(I2S_TX2_CTRL1, TX2_CHSEL, 16, channels_src_mux_text),
+
 	/*0x3c:  TX1 Channel Mapping Control 1*/
 	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL1, TX1_CH1_MAP, 4, channel_map_mux_text),
 	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL1, TX1_CH2_MAP, 4, channel_map_mux_text),
@@ -377,11 +369,133 @@ static const struct soc_enum ac108_enum[] = {
 	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC3_SRS, 4, analog_adc_mux_text),
 	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC2_SRS, 4, analog_adc_mux_text),
 	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC1_SRS, 4, analog_adc_mux_text),
-
 };
+#endif
+
+static int ac108_read(u8 reg, u8 *rt_value, struct i2c_client *client);
+static int ac108_update_bits(u8 reg, u8 mask, u8 val, struct i2c_client *client);
+
+/**
+ * snd_ac108_get_volsw - single mixer get callback
+ * @kcontrol: mixer control
+ * @ucontrol: control element information
+ *
+ * Callback to get the value of a single mixer control, or a double mixer
+ * control that spans 2 registers.
+ *
+ * Returns 0 for success.
+ */
+static int snd_ac108_get_volsw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol
+){
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	unsigned int mask = (1 << fls(mc->max)) - 1;
+	unsigned int invert = mc->invert;
+	int chip = mc->autodisable;
+	u8 val;
+	int ret;
+
+	ret = ac108_read(mc->reg, &val, ac108->i2c[chip]);
+	if (ret < 0)
+		return ret;
+
+	val = (val >> mc->shift) & mask;
+
+	ucontrol->value.integer.value[0] = val - mc->min;
+	if (invert) {
+		ucontrol->value.integer.value[0] =
+			mc->max - ucontrol->value.integer.value[0];
+	}
+	return 0;
+}
+
+/**
+ * snd_ac108_put_volsw - single mixer put callback
+ * @kcontrol: mixer control
+ * @ucontrol: control element information
+ *
+ * Callback to set the value of a single mixer control, or a double mixer
+ * control that spans 2 registers.
+ *
+ * Returns 0 for success.
+ */
+static int snd_ac108_put_volsw(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol
+){
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	unsigned int sign_bit = mc->sign_bit;
+	unsigned int mask = (1 << fls(mc->max)) - 1;
+	unsigned int invert = mc->invert;
+	unsigned int val, val_mask;
+	int chip = mc->autodisable;
+	int err;
+
+	if (sign_bit)
+		mask = BIT(sign_bit + 1) - 1;
+
+	val = ((ucontrol->value.integer.value[0] + mc->min) & mask);
+	if (invert) {
+		val = mc->max - val;
+	}
+	val_mask = mask << mc->shift;
+	val = val << mc->shift;
+
+	err = ac108_update_bits(mc->reg, val_mask, val, ac108->i2c[chip]);
+	if (err < 0)
+		return err;
+
+	return err;
+}
+
+#define SOC_AC108_SINGLE_TLV(xname, reg, shift, max, invert, chip, tlv_array) \
+{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
+	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ |\
+		 SNDRV_CTL_ELEM_ACCESS_READWRITE,\
+	.tlv.p = (tlv_array), \
+	.info = snd_soc_info_volsw, .get = snd_ac108_get_volsw,\
+	.put = snd_ac108_put_volsw, \
+	.private_value = SOC_SINGLE_VALUE(reg, shift, max, invert, chip) }
 
 static const struct snd_kcontrol_new ac108_snd_controls[] = {
+	/*0x70: ADC1 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH1 digital volume", ADC1_DVOL_CTRL, 0, 0xff, 0, 0, tlv_ch_digital_vol),
+	/*0x71: ADC2 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH2 digital volume", ADC2_DVOL_CTRL, 0, 0xff, 0, 0, tlv_ch_digital_vol),
+	/*0x72: ADC3 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH3 digital volume", ADC3_DVOL_CTRL, 0, 0xff, 0, 0, tlv_ch_digital_vol),
+	/*0x73: ADC4 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH4 digital volume", ADC4_DVOL_CTRL, 0, 0xff, 0, 0, tlv_ch_digital_vol),
 
+	/*0x70: ADC1 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH5 digital volume", ADC1_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
+	/*0x71: ADC2 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH6 digital volume", ADC2_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
+	/*0x72: ADC3 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH7 digital volume", ADC3_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
+	/*0x73: ADC4 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH8 digital volume", ADC4_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
+
+	/*0x90: Analog PGA1 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC1 PGA gain", ANA_PGA1_CTRL, ADC1_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+	/*0x91: Analog PGA2 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC2 PGA gain", ANA_PGA2_CTRL, ADC2_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+	/*0x92: Analog PGA3 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC3 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+	/*0x93: Analog PGA4 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC4 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+	/*0x90: Analog PGA1 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC5 PGA gain", ANA_PGA1_CTRL, ADC1_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
+	/*0x91: Analog PGA2 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC6 PGA gain", ANA_PGA2_CTRL, ADC2_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
+	/*0x92: Analog PGA3 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC7 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
+	/*0x93: Analog PGA4 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC8 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
+
+
+	#if 0
 	SOC_SINGLE("OUT1 Mute", I2S_FMT_CTRL3, 3, 1, 0),
 	SOC_SINGLE("OUT2 Mute", I2S_FMT_CTRL3, 4, 1, 0),
 
@@ -394,23 +508,6 @@ static const struct snd_kcontrol_new ac108_snd_controls[] = {
 	/*0x42:TX2 Channel1 ~Channel8 (slot) enable*/
 	SOC_ENUM("TX2 Channel9~16 enable", ac108_tx2_channel_high_enum),
 
-	/*0x70: ADC1 Digital Channel Volume Control Register*/
-	SOC_SINGLE_TLV("CH1 digital volume", ADC1_DVOL_CTRL, 0, 0xff, 0, ch1_digital_vol_tlv),
-	/*0x71: ADC2 Digital Channel Volume Control Register*/
-	SOC_SINGLE_TLV("CH2 digital volume", ADC2_DVOL_CTRL, 0, 0xff, 0, ch2_digital_vol_tlv),
-	/*0x72: ADC3 Digital Channel Volume Control Register*/
-	SOC_SINGLE_TLV("CH3 digital volume", ADC3_DVOL_CTRL, 0, 0xff, 0, ch3_digital_vol_tlv),
-	/*0x73: ADC4 Digital Channel Volume Control Register*/
-	SOC_SINGLE_TLV("CH4 digital volume", ADC4_DVOL_CTRL, 0, 0xff, 0, ch4_digital_vol_tlv),
-
-	/*0x90: Analog PGA1 Control Register*/
-	SOC_SINGLE_TLV("ADC1 PGA gain", ANA_PGA1_CTRL, ADC1_ANALOG_PGA, 0x1f, 0, adc1_pga_gain_tlv),
-	/*0x91: Analog PGA2 Control Register*/
-	SOC_SINGLE_TLV("ADC2 PGA gain", ANA_PGA2_CTRL, ADC2_ANALOG_PGA, 0x1f, 0, adc2_pga_gain_tlv),
-	/*0x92: Analog PGA3 Control Register*/
-	SOC_SINGLE_TLV("ADC3 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, adc3_pga_gain_tlv),
-	/*0x93: Analog PGA4 Control Register*/
-	SOC_SINGLE_TLV("ADC4 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, adc4_pga_gain_tlv),
 
 	/*0x96-0x9F: use the default value*/
 
@@ -467,6 +564,7 @@ static const struct snd_kcontrol_new ac108_snd_controls[] = {
 
 	SOC_ENUM("ADC4 Digital Mixer gc", ac108_adc4_data_gc_enum),
 	SOC_ENUM("ADC4 Digital Mixer src", ac108_adc4_data_src_enum),
+	#endif
 };
 
 
@@ -1244,11 +1342,8 @@ static  struct snd_soc_dai_driver ac108_dai3 = {
 
 static  struct snd_soc_dai_driver *ac108_dai[] = {
 	&ac108_dai0,
-
 	&ac108_dai1,
-
 	&ac108_dai2,
-
 	&ac108_dai3,
 };
 
