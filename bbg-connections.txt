@@ -1,0 +1,15 @@
+----------------------------------------------------------------------------------------
+BeagleBone-Green	|	AM335X 			| AC108_8_MIC_EVB_V1_0
+	P9		|	PAD.SIGNAL		|	J3
+----------------------------------------------------------------------------------------
+PIN01.GND		| N/A				|	PIN-A7.GND
+PIN03.VDD_3V3B		| N/A				|	PIN-B8.VCCD_3.3V
+----------------------------------------------------------------------------------------
+PIN20.I2C2_SDA		| UART1_CTSN.I2C2_SDA		|	PIN-A1.TWI-SDA
+PIN19.I2C2_SCL		| UART1_RTSN.I2C2_SCL		|	PIN-B1.TWI-SCL
+----------------------------------------------------------------------------------------
+PIN27.GPIO3_19		| MCASP0_FSR.MCASP0_FSR		|	PIN-B4.I2S-LRCLK
+PIN28.SPI1_CS0		| MCASP0_AHCLKR.MCASP0_AHCLKR	|	PIN-B2.I2S-MCLK
+PIN30.SPI1_D1		| MCASP0_AXR0.MCASP0_AXR0	|	PIN-B6.I2S-DIN1
+PIN42.GPIO0_7		| MCASP0_ACLKR.MCASP0_ACLKR	|	PIN-B3.I2S-BCLK
+----------------------------------------------------------------------------------------

@@ -1,0 +1,140 @@
+/*
+ * Copyright (C) 2017 Seeed Development Limited - http://www.seeedstudio.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * seeed-4mic-voicecard 
+ *   https://github.com/respeaker/seeed-voicecard
+ * 
+ */
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/am33xx.h>
+
+/ {
+	compatible = "ti,beaglebone", "ti,beaglebone-black", "ti,beaglebone-green";
+
+	/* identification */
+	part-number = "seeed-4mic-voicecard";
+	version = "00A0", "A0";
+
+	/* state the resources this cape uses */
+	exclusive-use =
+		/* the pin header uses */
+		"P9.27",	/* mcasp0: mcasp0_fsr */
+		"P9.28",	/* mcasp0: mcasp0_ahclkr */
+		"P9.30",	/* mcasp0: mcasp0_axr0 */
+		"P9.42",	/* mcasp0: mcasp0_aclkr */
+		/* the hardware ip uses */
+		"gpio3_21",
+		"mcasp0";
+
+	fragment@0 {
+		target = <&am33xx_pinmux>;
+		__overlay__ {
+			bone_audio_cape_audio_pins: pinmux_bone_audio_cape_audio_pins {
+				pinctrl-single,pins = <
+					0x1A4 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_fsr.mcasp0_fsr */
+					0x19C (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_ahclkr.mcasp0_ahclkr */
+					0x198 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_axr0.mcasp0_axr0 */
+					0x1A0 (PIN_INPUT_PULLDOWN | MUX_MODE0)	/* mcasp0_aclkr.mcasp0_aclkr */
+				>;
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&scm_clocks>;
+		__overlay__ {
+			ac108_mclk: codec-mclk {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <24000000>;
+			};
+		};
+	};
+
+
+	fragment@2 {
+		target = <&i2c2>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			clock-frequency = <100000>;
+			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c2_pins>;
+
+			ac108_b: ac108@3b {
+				#sound-dai-cells = <0>;
+				compatible = "x-power,ac108_0";
+				reg = <0x3b>;
+				data-protocol = <0>;
+			};
+		};
+	};
+
+	fragment@3 {
+		target = <&mcasp0>;
+		__overlay__ {
+			#sound-dai-cells = <0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&bone_audio_cape_audio_pins>;
+			status = "okay";
+			op-mode = <0>;          /* MCASP_IIS_MODE */
+			tdm-slots = <4>;
+			num-serializer = <16>;
+			serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
+				2 0 1 0
+				0 0 0 0
+				0 0 0 0
+				0 0 0 0
+			>;
+			tx-num-evt = <1>;
+			rx-num-evt = <1>;
+		};
+	};
+
+	fragment@4 {
+		target-path="/";
+		__overlay__ {
+			sound {
+				compatible = "simple-audio-card";
+				simple-audio-card,name = "seeed-4mic-voicecard";
+#if 0
+				simple-audio-card,widgets =
+					"Headphone", "Headphone Jack",
+					"Line", "Line In";
+				simple-audio-card,routing =
+					"Headphone Jack",       "HPLOUT",
+					"Headphone Jack",       "HPROUT",
+					"LINE1L",               "Line In",
+					"LINE1R",               "Line In";
+#endif
+				simple-audio-card,format = "dsp_a";
+				simple-audio-card,bitclock-master = <&sound_master>;
+				simple-audio-card,frame-master = <&sound_master>;
+				/* simple-audio-card,bitclock-inversion; */
+				/* simple-audio-card,frame-inversion; */
+				simple-audio-card,channels-playback-override = <4>;
+				simple-audio-card,channels-capture-override  = <4>;
+
+				simple-audio-card,cpu {
+					sound-dai = <&mcasp0>;
+				};
+
+		                sound_master: simple-audio-card,codec {
+					#sound-dai-cells = <0>;
+					sound-dai = <&ac108_b>;
+					clocks = <&ac108_mclk>;
+					clock-names = "mclk";
+				};
+			};
+		};
+
+	};
+};

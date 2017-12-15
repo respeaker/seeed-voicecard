@@ -812,7 +812,7 @@ static int ac108_configure_clocking(struct ac108_priv *ac108, unsigned int rate)
 		for (i = 0; i < ARRAY_SIZE(ac108_pll_div_list); i++) {
 			if (ac108_pll_div_list[i].freq_in == ac108->sysclk && ac108_pll_div_list[i].freq_out % rate == 0) {
 				ac108_pll_div = ac108_pll_div_list[i];
-				pr_err("AC108 PLL freq_in match:%u, freq_out:%u\n\n", ac108_pll_div.freq_in, ac108_pll_div.freq_out);
+				pr_err("ac108 PLL freq_in match:%u, freq_out:%u\n\n", ac108_pll_div.freq_in, ac108_pll_div.freq_out);
 				break;
 			}
 		}
@@ -918,7 +918,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 		sample_resolution = 6;
 		break;
 	default:
-		pr_err("AC108 don't supported the sample resolution: %u\n", params_format(params));
+		pr_err("ac108 don't supported the sample resolution: %u\n", params_format(params));
 		return -EINVAL;
 	}
 
@@ -1062,7 +1062,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:    /*AC108 Master*/
-		dev_dbg(dai->dev, "AC108 set to work as Master\n");
+		dev_dbg(dai->dev, "ac108 set to work as Master\n");
 		/**
 		 * 0x30:chip is master mode ,BCLK & LRCK output
 		 */
@@ -1074,7 +1074,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		}
 		break;
 	case SND_SOC_DAIFMT_CBS_CFS:    /*AC108 Slave*/
-		dev_dbg(dai->dev, "AC108 set to work as Slave\n");
+		dev_dbg(dai->dev, "ac108 set to work as Slave\n");
 		/**
 		 * 0x30:chip is slave mode, BCLK & LRCK input,enable SDO1_EN and 
 		 *  SDO2_EN, Transmitter Block Enable, Globe Enable
@@ -1083,34 +1083,34 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 							0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac108);
 		break;
 	default:
-		pr_err("AC108 Master/Slave mode config error:%u\n\n", (fmt & SND_SOC_DAIFMT_MASTER_MASK) >> 12);
+		pr_err("ac108 Master/Slave mode config error:%u\n\n", (fmt & SND_SOC_DAIFMT_MASTER_MASK) >> 12);
 		return -EINVAL;
 	}
 
 	/*AC108 config I2S/LJ/RJ/PCM format*/
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_I2S:
-		dev_dbg(dai->dev, "AC108 config I2S format\n");
+		dev_dbg(dai->dev, "ac108 config I2S format\n");
 		ac108->i2s_mode = LEFT_JUSTIFIED_FORMAT;
 		tx_offset = 1;
 		break;
 	case SND_SOC_DAIFMT_RIGHT_J:
-		dev_dbg(dai->dev, "AC108 config RIGHT-JUSTIFIED format\n");
+		dev_dbg(dai->dev, "ac108 config RIGHT-JUSTIFIED format\n");
 		ac108->i2s_mode = RIGHT_JUSTIFIED_FORMAT;
 		tx_offset = 0;
 		break;
 	case SND_SOC_DAIFMT_LEFT_J:
-		dev_dbg(dai->dev, "AC108 config LEFT-JUSTIFIED format\n");
+		dev_dbg(dai->dev, "ac108 config LEFT-JUSTIFIED format\n");
 		ac108->i2s_mode = LEFT_JUSTIFIED_FORMAT;
 		tx_offset = 0;
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
-		dev_dbg(dai->dev, "AC108 config PCM-A format\n");
+		dev_dbg(dai->dev, "ac108 config PCM-A format\n");
 		ac108->i2s_mode = PCM_FORMAT;
 		tx_offset = 1;
 		break;
 	case SND_SOC_DAIFMT_DSP_B:
-		dev_dbg(dai->dev, "AC108 config PCM-B format\n");
+		dev_dbg(dai->dev, "ac108 config PCM-B format\n");
 		ac108->i2s_mode = PCM_FORMAT;
 		tx_offset = 0;
 		break;
@@ -1118,32 +1118,32 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		ac108->i2s_mode = LEFT_JUSTIFIED_FORMAT;
 		tx_offset = 1;
 		return -EINVAL;
-		pr_err("AC108 I2S format config error:%u\n\n", fmt & SND_SOC_DAIFMT_FORMAT_MASK);
+		pr_err("ac108 I2S format config error:%u\n\n", fmt & SND_SOC_DAIFMT_FORMAT_MASK);
 	}
 	/*AC108 config BCLK&LRCK polarity*/
 	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
 	case SND_SOC_DAIFMT_NB_NF:
-		dev_dbg(dai->dev, "AC108 config BCLK&LRCK polarity: BCLK_normal,LRCK_normal\n");
+		dev_dbg(dai->dev, "ac108 config BCLK&LRCK polarity: BCLK_normal,LRCK_normal\n");
 		brck_polarity = BCLK_NORMAL_DRIVE_N_SAMPLE_P;
 		lrck_polarity = LRCK_LEFT_LOW_RIGHT_HIGH;
 		break;
 	case SND_SOC_DAIFMT_NB_IF:
-		dev_dbg(dai->dev, "AC108 config BCLK&LRCK polarity: BCLK_normal,LRCK_invert\n");
+		dev_dbg(dai->dev, "ac108 config BCLK&LRCK polarity: BCLK_normal,LRCK_invert\n");
 		brck_polarity = BCLK_NORMAL_DRIVE_N_SAMPLE_P;
 		lrck_polarity = LRCK_LEFT_HIGH_RIGHT_LOW;
 		break;
 	case SND_SOC_DAIFMT_IB_NF:
-		dev_dbg(dai->dev, "AC108 config BCLK&LRCK polarity: BCLK_invert,LRCK_normal\n");
+		dev_dbg(dai->dev, "ac108 config BCLK&LRCK polarity: BCLK_invert,LRCK_normal\n");
 		brck_polarity = BCLK_INVERT_DRIVE_P_SAMPLE_N;
 		lrck_polarity = LRCK_LEFT_LOW_RIGHT_HIGH;
 		break;
 	case SND_SOC_DAIFMT_IB_IF:
-		dev_dbg(dai->dev, "AC108 config BCLK&LRCK polarity: BCLK_invert,LRCK_invert\n");
+		dev_dbg(dai->dev, "ac108 config BCLK&LRCK polarity: BCLK_invert,LRCK_invert\n");
 		brck_polarity = BCLK_INVERT_DRIVE_P_SAMPLE_N;
 		lrck_polarity = LRCK_LEFT_HIGH_RIGHT_LOW;
 		break;
 	default:
-		pr_err("AC108 config BCLK/LRCLK polarity error:%u\n\n", (fmt & SND_SOC_DAIFMT_INV_MASK) >> 8);
+		pr_err("ac108 config BCLK/LRCLK polarity error:%u\n\n", (fmt & SND_SOC_DAIFMT_INV_MASK) >> 8);
 		return -EINVAL;
 	}
 	ac108_configure_power(ac108);
@@ -1373,7 +1373,7 @@ static int ac108_probe(struct snd_soc_codec *codec) {
 static int ac108_set_bias_level(struct snd_soc_codec *codec,
 								enum snd_soc_bias_level level) {
 	struct ac108_priv *ac108 = snd_soc_codec_get_drvdata(codec);
-	dev_dbg(codec->dev, "AC108 level:%d\n", level);
+	dev_dbg(codec->dev, "ac108 level:%d\n", level);
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		ac108_multi_chips_update_bits(ANA_ADC1_CTRL1, 0x01 << ADC1_MICBIAS_EN,  0x01 << ADC1_MICBIAS_EN, ac108);
