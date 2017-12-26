@@ -1,0 +1,75 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "samsung,artik530-compy";
+
+    fragment@0 {
+        target = <&i2s_1>;
+        __overlay__ {
+	    #sound-dai-cells = <1>;
+            status = "okay";
+        };
+    };
+    fragment@1 {
+		target = <&i2c_1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			wm8960: wm8960@1a{
+				compatible = "wlf,wm8960";
+				reg = <0x1a>;
+				#sound-dai-cells = <0>;
+			};
+		};
+    };
+
+    fragment@2 {
+	target-path = "/";
+         __overlay__ {
+	         wm8960_mclk: wm8960_mclk {
+	                compatible = "fixed-clock";
+	                #clock-cells = <0>;
+	                clock-frequency = <12288000>;
+	        };
+        	sound1: sound@1 {
+	                compatible = "simple-audio-card";
+	                simple-audio-card,name = "seeed-2mic-voicecard";
+	                simple-audio-card,mclk-fs = <256>;
+	                simple-audio-card,format = "i2s";
+	                status = "okay";
+	                simple-audio-card,widgets =
+	                        "Microphone", "Mic Jack",
+	                        "Line", "Line In",
+	                        "Line", "Line Out",
+	                        "Speaker", "Speaker",
+	                        "Headphone", "Headphone Jack";
+	                simple-audio-card,routing =
+	                        "Headphone Jack", "HP_L",
+	                        "Headphone Jack", "HP_R",
+	                        "Speaker", "SPK_LP",
+	                        "Speaker", "SPK_LN",
+	                        "LINPUT1", "Mic Jack",
+	                        "LINPUT3", "Mic Jack",
+	                        "RINPUT1", "Mic Jack",
+	                        "RINPUT2", "Mic Jack";
+	
+                simple-audio-card,bitclock-master = <&daimaster>;
+                simple-audio-card,frame-master = <&daimaster>;
+
+                daimaster: simple-audio-card,cpu {
+                        sound-dai = <&i2s_1 0>;
+                };
+
+                simple-audio-card,codec {
+                        sound-dai = <&wm8960 0>;
+                };
+
+        	};
+        };
+    };
+
+};
+

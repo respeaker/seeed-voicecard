@@ -8,6 +8,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#define DEBUG 1
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -1227,7 +1228,8 @@ static int ac108_i2c_probe(struct i2c_client *i2c,
 	ret = of_property_read_u32(np, "data-protocol", &val);
 	if (ret) {
 		pr_err("Please set data-protocol.\n");
-		return -EINVAL;
+		//return -EINVAL;
+		val = 1;
 	}
 	ac108->data_protocol = val;
 

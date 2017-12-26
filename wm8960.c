@@ -9,7 +9,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-
+#define DEBUG 1
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -51,6 +51,8 @@
 static bool is_pll_freq_available(unsigned int source, unsigned int target);
 static int wm8960_set_pll(struct snd_soc_codec *codec,
 		unsigned int freq_in, unsigned int freq_out);
+
+static struct snd_soc_codec *g_codec;
 /*
  * wm8960 register cache
  * We can't read the WM8960 register space when we are
@@ -226,10 +228,11 @@ static const DECLARE_TLV_DB_SCALE(dac_tlv, -12750, 50, 1);
 static const DECLARE_TLV_DB_SCALE(bypass_tlv, -2100, 300, 0);
 static const DECLARE_TLV_DB_SCALE(out_tlv, -12100, 100, 1);
 static const DECLARE_TLV_DB_SCALE(lineinboost_tlv, -1500, 300, 1);
-static const SNDRV_CTL_TLVD_DECLARE_DB_RANGE(micboost_tlv,
+static const unsigned int micboost_tlv[] = {
+	  TLV_DB_RANGE_HEAD(2),
 	0, 1, TLV_DB_SCALE_ITEM(0, 1300, 0),
 	2, 3, TLV_DB_SCALE_ITEM(2000, 900, 0),
-);
+};
 
 static const struct snd_kcontrol_new wm8960_snd_controls[] = {
 SOC_DOUBLE_R_TLV("Capture Volume", WM8960_LINVOL, WM8960_RINVOL,
@@ -534,6 +537,7 @@ static int wm8960_set_dai_fmt(struct snd_soc_dai *codec_dai,
 	case SND_SOC_DAIFMT_CBS_CFS:
 		break;
 	default:
+		dev_err(codec->dev,"%d\n", __LINE__);
 		return -EINVAL;
 	}
 
@@ -554,6 +558,7 @@ static int wm8960_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		iface |= 0x0013;
 		break;
 	default:
+		dev_err(codec->dev,"%d\n", __LINE__);
 		return -EINVAL;
 	}
 
@@ -571,6 +576,7 @@ static int wm8960_set_dai_fmt(struct snd_soc_dai *codec_dai,
 		iface |= 0x0010;
 		break;
 	default:
+		dev_err(codec->dev,"%d\n", __LINE__);
 		return -EINVAL;
 	}
 
@@ -1267,7 +1273,7 @@ static int wm8960_probe(struct snd_soc_codec *codec)
 	snd_soc_add_codec_controls(codec, wm8960_snd_controls,
 				     ARRAY_SIZE(wm8960_snd_controls));
 	wm8960_add_widgets(codec);
-
+	g_codec = codec;
 	return 0;
 }
 
@@ -1300,6 +1306,66 @@ static void wm8960_set_pdata_from_of(struct i2c_client *i2c,
 	if (of_property_read_bool(np, "wlf,shared-lrclk"))
 		pdata->shared_lrclk = true;
 }
+
+
+
+static ssize_t wm8960_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count) {
+	int val = 0, flag = 0;
+	u8 i = 0, reg, num, value_w, value_r;
+
+	val = simple_strtol(buf, NULL, 16);
+	flag = (val >> 16) & 0xF;
+
+	if (flag) {
+		reg = (val >> 8) & 0xFF;
+		value_w = val & 0xFF;
+		snd_soc_write(g_codec, reg, value_w);
+		printk("Write 0x%02x to REG:0x%02x\n", value_w, reg);
+	} else {
+		reg = (val >> 8) & 0xFF;
+		num = val & 0xff;
+		printk("\nRead: start REG:0x%02x,count:0x%02x\n", reg, num);
+
+		do {
+			value_r = 0;
+			value_r = snd_soc_read(g_codec, reg);
+			printk("REG[0x%02x]: 0x%02x;  ", reg, value_r);
+			reg++;
+			i++;
+			if ((i == num) || (i % 4 == 0))	printk("\n");
+		} while (i < num);
+	}
+
+	return count;
+}
+
+static ssize_t wm8960_show(struct device *dev, struct device_attribute *attr, char *buf) {
+#if 1
+	printk("echo flag|reg|val > wm8960\n");
+	printk("eg read star addres=0x06,count 0x10:echo 0610 >wm8960\n");
+	printk("eg write value:0xfe to address:0x06 :echo 106fe > wm8960\n");
+	return 0;
+#else
+	return snprintf(buf, PAGE_SIZE,
+					"echo flag|reg|val > ac108\n"
+					"eg read star addres=0x06,count 0x10:echo 0610 >wm8960\n"
+					"eg write value:0xfe to address:0x06 :echo 106fe > wm8960\n");
+#endif
+}
+
+static DEVICE_ATTR(wm8960, 0644, wm8960_show, wm8960_store);
+
+static struct attribute *wm8960_debug_attrs[] = {
+	&dev_attr_wm8960.attr,
+	NULL,
+};
+
+static struct attribute_group wm8960_debug_attr_group = {
+	.name   = "wm8960_debug",
+	.attrs  = wm8960_debug_attrs,
+};
+
+
 
 static int wm8960_i2c_probe(struct i2c_client *i2c,
 			    const struct i2c_device_id *id)
@@ -1363,6 +1429,11 @@ static int wm8960_i2c_probe(struct i2c_client *i2c,
 
 	ret = snd_soc_register_codec(&i2c->dev,
 			&soc_codec_dev_wm8960, &wm8960_dai, 1);
+
+	ret = sysfs_create_group(&i2c->dev.kobj, &wm8960_debug_attr_group);
+	if (ret) {
+		pr_err("failed to create attr group\n");
+	}
 
 	return ret;
 }

@@ -1,0 +1,57 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "samsung,artik530-compy";
+
+    fragment@0 {
+        target = <&i2s_1>;
+        __overlay__ {
+            status = "okay";
+	    sample-rate = <96000>;
+            #sound-dai-cells = <1>;
+        };
+    };
+    fragment@1 {
+                target = <&i2c_1>;
+                __overlay__ {
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        status = "okay";
+
+			ac108: ac108@3b{
+				compatible = "x-power,ac108_0";
+				reg = <0x3b>;
+				#sound-dai-cells = <0>;
+			};
+
+                };
+    };
+
+    fragment@2 {
+	target-path = "/";
+	 __overlay__ {
+                sound1: sound@1 {
+                        compatible = "simple-audio-card";
+                        simple-audio-card,name = "seeed-4mic-voicecard";
+                        simple-audio-card,mclk-fs = <256>;
+                        simple-audio-card,format = "i2s";
+                        status = "okay";
+
+
+                	simple-audio-card,bitclock-master = <&daimaster>;
+                	simple-audio-card,frame-master = <&daimaster>;
+
+                	daimaster: simple-audio-card,cpu {
+                        	sound-dai = <&i2s_1 0>;
+                	};
+
+                	simple-audio-card,codec {
+                        	sound-dai = <&ac108 0>;
+                	};
+        	};
+	};
+    };
+    
+};
+
