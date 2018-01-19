@@ -71,6 +71,9 @@
 #define ADDA_TUNE3			0x5c
 #define HPOUT_STR			0x5d
 
+/*CHIP_AUDIO_RST*/
+#define AC101_CHIP_ID			0x0101
+
 /*PLL_CTRL1*/
 #define DPLL_DAC_BIAS		14
 #define PLL_POSTDIV_M		8
@@ -423,7 +426,7 @@ struct spk_gpio {
 };
 #define AC10X_DEBG
 #ifdef AC10X_DEBG
-    #define AC10X_DBG(format,args...)  printk("[AC100] "format,##args)
+    #define AC10X_DBG(format,args...)  printk("[AC101] "format,##args)
 #else
     #define AC10X_DBG(...)
 #endif

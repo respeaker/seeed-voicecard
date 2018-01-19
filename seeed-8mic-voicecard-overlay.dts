@@ -30,6 +30,12 @@
 			#size-cells = <0>;
 			status = "okay";
 
+			ac101: ac101@1a{
+				compatible = "x-power,ac101";
+				reg = <0x1a>;
+				#sound-dai-cells = <0>;
+			};
+/*
 			ac108_a: ac108@35{
 				compatible = "x-power,ac108_0";
 				reg = <0x35>;
@@ -43,9 +49,9 @@
 				#sound-dai-cells = <0>;
 				data-protocol = <0>;
 			};
+*/
 		};
 	};
-
 
 	fragment@3 {
 		target = <&sound>;
@@ -64,13 +70,14 @@
 			cpu_dai: simple-audio-card,cpu {
 				sound-dai = <&i2s>;
 				dai-tdm-slot-num     = <2>;
-				dai-tdm-slot-width   = <32>;
+				dai-tdm-slot-width   = <16>;
 				dai-tdm-slot-tx-mask = <1 1 0 0>;
 				dai-tdm-slot-rx-mask = <1 1 0 0>;
 			};
 			codec_dai: simple-audio-card,codec {
-				sound-dai = <&ac108_b>;
+				sound-dai = <&ac101>;
 				clocks =  <&ac108_mclk>;
+				system-clock-id = <1>;
 			};
 		};
 	};
