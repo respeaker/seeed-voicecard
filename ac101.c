@@ -38,17 +38,18 @@
 #include "ac101.h"
 
 /*Default initialize configuration*/
-#define SPEAKER_DOUBLE_USED  1
-#define D_SPEAKER_VOL  0x1b
-#define S_SPEAKER_VOL  0x19
-#define HEADPHONE_VOL  0x3b
-#define EARPIECE_VOL  0x1e
-#define MAINMIC_GAIN  0x4
-#define HDSETMIC_GAIN  0x4
-#define DMIC_USED  0
-#define ADC_DIGITAL_GAIN  0xb0b0
-#define AGC_USED 0
-#define DRC_USED 1
+#define SPEAKER_DOUBLE_USED 1
+#define D_SPEAKER_VOL	0x1b
+#define S_SPEAKER_VOL	0x19
+#define HEADPHONE_VOL	0x3b
+#define EARPIECE_VOL	0x1e
+#define MAINMIC_GAIN	0x4
+#define HDSETMIC_GAIN	0x4
+#define DMIC_USED	0
+#define ADC_DIGITAL_GAIN 0xb0b0
+#define AGC_USED	0
+#define DRC_USED	1
+#define _MORE_WIDGETS	0
 
 static bool speaker_double_used = false;
 static int double_speaker_val = 0;
@@ -94,7 +95,6 @@ struct ac10x_priv {
 	struct mutex aifclk_mutex;
 	u8 aif1_clken;
 	u8 aif2_clken;
-	u8 aif3_clken;
 
 	/*voltage supply*/
 	int num_supplies;
@@ -322,12 +322,55 @@ void set_configuration(struct snd_soc_codec *codec)
 	}
 	/*headphone calibration clock frequency select*/
 	snd_soc_update_bits(codec, SPKOUT_CTRL, (0x7<<HPCALICKS), (0x7<<HPCALICKS));
+
+#if ! _MORE_WIDGETS
+	/* I2S1 DAC Timeslot 0 data <- I2S1 DAC channel 0 */
+	// "AIF1IN0L Mux" <= "AIF1DACL"
+	// "AIF1IN0R Mux" <= "AIF1DACR"
+	snd_soc_update_bits(codec, AIF1_DACDAT_CTRL, 0x3 << AIF1_DA0L_SRC, 0x0 << AIF1_DA0L_SRC);
+	snd_soc_update_bits(codec, AIF1_DACDAT_CTRL, 0x3 << AIF1_DA0R_SRC, 0x0 << AIF1_DA0R_SRC);
+	/* Timeslot 0 Left & Right Channel enable */
+	snd_soc_update_bits(codec, AIF1_DACDAT_CTRL, 0x3 << AIF1_DA0R_ENA, 0x3 << AIF1_DA0R_ENA);
+
+	/* DAC Digital Mixer Source Select <- I2S1 DA0 */
+	// "DACL Mixer"	+= "AIF1IN0L Mux"
+	// "DACR Mixer" += "AIF1IN0R Mux"
+	snd_soc_update_bits(codec, DAC_MXR_SRC, 0xF << DACL_MXR_ADCL, 0x8 << DACL_MXR_ADCL);
+	snd_soc_update_bits(codec, DAC_MXR_SRC, 0xF << DACR_MXR_ADCR, 0x8 << DACR_MXR_ADCR);
+	/* Internal DAC Analog Left & Right Channel enable */
+	snd_soc_update_bits(codec, OMIXER_DACA_CTRL, 0x3 << DACALEN, 0x3 << DACALEN);
+
+	/* Output Mixer Source Select */
+	// "Left Output Mixer"  += "DACL Mixer"
+	// "Right Output Mixer" += "DACR Mixer"
+	snd_soc_update_bits(codec, OMIXER_SR, 0x1 << LMIXMUTEDACL, 0x1 << LMIXMUTEDACL);
+	snd_soc_update_bits(codec, OMIXER_SR, 0x1 << RMIXMUTEDACR, 0x1 << RMIXMUTEDACR);
+	/* Left & Right Analog Output Mixer enable */
+	snd_soc_update_bits(codec, OMIXER_DACA_CTRL, 0x3 << LMIXEN, 0x3 << LMIXEN);
+
+	/* Headphone Ouput Control */ 
+	// "HP_R Mux" <= "DACR Mixer"
+	// "HP_L Mux" <= "DACL Mixer"
+	snd_soc_update_bits(codec, HPOUT_CTRL, 0x1 << LHPS, 0x0 << LHPS);
+	snd_soc_update_bits(codec, HPOUT_CTRL, 0x1 << RHPS, 0x0 << RHPS);
+
+	/* Speaker Output Control */
+	// "SPK_L Mux" <= "SPK_LR Adder"
+	// "SPK_R Mux" <= "SPK_LR Adder"
+	snd_soc_update_bits(codec, SPKOUT_CTRL, (0x1 << LSPKS) | (0x1 << RSPKS), (0x1 << LSPKS) | (0x1 << RSPKS));
+	/* Enable Left & Right Speaker */
+	snd_soc_update_bits(codec, SPKOUT_CTRL, (0x1 << LSPK_EN) | (0x1 << RSPK_EN), (0x1 << LSPK_EN) | (0x1 << RSPK_EN));
+#endif
 }
 
+#if _MORE_WIDGETS
 static int late_enable_dac(struct snd_soc_dapm_widget *w,
 			  struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+#else
+static int late_enable_dac(struct snd_soc_codec* codec, int event) {
+#endif
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 	mutex_lock(&ac10x->dac_mutex);
 	switch (event) {
@@ -359,6 +402,7 @@ static int late_enable_dac(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+#if _MORE_WIDGETS
 static int late_enable_adc(struct snd_soc_dapm_widget *w,
 			  struct snd_kcontrol *kcontrol, int event)
 {
@@ -418,6 +462,9 @@ static int ac10x_headphone_event(struct snd_soc_dapm_widget *w,
 			struct snd_kcontrol *k,	int event)
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+#else
+static int ac10x_headphone_event(struct snd_soc_codec* codec, int event) {
+#endif
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/*open*/
@@ -437,11 +484,14 @@ static int ac10x_headphone_event(struct snd_soc_dapm_widget *w,
 	}
 	return 0;
 }
-
+#if _MORE_WIDGETS
 int ac10x_aif1clk(struct snd_soc_dapm_widget *w,
 		  struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+#else
+static int ac10x_aif1clk(struct snd_soc_codec* codec, int event) {
+#endif
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 
 	AC10X_DBG("%s() L%d event=%d pre_up/%d post_down/%d\n", __func__, __LINE__,
@@ -456,7 +506,7 @@ int ac10x_aif1clk(struct snd_soc_dapm_widget *w,
 			snd_soc_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_AIF1), (0x1<<MOD_CLK_AIF1));
 			snd_soc_update_bits(codec, MOD_RST_CTRL, (0x1<<MOD_RESET_AIF1), (0x1<<MOD_RESET_AIF1));
 			/*enable systemclk*/
-			if (ac10x->aif2_clken == 0 && ac10x->aif3_clken == 0)
+			if (ac10x->aif2_clken == 0)
 				snd_soc_update_bits(codec, SYSCLK_CTRL, (0x1<<SYSCLK_ENA), (0x1<<SYSCLK_ENA));
 		}
 		ac10x->aif1_clken++;
@@ -471,7 +521,7 @@ int ac10x_aif1clk(struct snd_soc_dapm_widget *w,
 				snd_soc_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_AIF1), (0x0<<MOD_CLK_AIF1));
 				snd_soc_update_bits(codec, MOD_RST_CTRL, (0x1<<MOD_RESET_AIF1), (0x0<<MOD_RESET_AIF1));
 				/*DISABLE systemclk*/
-				if (ac10x->aif2_clken == 0 && ac10x->aif3_clken == 0)
+				if (ac10x->aif2_clken == 0)
 					snd_soc_update_bits(codec, SYSCLK_CTRL, (0x1<<SYSCLK_ENA), (0x0<<SYSCLK_ENA));
 			}
 		}
@@ -480,8 +530,7 @@ int ac10x_aif1clk(struct snd_soc_dapm_widget *w,
 	mutex_unlock(&ac10x->aifclk_mutex);
 	return 0;
 }
-
-
+#if _MORE_WIDGETS
 static int dmic_mux_ev(struct snd_soc_dapm_widget *w,
 		      struct snd_kcontrol *kcontrol, int event)
 {
@@ -563,7 +612,7 @@ static const struct snd_kcontrol_new ac10x_controls[] = {
 	SOC_DOUBLE_TLV("DAC volume", DAC_VOL_CTRL, DAC_VOL_L, DAC_VOL_R, 0xff, 0, dac_vol_tlv),
 	SOC_DOUBLE_TLV("DAC mixer gain", DAC_MXR_GAIN, DACL_MXR_GAIN, DACR_MXR_GAIN, 0xf, 0, dac_mix_vol_tlv),
 
-	SOC_SINGLE_TLV("digital volume", DAC_DBG_CTRL, DVC, 0x3f, 0, dig_vol_tlv),
+	SOC_SINGLE_TLV("digital volume", DAC_DBG_CTRL, DVC, 0x3f, 1, dig_vol_tlv),
 
 	/*ADC*/
 	SOC_DOUBLE_TLV("ADC input gain", ADC_APC_CTRL, ADCLG, ADCRG, 0x7, 0, adc_input_vol_tlv),
@@ -579,6 +628,7 @@ static const struct snd_kcontrol_new ac10x_controls[] = {
 	SOC_SINGLE_TLV("speaker volume", SPKOUT_CTRL, SPK_VOL, 0x1f, 0, speaker_vol_tlv),
 	SOC_SINGLE_TLV("headphone volume", HPOUT_CTRL, HP_VOL, 0x3f, 0, headphone_vol_tlv),
 };
+
 /*AIF1 AD0 OUT */
 static const char *aif1out0l_text[] = {
 	"AIF1_AD0L", "AIF1_AD0R","SUM_AIF1AD0L_AIF1AD0R", "AVE_AIF1AD0L_AIF1AD0R"
@@ -799,7 +849,6 @@ static const struct snd_kcontrol_new adcr_mux =
 
 /*built widget*/
 static const struct snd_soc_dapm_widget ac10x_dapm_widgets[] = {
-
 	SND_SOC_DAPM_MUX("AIF1OUT0L Mux", AIF1_ADCDAT_CTRL, 15, 0, &aif1out0l_mux),
 	SND_SOC_DAPM_MUX("AIF1OUT0R Mux", AIF1_ADCDAT_CTRL, 14, 0, &aif1out0r_mux),
 
@@ -936,6 +985,7 @@ static const struct snd_soc_dapm_route ac10x_dapm_routes[] = {
 	{"AIF1 AD1L Mixer", "ADCL Switch",		"ADCL Mux"},
 	/*AIF1 AD1R Mixer*/
 	{"AIF1 AD1R Mixer", "ADCR Switch",		"ADCR Mux"},
+
 	/*AIF1 DA0 IN 12h*/
 	{"AIF1IN0L Mux", "AIF1_DA0L",		"AIF1DACL"},
 	{"AIF1IN0L Mux", "AIF1_DA0R",		"AIF1DACR"},
@@ -1052,6 +1102,26 @@ static const struct snd_soc_dapm_route ac10x_dapm_routes[] = {
 	{"DMICL VIR", NULL, "D_MIC"},
 	{"DMICR VIR", NULL, "D_MIC"},
 };
+#else	// !_MORE_WIDGETS
+	#if 0
+	static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -11925, 75, 0);
+	static const DECLARE_TLV_DB_SCALE(dac_mix_vol_tlv, -600, 600, 0);
+	static const DECLARE_TLV_DB_SCALE(dig_vol_tlv, -7308, 116, 0);
+	#endif
+	static const DECLARE_TLV_DB_SCALE(speaker_vol_tlv, -4800, 150, 0);
+	static const DECLARE_TLV_DB_SCALE(headphone_vol_tlv, -6300, 100, 0);
+
+	static const struct snd_kcontrol_new ac10x_controls[] = {
+		/*DAC*/
+		#if 0
+		SOC_DOUBLE_TLV("DAC volume", DAC_VOL_CTRL, DAC_VOL_L, DAC_VOL_R, 0xff, 0, dac_vol_tlv),
+		SOC_DOUBLE_TLV("DAC mixer gain", DAC_MXR_GAIN, DACL_MXR_GAIN, DACR_MXR_GAIN, 0xf, 0, dac_mix_vol_tlv),
+		SOC_SINGLE_TLV("digital volume", DAC_DBG_CTRL, DVC, 0x3f, 1, dig_vol_tlv),
+		#endif
+		SOC_SINGLE_TLV("speaker volume", SPKOUT_CTRL, SPK_VOL, 0x1f, 0, speaker_vol_tlv),
+		SOC_SINGLE_TLV("headphone volume", HPOUT_CTRL, HP_VOL, 0x3f, 0, headphone_vol_tlv),
+	};
+#endif
 
 /* PLL divisors */
 struct pll_div {
@@ -1077,9 +1147,9 @@ struct kv_map {
 };
 
 /*
-*	Note : pll code from original tdm/i2s driver.
-* 	freq_out = freq_in * N/(m*(2k+1)) , k=1,N=N_i+N_f,N_f=factor*0.2;
-*/
+ *	Note : pll code from original tdm/i2s driver.
+ * 	freq_out = freq_in * N/(m*(2k+1)) , k=1,N=N_i+N_f,N_f=factor*0.2;
+ */
 static const struct pll_div codec_pll_div[] = {
 	{128000, 22579200, 1, 529, 1},
 	{192000, 22579200, 1, 352, 4},
@@ -1146,6 +1216,28 @@ static int ac10x_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 	AC10X_DBG("%s() L%d mute=%d\n", __func__, __LINE__, mute);
 
 	snd_soc_write(codec, DAC_VOL_CTRL, mute? 0: 0xA0A0);
+
+	#if !_MORE_WIDGETS
+	if (!mute) {
+		ac10x_aif1clk(codec, SND_SOC_DAPM_PRE_PMU);
+		late_enable_dac(codec, SND_SOC_DAPM_PRE_PMU);
+		ac10x_headphone_event(codec, SND_SOC_DAPM_POST_PMU);
+		if (drc_used) {
+			drc_enable(codec,1);
+		}
+	} else {
+		struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
+
+		if (drc_used) {
+			drc_enable(codec,0);
+		}
+		ac10x_headphone_event(codec, SND_SOC_DAPM_PRE_PMD);
+		late_enable_dac(codec, SND_SOC_DAPM_POST_PMD);
+
+		ac10x->aif1_clken = 1;
+		ac10x_aif1clk(codec, SND_SOC_DAPM_POST_PMD);
+	}
+	#endif
 	return 0;
 }
 
@@ -1450,10 +1542,25 @@ static int ac10x_set_bias_level(struct snd_soc_codec *codec,
 	snd_soc_codec_get_dapm(codec)->bias_level = level;
 	return 0;
 }
+
+static int ac10x_trigger(struct snd_pcm_substream *substream, int cmd,
+			     struct snd_soc_dai *dai)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
+	int ret = 0;
+
+	AC10X_DBG("%s() stream=%d  cmd=%d\n",
+		__FUNCTION__, substream->stream, cmd);
+
+	return 0;
+}
+
 static const struct snd_soc_dai_ops ac10x_aif1_dai_ops = {
 	.set_sysclk	= ac10x_set_dai_sysclk,
 	.set_fmt	= ac10x_set_dai_fmt,
 	.hw_params	= ac10x_hw_params,
+	.trigger	= ac10x_trigger,
 	.shutdown	= ac10x_aif_shutdown,
 	.digital_mute	= ac10x_aif_mute,
 	.set_pll	= ac10x_set_pll,
@@ -1584,7 +1691,9 @@ static int ac10x_codec_probe(struct snd_soc_codec *codec)
 	int ret = 0;
 	int i = 0;
 	struct ac10x_priv *ac10x;
+	#if _MORE_WIDGETS
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+	#endif
 
 	ac10x = dev_get_drvdata(codec->dev);
 	if (ac10x == NULL) {
@@ -1598,7 +1707,6 @@ static int ac10x_codec_probe(struct snd_soc_codec *codec)
 	ac10x->adc_enable = 0;
 	ac10x->aif1_clken = 0;
 	ac10x->aif2_clken = 0;
-	ac10x->aif3_clken = 0;
 	mutex_init(&ac10x->dac_mutex);
 	mutex_init(&ac10x->adc_mutex);
 	mutex_init(&ac10x->aifclk_mutex);
@@ -1639,8 +1747,10 @@ static int ac10x_codec_probe(struct snd_soc_codec *codec)
 				"will continue without it.\n");
 	}
 
+	#if _MORE_WIDGETS
 	snd_soc_dapm_new_controls(dapm, ac10x_dapm_widgets, ARRAY_SIZE(ac10x_dapm_widgets));
  	snd_soc_dapm_add_routes(dapm, ac10x_dapm_routes, ARRAY_SIZE(ac10x_dapm_routes));
+	#endif
 
 	return 0;
 }
@@ -1698,7 +1808,6 @@ static int ac10x_codec_resume(struct snd_soc_codec *codec)
 		regcache_cache_only(ac10x->regmap, true);
 		return ret;
 	}
-
 
 	ac10x_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	schedule_work(&ac10x->codec_resume);
