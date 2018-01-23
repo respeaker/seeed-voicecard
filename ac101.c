@@ -101,6 +101,8 @@ struct ac10x_priv {
 	struct regulator_bulk_data *supplies;
 
 	struct work_struct codec_resume;
+	struct delayed_work dlywork;
+	int trgr_cnt;
 };
 
 void get_configuration(void)
@@ -1219,7 +1221,6 @@ static int ac10x_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 
 	#if !_MORE_WIDGETS
 	if (!mute) {
-		ac10x_aif1clk(codec, SND_SOC_DAPM_PRE_PMU);
 		late_enable_dac(codec, SND_SOC_DAPM_PRE_PMU);
 		ac10x_headphone_event(codec, SND_SOC_DAPM_POST_PMU);
 		if (drc_used) {
@@ -1278,6 +1279,8 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 	unsigned channels;
 
 	AC10X_DBG("%s() L%d +++\n", __func__, __LINE__);
+
+	ac10x->trgr_cnt = 0;
 
 	channels = params_channels(params);
 	aif1_lrck_div = 16 * channels;
@@ -1543,6 +1546,20 @@ static int ac10x_set_bias_level(struct snd_soc_codec *codec,
 	return 0;
 }
 
+/*
+ * due to miss channels order in cpu_dai, we meed defer the clock starting.
+ */
+static void ac10x_work_start_clock(struct work_struct *work) {
+	struct ac10x_priv *ac10x = container_of(work, struct ac10x_priv, dlywork.work);
+
+	/* enable global clock */
+	#if !_MORE_WIDGETS
+	ac10x_aif1clk(ac10x->codec, SND_SOC_DAPM_PRE_PMU);
+	#endif
+
+	return;
+}
+
 static int ac10x_trigger(struct snd_pcm_substream *substream, int cmd,
 			     struct snd_soc_dai *dai)
 {
@@ -1552,6 +1569,27 @@ static int ac10x_trigger(struct snd_pcm_substream *substream, int cmd,
 
 	AC10X_DBG("%s() stream=%d  cmd=%d\n",
 		__FUNCTION__, substream->stream, cmd);
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		if (ac10x->trgr_cnt++ > 0) {
+			break;
+		}
+
+		/* delayed clock starting */
+		schedule_delayed_work(&ac10x->dlywork, msecs_to_jiffies(30));
+		break;
+
+	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
 
 	return 0;
 }
@@ -1702,6 +1740,7 @@ static int ac10x_codec_probe(struct snd_soc_codec *codec)
 	}
 	ac10x->codec = codec;
 
+	INIT_DELAYED_WORK(&ac10x->dlywork, ac10x_work_start_clock);
 	INIT_WORK(&ac10x->codec_resume, codec_resume_work);
 	ac10x->dac_enable = 0;
 	ac10x->adc_enable = 0;
