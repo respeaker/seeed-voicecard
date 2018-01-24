@@ -70,7 +70,7 @@
 			cpu_dai: simple-audio-card,cpu {
 				sound-dai = <&i2s>;
 				dai-tdm-slot-num     = <2>;
-				dai-tdm-slot-width   = <16>;
+				dai-tdm-slot-width   = <32>;
 				dai-tdm-slot-tx-mask = <1 1 0 0>;
 				dai-tdm-slot-rx-mask = <1 1 0 0>;
 			};

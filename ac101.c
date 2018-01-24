@@ -64,12 +64,12 @@ static bool agc_used 		= false;
 static bool drc_used 		= false;
 
 #define ac10x_RATES  (SNDRV_PCM_RATE_8000_96000|SNDRV_PCM_RATE_KNOT)
-#define ac10x_FORMATS ( /*SNDRV_PCM_FMTBIT_S8  |*/	\
+#define ac10x_FORMATS ( /*SNDRV_PCM_FMTBIT_S8  |	\
 			SNDRV_PCM_FMTBIT_S16_LE | \
-			/* SNDRV_PCM_FMTBIT_S18_3LE |	\
+			 SNDRV_PCM_FMTBIT_S18_3LE |	\
 			SNDRV_PCM_FMTBIT_S20_3LE |	\
-			SNDRV_PCM_FMTBIT_S24_LE |	\
-			SNDRV_PCM_FMTBIT_S32_LE*/	\
+			SNDRV_PCM_FMTBIT_S24_LE |*/	\
+			SNDRV_PCM_FMTBIT_S32_LE	| \
 			0)
 
 /*supply voltage*/
@@ -1283,7 +1283,7 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 	ac10x->trgr_cnt = 0;
 
 	channels = params_channels(params);
-	aif1_lrck_div = 16 * channels;
+	aif1_lrck_div = 32 * channels;
 
 	for (i = 0; i < ARRAY_SIZE(codec_aif1_lrck); i++) {
 		if (codec_aif1_lrck[i].val == aif1_lrck_div) {
@@ -1397,8 +1397,8 @@ static int ac10x_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 	/*
 	 * Disable TDM mode
 	 */
-	// reg_val |=  (0x1 << AIF1_TDMM_ENA);
-	reg_val &= ~(0x1 << AIF1_TDMM_ENA);
+	reg_val |=  (0x1 << AIF1_TDMM_ENA);
+	// reg_val &= ~(0x1 << AIF1_TDMM_ENA);
 	snd_soc_write(codec, AIF_CLK_CTRL, reg_val);
 
 	/* i2s mode selection */
