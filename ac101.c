@@ -34,6 +34,7 @@
 #include <linux/irq.h>
 #include <linux/workqueue.h>
 #include <linux/clk.h>
+#include <linux/gpio/consumer.h>
 #include <linux/regmap.h>
 #include "ac101.h"
 
@@ -48,7 +49,7 @@
 #define DMIC_USED	0
 #define ADC_DIGITAL_GAIN 0xb0b0
 #define AGC_USED	0
-#define DRC_USED	1
+#define DRC_USED	0
 #define _MORE_WIDGETS	0
 
 static bool speaker_double_used = false;
@@ -103,6 +104,8 @@ struct ac10x_priv {
 	struct work_struct codec_resume;
 	struct delayed_work dlywork;
 	int trgr_cnt;
+
+	struct gpio_desc* gpiod_spk_amp_switch;
 };
 
 void get_configuration(void)
@@ -1105,7 +1108,7 @@ static const struct snd_soc_dapm_route ac10x_dapm_routes[] = {
 	{"DMICR VIR", NULL, "D_MIC"},
 };
 #else	// !_MORE_WIDGETS
-	#if 0
+	#if 1
 	static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -11925, 75, 0);
 	static const DECLARE_TLV_DB_SCALE(dac_mix_vol_tlv, -600, 600, 0);
 	static const DECLARE_TLV_DB_SCALE(dig_vol_tlv, -7308, 116, 0);
@@ -1115,7 +1118,7 @@ static const struct snd_soc_dapm_route ac10x_dapm_routes[] = {
 
 	static const struct snd_kcontrol_new ac10x_controls[] = {
 		/*DAC*/
-		#if 0
+		#if 1
 		SOC_DOUBLE_TLV("DAC volume", DAC_VOL_CTRL, DAC_VOL_L, DAC_VOL_R, 0xff, 0, dac_vol_tlv),
 		SOC_DOUBLE_TLV("DAC mixer gain", DAC_MXR_GAIN, DACL_MXR_GAIN, DACR_MXR_GAIN, 0xf, 0, dac_mix_vol_tlv),
 		SOC_SINGLE_TLV("digital volume", DAC_DBG_CTRL, DVC, 0x3f, 1, dig_vol_tlv),
@@ -1214,6 +1217,7 @@ static const unsigned ac10x_bclkdivs[] = {
 static int ac10x_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
+	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 
 	AC10X_DBG("%s() L%d mute=%d\n", __func__, __LINE__, mute);
 
@@ -1224,13 +1228,18 @@ static int ac10x_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 		late_enable_dac(codec, SND_SOC_DAPM_PRE_PMU);
 		ac10x_headphone_event(codec, SND_SOC_DAPM_POST_PMU);
 		if (drc_used) {
-			drc_enable(codec,1);
+			drc_enable(codec, 1);
+		}
+		if (ac10x->gpiod_spk_amp_switch) {
+			gpiod_set_value(ac10x->gpiod_spk_amp_switch, 1);
 		}
 	} else {
-		struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 
+		if (ac10x->gpiod_spk_amp_switch) {
+			gpiod_set_value(ac10x->gpiod_spk_amp_switch, 0);
+		}
 		if (drc_used) {
-			drc_enable(codec,0);
+			drc_enable(codec, 0);
 		}
 		ac10x_headphone_event(codec, SND_SOC_DAPM_PRE_PMD);
 		late_enable_dac(codec, SND_SOC_DAPM_POST_PMD);
@@ -1271,8 +1280,9 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 {
 	int i = 0;
 	int AIF_CLK_CTRL = AIF1_CLK_CTRL;
-	int aif1_word_size = 16;
-	int aif1_lrck_div = 64;
+	int aif1_word_size = 24;
+	int aif1_slot_size = 32;
+	int aif1_lrck_div;
 	struct snd_soc_codec *codec = codec_dai->codec;
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 	int reg_val, freq_out;
@@ -1282,9 +1292,23 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 
 	ac10x->trgr_cnt = 0;
 
+	/* get channels count & slot size */
 	channels = params_channels(params);
-	aif1_lrck_div = 32 * channels;
 
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S24_LE:
+	case SNDRV_PCM_FORMAT_S32_LE:
+		aif1_slot_size = 32;
+		break;
+	case SNDRV_PCM_FORMAT_S16_LE:
+	default:
+		aif1_slot_size = 16;
+		break;
+	}
+
+
+	/* set LRCK/BCLK ratio */
+	aif1_lrck_div = aif1_slot_size * channels;
 	for (i = 0; i < ARRAY_SIZE(codec_aif1_lrck); i++) {
 		if (codec_aif1_lrck[i].val == aif1_lrck_div) {
 			break;
@@ -1292,6 +1316,7 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 	}
 	snd_soc_update_bits(codec, AIF_CLK_CTRL, (0x7<<AIF1_LRCK_DIV), codec_aif1_lrck[i].bit<<AIF1_LRCK_DIV);
 
+	/* set PLL output freq */
 	freq_out = 24576000;
 	for (i = 0; i < ARRAY_SIZE(codec_aif1_fs); i++) {
 		if (codec_aif1_fs[i].samp_rate ==  params_rate(params)) {
@@ -1307,16 +1332,6 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* set I2S word size */
-	switch (params_format(params)) {
-	case SNDRV_PCM_FORMAT_S24_LE:
-	case SNDRV_PCM_FORMAT_S32_LE:
-		aif1_word_size = 24;
-		break;
-	case SNDRV_PCM_FORMAT_S16_LE:
-	default:
-		aif1_word_size = 16;
-		break;
-	}
 	for (i = 0; i < ARRAY_SIZE(codec_aif1_wsize); i++) {
 		if (codec_aif1_wsize[i].val == aif1_word_size) {
 			break;
@@ -1325,13 +1340,8 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 	snd_soc_update_bits(codec, AIF_CLK_CTRL, (0x3<<AIF1_WORK_SIZ), ((codec_aif1_wsize[i].bit)<<AIF1_WORK_SIZ));
 
 	/* set TDM slot size */
-	#if 0
-	if ((i = codec_aif1_wsize[i].bit) > 2)
-	#else
-	/* fixed 32 bits */
-	i = 2;
-	#endif
-	snd_soc_update_bits(codec, AIF1_ADCDAT_CTRL, 0x3 << AIF1_SLOT_SIZ, i << AIF1_SLOT_SIZ);
+	if ((reg_val = codec_aif1_wsize[i].bit) > 2) reg_val = 2;
+	snd_soc_update_bits(codec, AIF1_ADCDAT_CTRL, 0x3 << AIF1_SLOT_SIZ, reg_val << AIF1_SLOT_SIZ);
 
 	/* setting pll if it's master mode */
 	reg_val = snd_soc_read(codec, AIF_CLK_CTRL);
@@ -1902,6 +1912,12 @@ static int ac10x_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	ret = sysfs_create_group(&i2c->dev.kobj, &audio_debug_attr_group);
 	if (ret) {
 		pr_err("failed to create attr group\n");
+	}
+
+	ac10x->gpiod_spk_amp_switch = devm_gpiod_get_optional(&i2c->dev, "spk-amp-switch", GPIOD_OUT_LOW);
+	if (IS_ERR(ac10x->gpiod_spk_amp_switch)) {
+		ac10x->gpiod_spk_amp_switch = NULL;
+		dev_err(&i2c->dev, "failed get spk-amp-switch in device tree\n");
 	}
 	return 0;
 }

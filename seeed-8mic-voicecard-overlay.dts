@@ -15,7 +15,7 @@
 	fragment@1 {
 		target-path = "/clocks";
 		__overlay__ {
-			ac108_mclk: codec-mclk {
+			ac10x_mclk: codec-mclk {
 				compatible = "fixed-clock";
 				#clock-cells = <0>;
 				clock-frequency = <24000000>;
@@ -24,6 +24,20 @@
 	};
 
 	fragment@2 {
+		target = <&gpio>;
+		__overlay__ {
+			spk_amp_switch_pins: speaker_amp_switch_pins {
+				brcm,pins = <17>;
+				brcm,function = <1>; /* out */
+			};
+			gpclk0_pins: gpclk0_pins {
+				brcm,pins = <4>;
+				brcm,function = <4>; /* alt func 0 */
+			};
+		};
+	};
+
+	fragment@3 {
 		target = <&i2c1>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -32,6 +46,9 @@
 
 			ac101: ac101@1a{
 				compatible = "x-power,ac101";
+				pinctrl-names = "default";
+				pinctrl-0 = <&spk_amp_switch_pins>,<&gpclk0_pins>;
+				spk-amp-switch-gpios = <&gpio 17 0>;
 				reg = <0x1a>;
 				#sound-dai-cells = <0>;
 			};
@@ -53,7 +70,7 @@
 		};
 	};
 
-	fragment@3 {
+	fragment@4 {
 		target = <&sound>;
 
 		sound_overlay: __overlay__ {
@@ -76,7 +93,7 @@
 			};
 			codec_dai: simple-audio-card,codec {
 				sound-dai = <&ac101>;
-				clocks =  <&ac108_mclk>;
+				clocks =  <&ac10x_mclk>;
 				system-clock-id = <1>;
 			};
 		};
