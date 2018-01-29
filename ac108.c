@@ -8,7 +8,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#undef DEBUG
+#define DEBUG
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -25,6 +25,9 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 #include "ac108.h"
+
+#define _USE_CAPTURE	0
+#define _MASTER_INDEX	1
 
 /**
  * TODO: 
@@ -885,8 +888,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	unsigned bclkdiv;
 	u8 r;
 
-	dev_dbg(dai->dev, "%s() stream=%d\n",
-		__FUNCTION__, substream->stream);
+	dev_dbg(dai->dev, "%s() stream=%d\n", __func__, substream->stream);
 
 	/* nothing should be done when it isn't capturing stream. */
 	if (substream->stream != SNDRV_PCM_STREAM_CAPTURE) {
@@ -1063,6 +1065,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:    /*AC108 Master*/
 		dev_dbg(dai->dev, "AC108 set to work as Master\n");
+		#if 0
 		/**
 		 * 0x30:chip is master mode ,BCLK & LRCK output
 		 */
@@ -1073,6 +1076,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 			ac108_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x0 << LRCK_IOEN, ac108->i2c[i]);
 		}
 		break;
+		#endif
 	case SND_SOC_DAIFMT_CBS_CFS:    /*AC108 Slave*/
 		dev_dbg(dai->dev, "AC108 set to work as Slave\n");
 		/**
@@ -1266,6 +1270,7 @@ static const struct snd_soc_dai_ops ac108_dai_ops = {
 
 static  struct snd_soc_dai_driver ac108_dai0 = {
 	.name = "ac108-codec0",
+	#if _USE_CAPTURE
 	.playback = {
 		.stream_name = "Playback",
 		.channels_min = 1,
@@ -1273,6 +1278,7 @@ static  struct snd_soc_dai_driver ac108_dai0 = {
 		.rates = AC108_RATES,
 		.formats = AC108_FORMATS,
 	},
+	#endif
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
@@ -1285,6 +1291,7 @@ static  struct snd_soc_dai_driver ac108_dai0 = {
 
 static  struct snd_soc_dai_driver ac108_dai1 = {
 	.name = "ac108-codec1",
+	#if _USE_CAPTURE
 	.playback = {
 		.stream_name = "Playback",
 		.channels_min = 1,
@@ -1292,6 +1299,7 @@ static  struct snd_soc_dai_driver ac108_dai1 = {
 		.rates = AC108_RATES,
 		.formats = AC108_FORMATS,
 	},
+	#endif
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
@@ -1304,6 +1312,7 @@ static  struct snd_soc_dai_driver ac108_dai1 = {
 
 static  struct snd_soc_dai_driver ac108_dai2 = {
 	.name = "ac108-codec2",
+	#if _USE_CAPTURE
 	.playback = {
 		.stream_name = "Playback",
 		.channels_min = 1,
@@ -1311,6 +1320,7 @@ static  struct snd_soc_dai_driver ac108_dai2 = {
 		.rates = AC108_RATES,
 		.formats = AC108_FORMATS,
 	},
+	#endif
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
@@ -1323,6 +1333,7 @@ static  struct snd_soc_dai_driver ac108_dai2 = {
 
 static  struct snd_soc_dai_driver ac108_dai3 = {
 	.name = "ac108-codec3",
+	#if _USE_CAPTURE
 	.playback = {
 		.stream_name = "Playback",
 		.channels_min = 1,
@@ -1330,6 +1341,7 @@ static  struct snd_soc_dai_driver ac108_dai3 = {
 		.rates = AC108_RATES,
 		.formats = AC108_FORMATS,
 	},
+	#endif
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
@@ -1348,16 +1360,16 @@ static  struct snd_soc_dai_driver *ac108_dai[] = {
 };
 
 static int ac108_add_widgets(struct snd_soc_codec *codec) {
-	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+	// struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 
 	snd_soc_add_codec_controls(codec, ac108_snd_controls,
 							   ARRAY_SIZE(ac108_snd_controls));
 
-
+	#if 0
 	snd_soc_dapm_new_controls(dapm, ac108_dapm_widgets,
 							  ARRAY_SIZE(ac108_dapm_widgets));
-
 	snd_soc_dapm_add_routes(dapm, ac108_dapm_routes, ARRAY_SIZE(ac108_dapm_routes));
+	#endif
 
 	return 0;
 }
@@ -1508,14 +1520,16 @@ static int ac108_i2c_probe(struct i2c_client *i2c,
 	pr_err(" ac108  I2S data protocol type :%d\n", ac108->data_protocol);
 
 	ac108->i2c[i2c_id->driver_data] = i2c;
-	if (ac108->codec_index == 0) {
-		ret = snd_soc_register_codec(&i2c->dev, &ac108_soc_codec_driver, ac108_dai[i2c_id->driver_data], 1);
+	ac108->codec_index++;
+
+	/* we need i2c[0] && i2c[1], codec bind with i2c[_MASTER_INDEX] */
+	if (ac108->codec_index == 2) {
+		ret = snd_soc_register_codec(&ac108->i2c[_MASTER_INDEX]->dev, &ac108_soc_codec_driver,
+						ac108_dai[_MASTER_INDEX], 1);
 		if (ret < 0) {
 			dev_err(&i2c->dev, "Failed to register ac108 codec: %d\n", ret);
 		}
 	}
-
-	ac108->codec_index++;
 
 	ret = sysfs_create_group(&i2c->dev.kobj, &ac108_debug_attr_group);
 	if (ret) {
