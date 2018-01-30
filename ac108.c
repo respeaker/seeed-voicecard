@@ -166,7 +166,7 @@ static const struct pll_div ac108_pll_div_list[] = {
 /* AC108 definition */
 #define AC108_CHANNELS_MAX		16		/* range[1, 16] */
 #define AC108_RATES 			(SNDRV_PCM_RATE_8000_96000 | SNDRV_PCM_RATE_KNOT)
-#define AC108_FORMATS			(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
+#define AC108_FORMATS			(/* SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | SNDRV_PCM_FMTBIT_S24_LE |*/ SNDRV_PCM_FMTBIT_S32_LE)
 
 static const DECLARE_TLV_DB_SCALE(tlv_adc_pga_gain, 0, 100, 0);
 static const DECLARE_TLV_DB_SCALE(tlv_ch_digital_vol, -11925,75,0);
@@ -1127,22 +1127,22 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 	case SND_SOC_DAIFMT_NB_NF:
 		dev_dbg(dai->dev, "AC108 config BCLK&LRCK polarity: BCLK_normal,LRCK_normal\n");
 		brck_polarity = BCLK_NORMAL_DRIVE_N_SAMPLE_P;
-		lrck_polarity = LRCK_LEFT_LOW_RIGHT_HIGH;
+		lrck_polarity = LRCK_LEFT_HIGH_RIGHT_LOW;
 		break;
 	case SND_SOC_DAIFMT_NB_IF:
 		dev_dbg(dai->dev, "AC108 config BCLK&LRCK polarity: BCLK_normal,LRCK_invert\n");
 		brck_polarity = BCLK_NORMAL_DRIVE_N_SAMPLE_P;
-		lrck_polarity = LRCK_LEFT_HIGH_RIGHT_LOW;
+		lrck_polarity = LRCK_LEFT_LOW_RIGHT_HIGH;
 		break;
 	case SND_SOC_DAIFMT_IB_NF:
 		dev_dbg(dai->dev, "AC108 config BCLK&LRCK polarity: BCLK_invert,LRCK_normal\n");
 		brck_polarity = BCLK_INVERT_DRIVE_P_SAMPLE_N;
-		lrck_polarity = LRCK_LEFT_LOW_RIGHT_HIGH;
+		lrck_polarity = LRCK_LEFT_HIGH_RIGHT_LOW;
 		break;
 	case SND_SOC_DAIFMT_IB_IF:
 		dev_dbg(dai->dev, "AC108 config BCLK&LRCK polarity: BCLK_invert,LRCK_invert\n");
 		brck_polarity = BCLK_INVERT_DRIVE_P_SAMPLE_N;
-		lrck_polarity = LRCK_LEFT_HIGH_RIGHT_LOW;
+		lrck_polarity = LRCK_LEFT_LOW_RIGHT_HIGH;
 		break;
 	default:
 		pr_err("AC108 config BCLK/LRCLK polarity error:%u\n\n", (fmt & SND_SOC_DAIFMT_INV_MASK) >> 8);

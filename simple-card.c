@@ -199,9 +199,6 @@ extern int ac10x_start_clock(void);
 
 static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct simple_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
-
 	int ret = 0;
 
 	printk("%s() stream=%d  cmd=%d\n",
