@@ -107,6 +107,7 @@ struct ac10x_priv {
 
 	struct gpio_desc* gpiod_spk_amp_switch;
 };
+static struct ac10x_priv* static_ac10x;
 
 void get_configuration(void)
 {
@@ -391,9 +392,15 @@ static int late_enable_dac(struct snd_soc_codec* codec, int event) {
 		ac10x->dac_enable++;
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		#if 0
 		if (ac10x->dac_enable > 0){
 			ac10x->dac_enable--;
-			if (ac10x->dac_enable == 0){
+		#else
+		{
+		#endif
+			if (ac10x->dac_enable != 0){
+				ac10x->dac_enable = 0;
+
 				snd_soc_update_bits(codec, DAC_DIG_CTRL, (0x1<<ENHPF),(0x0<<ENHPF));
 				snd_soc_update_bits(codec, DAC_DIG_CTRL, (0x1<<ENDA), (0x0<<ENDA));
 				/*disable dac module clk*/
@@ -518,9 +525,15 @@ static int ac10x_aif1clk(struct snd_soc_codec* codec, int event) {
 
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		#if 0
 		if (ac10x->aif1_clken > 0){
 			ac10x->aif1_clken--;
 			if (ac10x->aif1_clken == 0){
+		#else
+		{
+			if (ac10x->aif1_clken != 0) {
+				ac10x->aif1_clken = 0;
+		#endif
 				/*disable AIF1CLK*/
 				snd_soc_update_bits(codec, SYSCLK_CTRL, (0x1<<AIF1CLK_ENA), (0x0<<AIF1CLK_ENA));
 				snd_soc_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_AIF1), (0x0<<MOD_CLK_AIF1));
@@ -1394,9 +1407,11 @@ static int ac10x_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 	reg_val &= ~(0x1<<AIF1_MSTR_MOD);
 	switch(fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 		case SND_SOC_DAIFMT_CBM_CFM:   /* codec clk & frm master, ap is slave*/
+			pr_warn("AC101 as Master\n");
 			reg_val |= (0x0<<AIF1_MSTR_MOD);
 			break;
 		case SND_SOC_DAIFMT_CBS_CFS:   /* codec clk & frm slave, ap is master*/
+			pr_warn("AC101 as Slave\n");
 			reg_val |= (0x1<<AIF1_MSTR_MOD);
 			break;
 		default:
@@ -1405,7 +1420,7 @@ static int ac10x_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 	}
 
 	/*
-	 * Disable TDM mode
+	 * Enable TDM mode
 	 */
 	reg_val |=  (0x1 << AIF1_TDMM_ENA);
 	// reg_val &= ~(0x1 << AIF1_TDMM_ENA);
@@ -1559,7 +1574,7 @@ static int ac10x_set_bias_level(struct snd_soc_codec *codec,
 /*
  * due to miss channels order in cpu_dai, we meed defer the clock starting.
  */
-static void ac10x_work_start_clock(struct work_struct *work) {
+static void __ac10x_work_start_clock(struct work_struct *work) {
 	struct ac10x_priv *ac10x = container_of(work, struct ac10x_priv, dlywork.work);
 
 	/* enable global clock */
@@ -1569,6 +1584,12 @@ static void ac10x_work_start_clock(struct work_struct *work) {
 
 	return;
 }
+
+int ac10x_start_clock(void) {
+	ac10x_aif1clk(static_ac10x->codec, SND_SOC_DAPM_PRE_PMU);
+	return 0;
+}
+EXPORT_SYMBOL(ac10x_start_clock);
 
 static int ac10x_trigger(struct snd_pcm_substream *substream, int cmd,
 			     struct snd_soc_dai *dai)
@@ -1750,7 +1771,7 @@ static int ac10x_codec_probe(struct snd_soc_codec *codec)
 	}
 	ac10x->codec = codec;
 
-	INIT_DELAYED_WORK(&ac10x->dlywork, ac10x_work_start_clock);
+	INIT_DELAYED_WORK(&ac10x->dlywork, __ac10x_work_start_clock);
 	INIT_WORK(&ac10x->codec_resume, codec_resume_work);
 	ac10x->dac_enable = 0;
 	ac10x->adc_enable = 0;
@@ -1884,6 +1905,7 @@ static int ac10x_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		return -ENOMEM;
 	}
 	i2c_set_clientdata(i2c, ac10x);
+	static_ac10x = ac10x;
 
 	ac10x->regmap = devm_regmap_init_i2c(i2c, &ac101_regmap);
 	if (IS_ERR(ac10x->regmap)) {

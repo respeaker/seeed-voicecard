@@ -8,6 +8,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#undef DEBUG
 #include <linux/clk.h>
 #include <linux/device.h>
 #include <linux/gpio.h>
@@ -194,10 +195,41 @@ err:
 	return ret;
 }
 
+extern int ac10x_start_clock(void);
+
+static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct simple_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
+
+	int ret = 0;
+
+	printk("%s() stream=%d  cmd=%d\n",
+		__FUNCTION__, substream->stream, cmd);
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+	case SNDRV_PCM_TRIGGER_RESUME:
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		ac10x_start_clock();
+		break;
+
+	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_SUSPEND:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
+	return 0;
+}
+
 static struct snd_soc_ops asoc_simple_card_ops = {
 	.startup = asoc_simple_card_startup,
 	.shutdown = asoc_simple_card_shutdown,
 	.hw_params = asoc_simple_card_hw_params,
+	.trigger = asoc_simple_card_trigger,
 };
 
 static int asoc_simple_card_dai_init(struct snd_soc_pcm_runtime *rtd)
