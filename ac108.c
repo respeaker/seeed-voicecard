@@ -77,7 +77,8 @@ static const struct real_val_to_reg_val ac108_sample_rate[] = {
 	{ 96000, 9 },
 };
 
-static const struct real_val_to_reg_val ac108_sample_resolution[] = {
+/* Sample resolution */
+static const struct real_val_to_reg_val ac108_samp_res[] = {
 	{ 8,  1 },
 	{ 12, 2 },
 	{ 16, 3 },
@@ -162,8 +163,8 @@ static const struct pll_div ac108_pll_div_list[] = {
 };
 
 
-//AC108 define
-#define AC108_CHANNELS_MAX		16		//range[1, 16]
+/* AC108 definition */
+#define AC108_CHANNELS_MAX		16		/* range[1, 16] */
 #define AC108_RATES 			(SNDRV_PCM_RATE_8000_96000 | SNDRV_PCM_RATE_KNOT)
 #define AC108_FORMATS			(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
@@ -753,7 +754,7 @@ static unsigned int ac108_codec_read(struct snd_soc_codec *codec, unsigned int r
 	unsigned char val_r;
 	struct ac108_priv *ac108 = dev_get_drvdata(codec->dev);
 	/*read one chip is fine*/
-	ac108_read(reg, &val_r, ac108->i2c[0]);
+	ac108_read(reg, &val_r, ac108->i2c[_MASTER_INDEX]);
 	return val_r;
 }
 
@@ -882,7 +883,7 @@ static int ac108_multi_chips_slots(struct ac108_priv *ac, int slots) {
 }
 
 static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_hw_params *params, struct snd_soc_dai *dai) {
-	unsigned int i, channels, sample_resolution, rate;
+	unsigned int i, channels, samp_res, rate;
 	struct snd_soc_codec *codec = dai->codec;
 	struct ac108_priv *ac108 = snd_soc_codec_get_drvdata(codec);
 	unsigned bclkdiv;
@@ -898,26 +899,26 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	channels = params_channels(params);
 
 	/* Master mode, to clear cpu_dai fifos, output bclk without lrck */
-	ac108_read(I2S_CTRL, &r, ac108->i2c[0]);
+	ac108_read(I2S_CTRL, &r, ac108->i2c[_MASTER_INDEX]);
 	if (r & (0x02 << LRCK_IOEN)) {
-		ac108_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x02 << LRCK_IOEN, ac108->i2c[0]);
+		ac108_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x02 << LRCK_IOEN, ac108->i2c[_MASTER_INDEX]);
 	}
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S8:
-		sample_resolution = 0;
+		samp_res = 0;
 		break;
 	case SNDRV_PCM_FORMAT_S16_LE:
-		sample_resolution = 2;
+		samp_res = 2;
 		break;
 	case SNDRV_PCM_FORMAT_S20_3LE:
-		sample_resolution = 3;
+		samp_res = 3;
 		break;
 	case SNDRV_PCM_FORMAT_S24_LE:
-		sample_resolution = 4;
+		samp_res = 4;
 		break;
 	case SNDRV_PCM_FORMAT_S32_LE:
-		sample_resolution = 6;
+		samp_res = 6;
 		break;
 	default:
 		pr_err("AC108 don't supported the sample resolution: %u\n", params_format(params));
@@ -937,10 +938,10 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	}
 
 
-	dev_dbg(dai->dev, "rate: %d , channels: %d , sample_resolution: %d",
+	dev_dbg(dai->dev, "rate: %d , channels: %d , samp_res: %d",
 			ac108_sample_rate[rate].real_val,
 			channels,
-			ac108_sample_resolution[sample_resolution].real_val);
+			ac108_samp_res[samp_res].real_val);
 
 	/**
 	 * 0x33: 
@@ -962,7 +963,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 */
 	if (ac108->i2s_mode != PCM_FORMAT) {
 		if (ac108->data_protocol) {
-			ac108_multi_chips_write(I2S_LRCK_CTRL2, ac108_sample_resolution[sample_resolution].real_val - 1, ac108);
+			ac108_multi_chips_write(I2S_LRCK_CTRL2, ac108_samp_res[samp_res].real_val - 1, ac108);
 			/*encoding mode, the max LRCK period value < 32,so the 2-High bit is zero*/
 			ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac108);
 		} else {
@@ -975,7 +976,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 
 	} else {
 		/*TDM mode or normal mode*/
-		ac108_multi_chips_write(I2S_LRCK_CTRL2, ac108_sample_resolution[sample_resolution].real_val * channels - 1, ac108);
+		ac108_multi_chips_write(I2S_LRCK_CTRL2, ac108_samp_res[samp_res].real_val * channels - 1, ac108);
 		ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac108);
 	}
 
@@ -985,8 +986,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 * TODO: need a chat to explain this 
 	 */
 	ac108_multi_chips_update_bits(I2S_FMT_CTRL2, 0x07 << SAMPLE_RESOLUTION | 0x07 << SLOT_WIDTH_SEL,
-								  ac108_sample_resolution[sample_resolution].reg_val << SAMPLE_RESOLUTION
-								  | ac108_sample_resolution[sample_resolution].reg_val << SLOT_WIDTH_SEL, ac108);
+								  ac108_samp_res[samp_res].reg_val << SAMPLE_RESOLUTION
+								  | ac108_samp_res[samp_res].reg_val << SLOT_WIDTH_SEL, ac108);
 
 	/**
 	 * 0x60: 
@@ -999,7 +1000,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	/*
 	 * master mode only
 	 */
-	bclkdiv = ac108->mclk / (ac108_sample_rate[rate].real_val * channels * ac108_sample_resolution[sample_resolution].real_val);
+	bclkdiv = ac108->mclk / (ac108_sample_rate[rate].real_val * channels * ac108_samp_res[samp_res].real_val);
 	for (i = 0; i < ARRAY_SIZE(ac108_bclkdivs) - 1; i++) {
 		if (ac108_bclkdivs[i] >= bclkdiv) {
 			break;
@@ -1058,7 +1059,6 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 
 	unsigned char tx_offset, lrck_polarity, brck_polarity;
 	struct ac108_priv *ac108 = dev_get_drvdata(dai->dev);
-	int i;
 
 	dev_dbg(dai->dev, "%s\n", __FUNCTION__);
 
@@ -1070,11 +1070,9 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		 * 0x30:chip is master mode ,BCLK & LRCK output
 		 */
 		ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
-							0x02 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac108);
+							0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac108);
 		/* multi_chips: only one chip set as Master, and the others also need to set as Slave */
-		for (i = 1; i < ac108->codec_index; i++) {
-			ac108_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x0 << LRCK_IOEN, ac108->i2c[i]);
-		}
+		ac108_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x2 << LRCK_IOEN, ac108->i2c[_MASTER_INDEX]);
 		break;
 		#endif
 	case SND_SOC_DAIFMT_CBS_CFS:    /*AC108 Slave*/
@@ -1202,9 +1200,9 @@ static void ac108_work_start_clock(struct work_struct *work) {
 	u8 r;
 
 	/* enable lrck clock */
-	ac108_read(I2S_CTRL, &r, ac108->i2c[0]);
+	ac108_read(I2S_CTRL, &r, ac108->i2c[_MASTER_INDEX]);
 	if (r & (0x02 << LRCK_IOEN)) {
-		ac108_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x03 << LRCK_IOEN, ac108->i2c[0]);
+		ac108_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x03 << LRCK_IOEN, ac108->i2c[_MASTER_INDEX]);
 	}
 
 	/* enable global clock */
@@ -1360,16 +1358,14 @@ static  struct snd_soc_dai_driver *ac108_dai[] = {
 };
 
 static int ac108_add_widgets(struct snd_soc_codec *codec) {
-	// struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 
 	snd_soc_add_codec_controls(codec, ac108_snd_controls,
 							   ARRAY_SIZE(ac108_snd_controls));
 
-	#if 0
 	snd_soc_dapm_new_controls(dapm, ac108_dapm_widgets,
 							  ARRAY_SIZE(ac108_dapm_widgets));
 	snd_soc_dapm_add_routes(dapm, ac108_dapm_routes, ARRAY_SIZE(ac108_dapm_routes));
-	#endif
 
 	return 0;
 }
@@ -1382,10 +1378,11 @@ static int ac108_probe(struct snd_soc_codec *codec) {
 }
 
 
-static int ac108_set_bias_level(struct snd_soc_codec *codec,
-								enum snd_soc_bias_level level) {
+static int ac108_set_bias_level(struct snd_soc_codec *codec, enum snd_soc_bias_level level) {
 	struct ac108_priv *ac108 = snd_soc_codec_get_drvdata(codec);
+
 	dev_dbg(codec->dev, "AC108 level:%d\n", level);
+
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		ac108_multi_chips_update_bits(ANA_ADC1_CTRL1, 0x01 << ADC1_MICBIAS_EN,  0x01 << ADC1_MICBIAS_EN, ac108);
@@ -1393,12 +1390,12 @@ static int ac108_set_bias_level(struct snd_soc_codec *codec,
 		ac108_multi_chips_update_bits(ANA_ADC3_CTRL1, 0x01 << ADC3_MICBIAS_EN,  0x01 << ADC3_MICBIAS_EN, ac108);
 		ac108_multi_chips_update_bits(ANA_ADC4_CTRL1, 0x01 << ADC4_MICBIAS_EN,  0x01 << ADC4_MICBIAS_EN, ac108);
 		break;
+
 	case SND_SOC_BIAS_PREPARE:
 		/* Put the MICBIASes into regulating mode */
 		break;
 
 	case SND_SOC_BIAS_STANDBY:
-
 		break;
 
 	case SND_SOC_BIAS_OFF:
