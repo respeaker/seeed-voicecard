@@ -95,7 +95,7 @@ pi@raspberrypi:~ $
 ```
 If you want to change the alsa settings, You can use `sudo alsactl --file=/etc/voicecard/ac108_asound.state  store` to save it.
 
-Test:
+#### Test:
 ```bash
 #for ReSpeaker 2-mic
 #It will capture sound an playback on hw:1
