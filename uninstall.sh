@@ -12,81 +12,29 @@ if [ "x${is_Raspberry}" != "xRaspberry" ] ; then
 fi
 
 uname_r=$(uname -r)
-card=$1
-if [ x${card} = "x" ] ; then
-	echo "Usage: ./uninstall 2mic|4mic"
-	exit 1
-fi
 
-if [ x${card} = "x2mic" ] ; then
-	echo "delete dtoverlay=seeed-2mic-voicecard in /boot/config.txt"
-	sed -i "s/dtoverlay=seeed-2mic-voicecard//g" /boot/config.txt
-	if [ -f /boot/overlays/seeed-2mic-voicecard.dtbo ] ; then
-		echo "remove seeed-2mic-voicecard.dtbo in /boot/overlays"
-		rm /boot/overlays/seeed-2mic-voicecard.dtbo
-	fi 
 
-	if [ -f /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-wm8960.ko ] ; then
-		echo "remove snd-soc-wm8960.ko"
-		rm  /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-wm8960.ko
-	fi
+echo "remove dtbos"
+rm  /boot/overlays/seeed-2mic-voicecard.dtbo || true
+rm  /boot/overlays/seeed-4mic-voicecard.dtbo || true
+rm  /boot/overlays/seeed-6mic-voicecard.dtbo || true
 
-	if [ -d /var/lib/dkms/seeed-voicecard ] ; then
-		echo "remove seeed-voicecard dkms"
-		rm  -rf  /var/lib/dkms/seeed-voicecard
-	fi
+echo "remove alsa configs"
+rm -rf  /etc/voicecard/ || true
 
-	echo "delete snd-soc-wm8960 in /etc/modules"
-	sed -i "s/snd-soc-wm8960//g" /etc/modules
+echo "disabled seeed-voicecard.service "
+systemctl disable seeed-voicecard.service 
 
-	if [ -f /var/lib/alsa/asound.state ] ; then 
-		echo  "remove wm8960_asound.state"
-		rm /var/lib/alsa/asound.state
-	fi
+echo "remove seeed-vocecard"
+rm  /usr/bin/seeed-voicecard || true
+rm  /lib/systemd/system/seeed-voicecard.service || true
 
-	if [ -f /etc/asound.conf ] ; then
-        echo  "remove asound_2mic.conf"
-        rm /etc/asound.conf
-	fi	
-fi
+echo "remove dkms"
+rm  -rf /var/lib/dkms/seeed-voicecard || true
 
-if [ x${card} = "x4mic" ] ; then
-        echo "delete dtoverlay=seeed-4mic-voicecard in /boot/config.txt"
-        sed -i "s/dtoverlay=seeed-4mic-voicecard//g" /boot/config.txt
-	
-	if [ -f /boot/overlays/seeed-4mic-voicecard.dtbo ] ; then
-        echo "remove seeed-4mic-voicecard.dtbo in /boot/overlays"
-        rm /boot/overlays/seeed-4mic-voicecard.dtbo
-	fi
-
-	if [ -f /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-ac108.ko ] ; then
-        echo "remove snd-soc-ac108.ko"
-        rm  /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-ac108.ko
-	fi
-
-	if [ -d /var/lib/dkms/seeed-voicecard ] ; then
-        echo "remove seeed-voicecard dkms"
-        rm  -rf  /var/lib/dkms/seeed-voicecard
-	fi 
-
-        echo "delete snd-soc-ac108 in /etc/modules"
-        sed -i "s/snd-soc-ac108//g" /etc/modules                
-
-	if [ -f /var/lib/alsa/asound.state ] ; then
-        echo  "remove ac108_asound.state"
-        rm /var/lib/alsa/asound.state
-	fi
-
-	if [ -f /etc/asound.conf ] ; then
-        echo  "remove asound_4mic.conf"
-        rm /etc/asound.conf
-	fi
-
-	if [ -f /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so ] ; then
-		echo "remove libasound_module_pcm_ac108.so in /usr/lib/arm-linux-gnueabihf/alsa-lib/ "
-		rm  /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
-	fi 
-fi
+echo "remove kernel modules"
+rm  /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-wm8960.ko || true
+rm  /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-ac108.ko || true
 
 echo "------------------------------------------------------"
 echo "Please reboot your raspberry pi to apply all settings"
