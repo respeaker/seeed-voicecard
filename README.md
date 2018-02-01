@@ -112,17 +112,7 @@ If you want to upgrade the driver , you need uninstall the driver first.
 
 ```
 pi@raspberrypi:~/seeed-voicecard $ sudo ./uninstall.sh 
-delete dtoverlay=seeed-4mic-voicecard in /boot/config.txt
-delete snd-soc-ac108 in /etc/modules
-------------------------------------------------------
-Please reboot your raspberry pi to apply all settings
-Thank you!
-------------------------------------------------------
-pi@raspberrypi:~/seeed-voicecard $ sudo ./uninstall.sh 2mic
-delete dtoverlay=seeed-2mic-voicecard in /boot/config.txt
-remove seeed-2mic-voicecard.dtbo in /boot/overlays
-remove snd-soc-wm8960.ko
-delete snd-soc-wm8960 in /etc/modules
+...
 ------------------------------------------------------
 Please reboot your raspberry pi to apply all settings
 Thank you!
