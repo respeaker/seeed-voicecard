@@ -195,7 +195,13 @@ err:
 	return ret;
 }
 
-extern int ac10x_start_clock(void);
+static int (* _start_clock)(void);
+
+int register_start_clock(int (*start_clock)(void)) {
+	_start_clock = start_clock;
+	return 0;
+}
+EXPORT_SYMBOL(register_start_clock);
 
 static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd)
 {
@@ -208,7 +214,7 @@ static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		ac10x_start_clock();
+		if (_start_clock) _start_clock();
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -514,14 +520,12 @@ static int asoc_simple_card_probe(struct platform_device *pdev)
 	priv->snd_card.num_links	= num;
 
 	if (np && of_device_is_available(np)) {
-
 		ret = asoc_simple_card_parse_of(np, priv);
 		if (ret < 0) {
 			if (ret != -EPROBE_DEFER)
 				dev_err(dev, "parse error %d\n", ret);
 			goto err;
 		}
-
 	} else {
 		struct asoc_simple_card_info *cinfo;
 

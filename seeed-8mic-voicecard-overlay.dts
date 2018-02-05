@@ -58,6 +58,7 @@
 				reg = <0x35>;
 				#sound-dai-cells = <0>;
 				data-protocol = <0>;
+				tdm-chips-count = <2>;
 			};
 
 			ac108_b: ac108@3b{
@@ -65,6 +66,7 @@
 				reg = <0x3b>;
 				#sound-dai-cells = <0>;
 				data-protocol = <0>;
+				tdm-chips-count = <2>;
 			};
 		};
 	};
@@ -81,6 +83,7 @@
 
 			simple-audio-card,dai-link@0 {
 				format = "dsp_a";
+				/* below is dummy master, real clock master is ac101 */
 				bitclock-master = <&codec0_dai>;
 				frame-master = <&codec0_dai>;
 
@@ -93,7 +96,7 @@
 				};
 
 				codec0_dai: codec {
-					sound-dai = <&ac108_b>;
+					sound-dai = <&ac108_a>;
 					clocks =  <&ac10x_mclk>;
 					system-clock-id = <1>;
 				};

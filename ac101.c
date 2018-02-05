@@ -19,6 +19,7 @@
  * the License, or (at your option) any later version.
  *
  */
+#undef AC10X_DEBG
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -64,7 +65,9 @@ static int adc_digital_val = 0;
 static bool agc_used 		= false;
 static bool drc_used 		= false;
 
-#define ac10x_RATES  (SNDRV_PCM_RATE_8000_96000|SNDRV_PCM_RATE_KNOT)
+#define ac10x_RATES  (SNDRV_PCM_RATE_8000_96000 &		\
+		~(SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_64000 | \
+		SNDRV_PCM_RATE_88200))
 #define ac10x_FORMATS ( /*SNDRV_PCM_FMTBIT_S8  |	\
 			SNDRV_PCM_FMTBIT_S16_LE | \
 			 SNDRV_PCM_FMTBIT_S18_3LE |	\
@@ -103,7 +106,6 @@ struct ac10x_priv {
 
 	struct work_struct codec_resume;
 	struct delayed_work dlywork;
-	int trgr_cnt;
 
 	struct gpio_desc* gpiod_spk_amp_switch;
 };
@@ -1192,15 +1194,15 @@ static const struct pll_div codec_pll_div[] = {
 };
 
 static const struct aif1_fs codec_aif1_fs[] = {
-	{44100, 2, 7, _SERIES_22_579K},
-	{48000, 2, 8},
 	{8000, 12, 0},
 	{11025, 8, 1, _SERIES_22_579K},
 	{12000, 8, 2},
 	{16000, 6, 3},
 	{22050, 4, 4, _SERIES_22_579K},
 	{24000, 4, 5},
-	/* {32000, 3, 6}, not support */
+	/* {32000, 3, 6}, dividing by 3 is not support */
+	{44100, 2, 7, _SERIES_22_579K},
+	{48000, 2, 8},
 	{96000, 1, 9},
 };
 
@@ -1302,8 +1304,6 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 	unsigned channels;
 
 	AC10X_DBG("%s() L%d +++\n", __func__, __LINE__);
-
-	ac10x->trgr_cnt = 0;
 
 	/* get channels count & slot size */
 	channels = params_channels(params);
@@ -1585,17 +1585,16 @@ static void __ac10x_work_start_clock(struct work_struct *work) {
 	return;
 }
 
-int ac10x_start_clock(void) {
-	ac10x_aif1clk(static_ac10x->codec, SND_SOC_DAPM_PRE_PMU);
+extern int register_start_clock(int (*start_clock)(void));
+
+static int ac10x_start_clock(void) {
+	schedule_delayed_work(&static_ac10x->dlywork, msecs_to_jiffies(30));
 	return 0;
 }
-EXPORT_SYMBOL(ac10x_start_clock);
 
 static int ac10x_trigger(struct snd_pcm_substream *substream, int cmd,
 			     struct snd_soc_dai *dai)
 {
-	struct snd_soc_codec *codec = dai->codec;
-	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
 
 	AC10X_DBG("%s() stream=%d  cmd=%d\n",
@@ -1605,13 +1604,6 @@ static int ac10x_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		if (ac10x->trgr_cnt++ > 0) {
-			break;
-		}
-
-		/* delayed clock starting */
-		schedule_delayed_work(&ac10x->dlywork, msecs_to_jiffies(30));
-		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
@@ -1620,9 +1612,7 @@ static int ac10x_trigger(struct snd_pcm_substream *substream, int cmd,
 	default:
 		ret = -EINVAL;
 	}
-
-
-	return 0;
+	return ret;
 }
 
 static const struct snd_soc_dai_ops ac10x_aif1_dai_ops = {
@@ -1702,7 +1692,7 @@ static ssize_t ac10x_debug_store(struct device *dev,
 	struct ac10x_priv *ac10x = dev_get_drvdata(dev);
 	val = simple_strtol(buf, NULL, 16);
 	flag = (val >> 24) & 0xF;
-	if(flag) {//write
+	if(flag) {
 		reg = (val >> 16) & 0xFF;
 		value_w =  val & 0xFFFF;
 		snd_soc_write(ac10x->codec, reg, value_w);
@@ -1780,6 +1770,8 @@ static int ac10x_codec_probe(struct snd_soc_codec *codec)
 	mutex_init(&ac10x->dac_mutex);
 	mutex_init(&ac10x->adc_mutex);
 	mutex_init(&ac10x->aifclk_mutex);
+
+	register_start_clock(ac10x_start_clock);
 
 	ac10x->num_supplies = ARRAY_SIZE(ac10x_supplies);
 	ac10x->supplies = devm_kzalloc(ac10x->codec->dev,

@@ -8,7 +8,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#define DEBUG
+#undef DEBUG
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -27,7 +27,7 @@
 #include "ac108.h"
 
 #define _USE_CAPTURE	0
-#define _MASTER_INDEX	1
+#define _MASTER_INDEX	0
 
 /**
  * TODO: 
@@ -56,6 +56,7 @@ struct ac108_priv {
 	unsigned char data_protocol;
 	struct delayed_work dlywork;
 	int trgr_cnt;
+	int tdm_chips_cnt;
 };
 static struct ac108_priv *ac108;
 
@@ -165,8 +166,13 @@ static const struct pll_div ac108_pll_div_list[] = {
 
 /* AC108 definition */
 #define AC108_CHANNELS_MAX		16		/* range[1, 16] */
-#define AC108_RATES 			(SNDRV_PCM_RATE_8000_96000 | SNDRV_PCM_RATE_KNOT)
-#define AC108_FORMATS			(/* SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | SNDRV_PCM_FMTBIT_S24_LE |*/ SNDRV_PCM_FMTBIT_S32_LE)
+#define AC108_RATES			(SNDRV_PCM_RATE_8000_96000 &		\
+					~(SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_64000 | \
+					SNDRV_PCM_RATE_88200))
+#define AC108_FORMATS			(/*SNDRV_PCM_FMTBIT_S16_LE | \
+					SNDRV_PCM_FMTBIT_S20_3LE |   \
+					SNDRV_PCM_FMTBIT_S24_LE |*/  \
+					SNDRV_PCM_FMTBIT_S32_LE)
 
 static const DECLARE_TLV_DB_SCALE(tlv_adc_pga_gain, 0, 100, 0);
 static const DECLARE_TLV_DB_SCALE(tlv_ch_digital_vol, -11925,75,0);
@@ -463,6 +469,7 @@ static int snd_ac108_put_volsw(struct snd_kcontrol *kcontrol,
 	.private_value = SOC_SINGLE_VALUE(reg, shift, max, invert, chip) }
 
 static const struct snd_kcontrol_new ac108_snd_controls[] = {
+	/* ### chip 0 ### */
 	/*0x70: ADC1 Digital Channel Volume Control Register*/
 	SOC_AC108_SINGLE_TLV("CH1 digital volume", ADC1_DVOL_CTRL, 0, 0xff, 0, 0, tlv_ch_digital_vol),
 	/*0x71: ADC2 Digital Channel Volume Control Register*/
@@ -472,6 +479,16 @@ static const struct snd_kcontrol_new ac108_snd_controls[] = {
 	/*0x73: ADC4 Digital Channel Volume Control Register*/
 	SOC_AC108_SINGLE_TLV("CH4 digital volume", ADC4_DVOL_CTRL, 0, 0xff, 0, 0, tlv_ch_digital_vol),
 
+	/*0x90: Analog PGA1 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC1 PGA gain", ANA_PGA1_CTRL, ADC1_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+	/*0x91: Analog PGA2 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC2 PGA gain", ANA_PGA2_CTRL, ADC2_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+	/*0x92: Analog PGA3 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC3 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+	/*0x93: Analog PGA4 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC4 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+
+	/* ### chip 1 ### */
 	/*0x70: ADC1 Digital Channel Volume Control Register*/
 	SOC_AC108_SINGLE_TLV("CH5 digital volume", ADC1_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
 	/*0x71: ADC2 Digital Channel Volume Control Register*/
@@ -481,14 +498,6 @@ static const struct snd_kcontrol_new ac108_snd_controls[] = {
 	/*0x73: ADC4 Digital Channel Volume Control Register*/
 	SOC_AC108_SINGLE_TLV("CH8 digital volume", ADC4_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
 
-	/*0x90: Analog PGA1 Control Register*/
-	SOC_AC108_SINGLE_TLV("ADC1 PGA gain", ANA_PGA1_CTRL, ADC1_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
-	/*0x91: Analog PGA2 Control Register*/
-	SOC_AC108_SINGLE_TLV("ADC2 PGA gain", ANA_PGA2_CTRL, ADC2_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
-	/*0x92: Analog PGA3 Control Register*/
-	SOC_AC108_SINGLE_TLV("ADC3 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
-	/*0x93: Analog PGA4 Control Register*/
-	SOC_AC108_SINGLE_TLV("ADC4 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
 	/*0x90: Analog PGA1 Control Register*/
 	SOC_AC108_SINGLE_TLV("ADC5 PGA gain", ANA_PGA1_CTRL, ADC1_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
 	/*0x91: Analog PGA2 Control Register*/
@@ -631,8 +640,6 @@ static const struct snd_soc_dapm_widget ac108_dapm_widgets[] = {
 	/*0x62:Digital MIC Enable Register*/
 	SND_SOC_DAPM_MICBIAS("DMIC1 enable", DMIC_EN, 0, 0),
 	SND_SOC_DAPM_MICBIAS("DMIC2 enable", DMIC_EN, 1, 0),
-
-	/**/
 };
 
 static const struct snd_soc_dapm_route ac108_dapm_routes[] = {
@@ -860,20 +867,61 @@ static int ac108_configure_clocking(struct ac108_priv *ac108, unsigned int rate)
 static int ac108_multi_chips_slots(struct ac108_priv *ac, int slots) {
 	int i;
 
-	/* codec0 enable slots 1,2,3,4
-	 * codec1 enable slots 5,6,7,8 etc
+	/*
+	 * codec0 enable slots 2,3,0,1 when 1 codec
+	 *
+	 * codec0 enable slots 6,7,0,1 when 2 codec
+	 * codec1 enable slots 2,3,4,5
+	 *
+	 * ...
 	 */
 	for (i = 0; i < ac->codec_index; i++) {
+		const unsigned vec_mask[] = {
+			0x3 << 6 | 0x3,	// slots 6,7,0,1
+			0xF << 2,	// slots 2,3,4,5
+			0,
+			0,
+		};
+		const unsigned vec_maps[] = {
+			/*
+			 * chip 0,
+			 * mic 0 sample -> slot 6
+			 * mic 1 sample -> slot 7
+			 * mic 2 sample -> slot 0
+			 * mic 3 sample -> slot 1
+			 */
+			0x0 << 12 | 0x1 << 14 | 0x2 << 0 | 0x3 << 2,
+			/*
+			 * chip 1,
+			 * mic 0 sample -> slot 2
+			 * mic 1 sample -> slot 3
+			 * mic 2 sample -> slot 4
+			 * mic 3 sample -> slot 5
+			 */
+			0x0 << 4  | 0x1 << 6  | 0x2 << 8 | 0x3 << 10,
+			0,
+			0,
+		};
 		unsigned vec;
 
 		/* 0x38-0x3A I2S_TX1_CTRLx */
-		vec = 0xFUL << (i << 2);
+		/* rotate map, due to channels rotated by CPU_DAI */
+		if (ac->codec_index == 1) {
+			vec = 0xFUL;
+		} else {
+			vec = vec_mask[i];
+		}
 		ac108_write(I2S_TX1_CTRL1, slots - 1, ac->i2c[i]);
 		ac108_write(I2S_TX1_CTRL2, (vec >> 0) & 0xFF, ac->i2c[i]);
 		ac108_write(I2S_TX1_CTRL3, (vec >> 8) & 0xFF, ac->i2c[i]);
 
 		/* 0x3C-0x3F I2S_TX1_CHMP_CTRLx */
-		vec = (0x0 << 0 | 0x1 << 2 | 0x2 << 4 | 0x3 << 6) << (i << 3);
+		if (ac->codec_index == 1) {
+			vec = (0x2 << 0 | 0x3 << 2 | 0x0 << 4 | 0x1 << 6);
+		} else if (ac->codec_index == 2) {
+			vec = vec_maps[i];
+		}
+
 		ac108_write(I2S_TX1_CHMP_CTRL1, (vec >>  0) & 0xFF, ac->i2c[i]);
 		ac108_write(I2S_TX1_CHMP_CTRL2, (vec >>  8) & 0xFF, ac->i2c[i]);
 		ac108_write(I2S_TX1_CHMP_CTRL3, (vec >> 16) & 0xFF, ac->i2c[i]);
@@ -1064,17 +1112,20 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:    /*AC108 Master*/
-		dev_dbg(dai->dev, "AC108 set to work as Master\n");
-		#if 0
-		/**
-		 * 0x30:chip is master mode ,BCLK & LRCK output
-		 */
-		ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
+		if (ac108->tdm_chips_cnt < 2) {
+			dev_dbg(dai->dev, "AC108 set to work as Master\n");
+			/**
+			 * 0x30:chip is master mode ,BCLK & LRCK output
+			 */
+			ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
 							0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac108);
-		/* multi_chips: only one chip set as Master, and the others also need to set as Slave */
-		ac108_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x2 << LRCK_IOEN, ac108->i2c[_MASTER_INDEX]);
-		break;
-		#endif
+			/* multi_chips: only one chip set as Master, and the others also need to set as Slave */
+			ac108_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x2 << LRCK_IOEN, ac108->i2c[_MASTER_INDEX]);
+			break;
+		} else {
+			/* TODO: Both cpu_dai and codec_dai(AC108) be set as slave in DTS */
+			dev_dbg(dai->dev, "used as slave when AC101 is master\n");
+		}
 	case SND_SOC_DAIFMT_CBS_CFS:    /*AC108 Slave*/
 		dev_dbg(dai->dev, "AC108 set to work as Slave\n");
 		/**
@@ -1148,6 +1199,14 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		pr_err("AC108 config BCLK/LRCLK polarity error:%u\n\n", (fmt & SND_SOC_DAIFMT_INV_MASK) >> 8);
 		return -EINVAL;
 	}
+
+	#if 0
+	/* revert LRCK polarity if it's single chip (master mode) */
+	if (ac108->tdm_chips_cnt < 2) {
+		lrck_polarity = (lrck_polarity == LRCK_LEFT_HIGH_RIGHT_LOW)? 
+				LRCK_LEFT_LOW_RIGHT_HIGH: LRCK_LEFT_HIGH_RIGHT_LOW;
+	}
+	#endif
 	ac108_configure_power(ac108);
 
 	/**
@@ -1358,10 +1417,15 @@ static  struct snd_soc_dai_driver *ac108_dai[] = {
 };
 
 static int ac108_add_widgets(struct snd_soc_codec *codec) {
+	struct ac108_priv *ac108 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+	int ctrl_cnt = ARRAY_SIZE(ac108_snd_controls);
 
-	snd_soc_add_codec_controls(codec, ac108_snd_controls,
-							   ARRAY_SIZE(ac108_snd_controls));
+	/* only register controls correspond to exist chips */
+	if (ac108->tdm_chips_cnt < 2) {
+		ctrl_cnt /= 2;
+	}
+	snd_soc_add_codec_controls(codec, ac108_snd_controls, ctrl_cnt);
 
 	snd_soc_dapm_new_controls(dapm, ac108_dapm_widgets,
 							  ARRAY_SIZE(ac108_dapm_widgets));
@@ -1508,19 +1572,25 @@ static int ac108_i2c_probe(struct i2c_client *i2c,
 	}
 	ac108->data_protocol = val;
 
-	/*Writing this register 0x12 resets all register to their default state.*/
+	ret = of_property_read_u32(np, "tdm-chips-count", &val);
+	if (ret) {
+		val = 1;
+	}
+	ac108->tdm_chips_cnt = val;
+
+	/* Writing this register with 0x12 will resets all register to their default state. */
 	ac108_write(CHIP_RST, CHIP_RST_VAL, i2c);
 	msleep(1);
 
-	pr_err(" i2c_id number :%d\n", (int)(i2c_id->driver_data));
-	pr_err(" ac108  codec_index :%d\n", ac108->codec_index);
-	pr_err(" ac108  I2S data protocol type :%d\n", ac108->data_protocol);
+	pr_err(" i2c_id number      : %d\n", (int)(i2c_id->driver_data));
+	pr_err(" ac108 codec_index  : %d\n", ac108->codec_index);
+	pr_err(" ac108 data protocol: %d\n", ac108->data_protocol);
 
 	ac108->i2c[i2c_id->driver_data] = i2c;
 	ac108->codec_index++;
 
-	/* we need i2c[0] && i2c[1], codec bind with i2c[_MASTER_INDEX] */
-	if (ac108->codec_index == 2) {
+	/* when all i2c prepared, we bind codec to i2c[_MASTER_INDEX] */
+	if (ac108->codec_index == ac108->tdm_chips_cnt) {
 		ret = snd_soc_register_codec(&ac108->i2c[_MASTER_INDEX]->dev, &ac108_soc_codec_driver,
 						ac108_dai[_MASTER_INDEX], 1);
 		if (ret < 0) {

@@ -424,7 +424,6 @@ struct spk_gpio {
 	u32 gpio;
 	bool used;
 };
-#define AC10X_DEBG
 #ifdef AC10X_DEBG
     #define AC10X_DBG(format,args...)  printk("[AC101] "format,##args)
 #else
