@@ -823,7 +823,8 @@ static int ac108_configure_clocking(struct ac108_priv *ac108, unsigned int rate)
 		for (i = 0; i < ARRAY_SIZE(ac108_pll_div_list); i++) {
 			if (ac108_pll_div_list[i].freq_in == ac108->sysclk && ac108_pll_div_list[i].freq_out % rate == 0) {
 				ac108_pll_div = ac108_pll_div_list[i];
-				pr_err("AC108 PLL freq_in match:%u, freq_out:%u\n\n", ac108_pll_div.freq_in, ac108_pll_div.freq_out);
+				dev_dbg(&ac108->i2c[_MASTER_INDEX]->dev, "AC108 PLL freq_in match:%u, freq_out:%u\n\n",
+								ac108_pll_div.freq_in, ac108_pll_div.freq_out);
 				break;
 			}
 		}
@@ -973,7 +974,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 		return -EINVAL;
 	}
 
-	dev_dbg(dai->dev, "rate:%d \n", params_rate(params));
+	dev_dbg(dai->dev, "params rate: %d\n", params_rate(params));
 
 	for (i = 0; i < ARRAY_SIZE(ac108_sample_rate); i++) {
 		if (ac108_sample_rate[i].real_val == params_rate(params) / (ac108->data_protocol + 1UL)) {

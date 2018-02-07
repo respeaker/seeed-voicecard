@@ -86,6 +86,8 @@
 				/* below is dummy master, real clock master is ac101 */
 				bitclock-master = <&codec0_dai>;
 				frame-master = <&codec0_dai>;
+				/* bitclock-inversion; */
+				/* frame-inversion; */
 
 				cpu {
 					sound-dai = <&i2s>;
@@ -106,6 +108,8 @@
 				format = "dsp_a";
 				bitclock-master = <&codec1_dai>;
 				frame-master = <&codec1_dai>;
+				/* bitclock-inversion; */
+				/* frame-inversion; */
 
 				cpu {
 					sound-dai = <&i2s>;

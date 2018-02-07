@@ -1319,7 +1319,6 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 		break;
 	}
 
-
 	/* set LRCK/BCLK ratio */
 	aif1_lrck_div = aif1_slot_size * channels;
 	for (i = 0; i < ARRAY_SIZE(codec_aif1_lrck); i++) {
@@ -1332,7 +1331,7 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 	/* set PLL output freq */
 	freq_out = 24576000;
 	for (i = 0; i < ARRAY_SIZE(codec_aif1_fs); i++) {
-		if (codec_aif1_fs[i].samp_rate ==  params_rate(params)) {
+		if (codec_aif1_fs[i].samp_rate == params_rate(params)) {
 			if (codec_dai->capture_active && dmic_used && codec_aif1_fs[i].samp_rate == 44100) {
 				snd_soc_update_bits(codec, AIF_SR_CTRL, (0xf<<AIF1_FS), (0x4<<AIF1_FS));
 			} else {
@@ -1371,6 +1370,9 @@ static int ac10x_hw_params(struct snd_pcm_substream *substream,
 		}
 		snd_soc_update_bits(codec, AIF_CLK_CTRL, (0xf<<AIF1_BCLK_DIV), i<<AIF1_BCLK_DIV);
 	}
+
+	AC10X_DBG("rate: %d , channels: %d , samp_res: %d",
+		params_rate(params), channels, aif1_slot_size);
 
 	AC10X_DBG("%s() L%d ---\n", __func__, __LINE__);
 	return 0;
@@ -1632,7 +1634,7 @@ static struct snd_soc_dai_driver ac10x_dai[] = {
 		.name = "ac10x-aif1",
 		.id = AIF1_CLK,
 		.playback = {
-			.stream_name = "AIF1 Playback",
+			.stream_name = "Playback",
 			.channels_min = 1,
 			.channels_max = 8,
 			.rates = ac10x_RATES,
@@ -1640,7 +1642,7 @@ static struct snd_soc_dai_driver ac10x_dai[] = {
 		},
 		#if 0
 		.capture = {
-			.stream_name = "AIF1 Capture",
+			.stream_name = "Capture",
 			.channels_min = 1,
 			.channels_max = 8,
 			.rates = ac10x_RATES,

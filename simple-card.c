@@ -22,6 +22,13 @@
 #include <sound/soc-dai.h>
 #include <sound/soc.h>
 
+/*
+ * single codec:
+ *	0 - allow multi codec
+ *	1 - yes
+ */
+#define _SINGLE_CODEC		1
+
 struct asoc_simple_jack {
 	struct snd_soc_jack jack;
 	struct snd_soc_jack_pin pin;
@@ -205,9 +212,10 @@ EXPORT_SYMBOL(register_start_clock);
 
 static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	int ret = 0;
 
-	printk("%s() stream=%d  cmd=%d\n",
+	dev_dbg(rtd->card->dev, "%s() stream=%d  cmd=%d\n",
 		__FUNCTION__, substream->stream, cmd);
 
 	switch (cmd) {
@@ -311,9 +319,18 @@ static int asoc_simple_card_dai_link_of(struct device_node *node,
 	if (ret < 0)
 		goto dai_link_of_err;
 
+	#if _SINGLE_CODEC
 	ret = asoc_simple_card_parse_codec(codec, dai_link, DAI, CELL);
 	if (ret < 0)
 		goto dai_link_of_err;
+	#else
+	ret = snd_soc_of_get_dai_link_codecs(dev, codec, dai_link);
+	if (ret < 0) {
+		dev_err(dev, "parse codec info error %d\n", ret);
+		goto dai_link_of_err;
+	}
+	dev_dbg(dev, "dai_link num_codecs = %d\n", dai_link->num_codecs);
+	#endif
 
 	ret = asoc_simple_card_parse_platform(plat, dai_link, DAI, CELL);
 	if (ret < 0)
@@ -345,14 +362,21 @@ static int asoc_simple_card_dai_link_of(struct device_node *node,
 	if (ret < 0)
 		goto dai_link_of_err;
 
+	#if _SINGLE_CODEC
 	ret = asoc_simple_card_canonicalize_dailink(dai_link);
 	if (ret < 0)
 		goto dai_link_of_err;
+	#endif
 
 	ret = asoc_simple_card_set_dailink_name(dev, dai_link,
 						"%s-%s",
 						dai_link->cpu_dai_name,
-						dai_link->codec_dai_name);
+						#if _SINGLE_CODEC
+						dai_link->codec_dai_name
+						#else
+						dai_link->codecs[0].dai_name
+						#endif
+	);
 	if (ret < 0)
 		goto dai_link_of_err;
 
@@ -365,7 +389,11 @@ static int asoc_simple_card_dai_link_of(struct device_node *node,
 		dai_link->cpu_dai_name,
 		dai_props->cpu_dai.sysclk);
 	dev_dbg(dev, "\tcodec : %s / %d\n",
+		#if _SINGLE_CODEC
 		dai_link->codec_dai_name,
+		#else
+		dai_link->codecs[0].dai_name,
+		#endif
 		dai_props->codec_dai.sysclk);
 
 	asoc_simple_card_canonicalize_cpu(dai_link, single_cpu);
