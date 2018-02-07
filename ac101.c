@@ -22,15 +22,12 @@
 #undef AC10X_DEBG
 #include <linux/module.h>
 #include <linux/init.h>
-#include <linux/slab.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/initval.h>
 #include <sound/tlv.h>
-#include <linux/io.h>
-#include <linux/regulator/consumer.h>
 #include <linux/i2c.h>
 #include <linux/irq.h>
 #include <linux/workqueue.h>
@@ -40,50 +37,23 @@
 #include "ac101.h"
 
 /*Default initialize configuration*/
-#define SPEAKER_DOUBLE_USED 1
-#define D_SPEAKER_VOL	0x1b
-#define S_SPEAKER_VOL	0x19
-#define HEADPHONE_VOL	0x3b
-#define EARPIECE_VOL	0x1e
-#define MAINMIC_GAIN	0x4
-#define HDSETMIC_GAIN	0x4
-#define DMIC_USED	0
-#define ADC_DIGITAL_GAIN 0xb0b0
-#define AGC_USED	0
-#define DRC_USED	0
-#define _MORE_WIDGETS	0
-
-static bool speaker_double_used = false;
-static int double_speaker_val = 0;
-static int single_speaker_val = 0;
-static int headset_val = 0;
-static int earpiece_val = 0;
-static int mainmic_val = 0;
-static int headsetmic_val = 0;
-static bool dmic_used = false;
-static int adc_digital_val = 0;
-static bool agc_used 		= false;
-static bool drc_used 		= false;
+static bool speaker_double_used = 1;
+static int double_speaker_val	= 0x1B;
+static int single_speaker_val	= 0x19;
+static int headset_val		= 0x3B;
+static int mainmic_val		= 0x4;
+static int headsetmic_val	= 0x4;
+static bool dmic_used		= 0;
+static int adc_digital_val	= 0xb0b0;
+static bool drc_used		= false;
 
 #define ac10x_RATES  (SNDRV_PCM_RATE_8000_96000 &		\
 		~(SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_64000 | \
 		SNDRV_PCM_RATE_88200))
-#define ac10x_FORMATS ( /*SNDRV_PCM_FMTBIT_S8  |	\
-			SNDRV_PCM_FMTBIT_S16_LE | \
-			 SNDRV_PCM_FMTBIT_S18_3LE |	\
-			SNDRV_PCM_FMTBIT_S20_3LE |	\
+#define ac10x_FORMATS (/*SNDRV_PCM_FMTBIT_S16_LE | \
 			SNDRV_PCM_FMTBIT_S24_LE |*/	\
 			SNDRV_PCM_FMTBIT_S32_LE	| \
 			0)
-
-/*supply voltage*/
-static const char *ac10x_supplies[] = {
-	"vcc-avcc",
-	"vcc-io1",
-	"vcc-io2",
-	"vcc-ldoin",
-	"vcc-cpvdd",
-};
 
 /*struct for ac10x*/
 struct ac10x_priv {
@@ -95,99 +65,17 @@ struct ac10x_priv {
 	struct mutex dac_mutex;
 	struct mutex adc_mutex;
 	u8 dac_enable;
-	u8 adc_enable;
 	struct mutex aifclk_mutex;
 	u8 aif1_clken;
 	u8 aif2_clken;
 
-	/*voltage supply*/
-	int num_supplies;
-	struct regulator_bulk_data *supplies;
-
 	struct work_struct codec_resume;
 	struct delayed_work dlywork;
 
-	struct gpio_desc* gpiod_spk_amp_switch;
+	struct gpio_desc* gpiod_spk_amp_gate;
 };
 static struct ac10x_priv* static_ac10x;
 
-void get_configuration(void)
-{
-	speaker_double_used = SPEAKER_DOUBLE_USED;
-	double_speaker_val = D_SPEAKER_VOL;
-	single_speaker_val = S_SPEAKER_VOL;
-	headset_val = HEADPHONE_VOL;
-	earpiece_val = EARPIECE_VOL;
-	mainmic_val = MAINMIC_GAIN;
-	headsetmic_val = HDSETMIC_GAIN;
-	dmic_used = DMIC_USED;
-	if (dmic_used) {
-		adc_digital_val = ADC_DIGITAL_GAIN;
-	}
-	agc_used = AGC_USED;
-	drc_used = DRC_USED;
-
-}
-void agc_config(struct snd_soc_codec *codec)
-{
-	int reg_val;
-	reg_val = snd_soc_read(codec, 0xb4);
-	reg_val |= (0x3<<6);
-	snd_soc_write(codec, 0xb4, reg_val);
-
-	reg_val = snd_soc_read(codec, 0x84);
-	reg_val &= ~(0x3f<<8);
-	reg_val |= (0x31<<8);
-	snd_soc_write(codec, 0x84, reg_val);
-
-	reg_val = snd_soc_read(codec, 0x84);
-	reg_val &= ~(0xff<<0);
-	reg_val |= (0x28<<0);
-	snd_soc_write(codec, 0x84, reg_val);
-
-	reg_val = snd_soc_read(codec, 0x85);
-	reg_val &= ~(0x3f<<8);
-	reg_val |= (0x31<<8);
-	snd_soc_write(codec, 0x85, reg_val);
-
-	reg_val = snd_soc_read(codec, 0x85);
-	reg_val &= ~(0xff<<0);
-	reg_val |= (0x28<<0);
-	snd_soc_write(codec, 0x85, reg_val);
-
-	reg_val = snd_soc_read(codec, 0x8a);
-	reg_val &= ~(0x7fff<<0);
-	reg_val |= (0x24<<0);
-	snd_soc_write(codec, 0x8a, reg_val);
-
-	reg_val = snd_soc_read(codec, 0x8b);
-	reg_val &= ~(0x7fff<<0);
-	reg_val |= (0x2<<0);
-	snd_soc_write(codec, 0x8b, reg_val);
-
-	reg_val = snd_soc_read(codec, 0x8c);
-	reg_val &= ~(0x7fff<<0);
-	reg_val |= (0x24<<0);
-	snd_soc_write(codec, 0x8c, reg_val);
-
-	reg_val = snd_soc_read(codec, 0x8d);
-	reg_val &= ~(0x7fff<<0);
-	reg_val |= (0x2<<0);
-	snd_soc_write(codec, 0x8d, reg_val);
-
-	reg_val = snd_soc_read(codec, 0x8e);
-	reg_val &= ~(0x1f<<8);
-	reg_val |= (0xf<<8);
-	reg_val &= ~(0x1f<<0);
-	reg_val |= (0xf<<0);
-	snd_soc_write(codec, 0x8e, reg_val);
-
-	reg_val = snd_soc_read(codec, 0x93);
-	reg_val &= ~(0x7ff<<0);
-	reg_val |= (0xfc<<0);
-	snd_soc_write(codec, 0x93, reg_val);
-	snd_soc_write(codec, 0x94, 0xabb3);
-}
 void drc_config(struct snd_soc_codec *codec)
 {
 	int reg_val;
@@ -234,51 +122,6 @@ void drc_config(struct snd_soc_codec *codec)
 	snd_soc_write(codec, 0x16, 0x9f9f);
 
 }
-void agc_enable(struct snd_soc_codec *codec,bool on)
-{
-	int reg_val;
-	if (on) {
-		reg_val = snd_soc_read(codec, MOD_CLK_ENA);
-		reg_val |= (0x1<<7);
-		snd_soc_write(codec, MOD_CLK_ENA, reg_val);
-		reg_val = snd_soc_read(codec, MOD_RST_CTRL);
-		reg_val |= (0x1<<7);
-		snd_soc_write(codec, MOD_RST_CTRL, reg_val);
-
-		reg_val = snd_soc_read(codec, 0x82);
-		reg_val &= ~(0xf<<0);
-		reg_val |= (0x6<<0);
-
-		reg_val &= ~(0x7<<12);
-		reg_val |= (0x7<<12);
-		snd_soc_write(codec, 0x82, reg_val);
-
-		reg_val = snd_soc_read(codec, 0x83);
-		reg_val &= ~(0xf<<0);
-		reg_val |= (0x6<<0);
-
-		reg_val &= ~(0x7<<12);
-		reg_val |= (0x7<<12);
-		snd_soc_write(codec, 0x83, reg_val);
-	} else {
-		reg_val = snd_soc_read(codec, MOD_CLK_ENA);
-		reg_val &= ~(0x1<<7);
-		snd_soc_write(codec, MOD_CLK_ENA, reg_val);
-		reg_val = snd_soc_read(codec, MOD_RST_CTRL);
-		reg_val &= ~(0x1<<7);
-		snd_soc_write(codec, MOD_RST_CTRL, reg_val);
-
-		reg_val = snd_soc_read(codec, 0x82);
-		reg_val &= ~(0xf<<0);
-		reg_val &= ~(0x7<<12);
-		snd_soc_write(codec, 0x82, reg_val);
-
-		reg_val = snd_soc_read(codec, 0x83);
-		reg_val &= ~(0xf<<0);
-		reg_val &= ~(0x7<<12);
-		snd_soc_write(codec, 0x83, reg_val);
-	}
-}
 void drc_enable(struct snd_soc_codec *codec,bool on)
 {
 	int reg_val;
@@ -316,14 +159,10 @@ void set_configuration(struct snd_soc_codec *codec)
 		snd_soc_update_bits(codec, SPKOUT_CTRL, (0x1f<<SPK_VOL), (single_speaker_val<<SPK_VOL));
 	}
 	snd_soc_update_bits(codec, HPOUT_CTRL, (0x3f<<HP_VOL), (headset_val<<HP_VOL));
-	//snd_soc_update_bits(codec, ESPKOUT_CTRL, (0x1f<<ESP_VOL), (earpiece_val<<ESP_VOL));
 	snd_soc_update_bits(codec, ADC_SRCBST_CTRL, (0x7<<ADC_MIC1G), (mainmic_val<<ADC_MIC1G));
 	snd_soc_update_bits(codec, ADC_SRCBST_CTRL, (0x7<<ADC_MIC2G), (headsetmic_val<<ADC_MIC2G));
 	if (dmic_used) {
 		snd_soc_write(codec, ADC_VOL_CTRL, adc_digital_val);
-	}
-	if (agc_used) {
-		agc_config(codec);
 	}
 	if (drc_used) {
 		drc_config(codec);
@@ -331,7 +170,6 @@ void set_configuration(struct snd_soc_codec *codec)
 	/*headphone calibration clock frequency select*/
 	snd_soc_update_bits(codec, SPKOUT_CTRL, (0x7<<HPCALICKS), (0x7<<HPCALICKS));
 
-#if ! _MORE_WIDGETS
 	/* I2S1 DAC Timeslot 0 data <- I2S1 DAC channel 0 */
 	// "AIF1IN0L Mux" <= "AIF1DACL"
 	// "AIF1IN0R Mux" <= "AIF1DACR"
@@ -368,17 +206,9 @@ void set_configuration(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, SPKOUT_CTRL, (0x1 << LSPKS) | (0x1 << RSPKS), (0x1 << LSPKS) | (0x1 << RSPKS));
 	/* Enable Left & Right Speaker */
 	snd_soc_update_bits(codec, SPKOUT_CTRL, (0x1 << LSPK_EN) | (0x1 << RSPK_EN), (0x1 << LSPK_EN) | (0x1 << RSPK_EN));
-#endif
 }
 
-#if _MORE_WIDGETS
-static int late_enable_dac(struct snd_soc_dapm_widget *w,
-			  struct snd_kcontrol *kcontrol, int event)
-{
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-#else
 static int late_enable_dac(struct snd_soc_codec* codec, int event) {
-#endif
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 	mutex_lock(&ac10x->dac_mutex);
 	switch (event) {
@@ -416,69 +246,7 @@ static int late_enable_dac(struct snd_soc_codec* codec, int event) {
 	return 0;
 }
 
-#if _MORE_WIDGETS
-static int late_enable_adc(struct snd_soc_dapm_widget *w,
-			  struct snd_kcontrol *kcontrol, int event)
-{
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
-	mutex_lock(&ac10x->adc_mutex);
-	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		if (ac10x->adc_enable == 0){
-			/*enable adc module clk*/
-			snd_soc_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_ADC_DIG), (0x1<<MOD_CLK_ADC_DIG));
-			snd_soc_update_bits(codec, MOD_RST_CTRL, (0x1<<MOD_RESET_ADC_DIG), (0x1<<MOD_RESET_ADC_DIG));
-			snd_soc_update_bits(codec, ADC_DIG_CTRL, (0x1<<ENAD), (0x1<<ENAD));
-		}
-		ac10x->adc_enable++;
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		if (ac10x->adc_enable > 0){
-			ac10x->adc_enable--;
-			if (ac10x->adc_enable == 0){
-				snd_soc_update_bits(codec, ADC_DIG_CTRL, (0x1<<ENAD), (0x0<<ENAD));
-				/*disable adc module clk*/
-				snd_soc_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_ADC_DIG), (0x0<<MOD_CLK_ADC_DIG));
-				snd_soc_update_bits(codec, MOD_RST_CTRL, (0x1<<MOD_RESET_ADC_DIG), (0x0<<MOD_RESET_ADC_DIG));
-			}
-		}
-		break;
-	}
-	mutex_unlock(&ac10x->adc_mutex);
-	return 0;
-}
-static int ac10x_speaker_event(struct snd_soc_dapm_widget *w,
-				struct snd_kcontrol *k,
-				int event)
-{
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-	switch (event) {
-	case SND_SOC_DAPM_POST_PMU:
-		AC10X_DBG("[speaker open ]%s,line:%d\n",__func__,__LINE__);
-		if (drc_used) {
-			drc_enable(codec,1);
-		}
-		break;
-
-	case SND_SOC_DAPM_PRE_PMD :
-		AC10X_DBG("[speaker close ]%s,line:%d\n",__func__,__LINE__);
-		if (drc_used) {
-			drc_enable(codec,0);
-		}
-	default:
-		break;
-
-	}
-	return 0;
-}
-static int ac10x_headphone_event(struct snd_soc_dapm_widget *w,
-			struct snd_kcontrol *k,	int event)
-{
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-#else
 static int ac10x_headphone_event(struct snd_soc_codec* codec, int event) {
-#endif
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/*open*/
@@ -498,14 +266,7 @@ static int ac10x_headphone_event(struct snd_soc_codec* codec, int event) {
 	}
 	return 0;
 }
-#if _MORE_WIDGETS
-int ac10x_aif1clk(struct snd_soc_dapm_widget *w,
-		  struct snd_kcontrol *kcontrol, int event)
-{
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-#else
 static int ac10x_aif1clk(struct snd_soc_codec* codec, int event) {
-#endif
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 
 	AC10X_DBG("%s() L%d event=%d pre_up/%d post_down/%d\n", __func__, __LINE__,
@@ -550,598 +311,21 @@ static int ac10x_aif1clk(struct snd_soc_codec* codec, int event) {
 	mutex_unlock(&ac10x->aifclk_mutex);
 	return 0;
 }
-#if _MORE_WIDGETS
-static int dmic_mux_ev(struct snd_soc_dapm_widget *w,
-		      struct snd_kcontrol *kcontrol, int event)
-{
-	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
-	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
-	switch (event){
-	case SND_SOC_DAPM_PRE_PMU:
-		snd_soc_update_bits(codec, ADC_DIG_CTRL, (0x1<<ENDM), (0x1<<ENDM));
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		snd_soc_update_bits(codec, ADC_DIG_CTRL, (0x1<<ENDM), (0x0<<ENDM));
-		break;
-	}
-	mutex_lock(&ac10x->adc_mutex);
-	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		if (ac10x->adc_enable == 0){
-			/*enable adc module clk*/
-			snd_soc_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_ADC_DIG), (0x1<<MOD_CLK_ADC_DIG));
-			snd_soc_update_bits(codec, MOD_RST_CTRL, (0x1<<MOD_RESET_ADC_DIG), (0x1<<MOD_RESET_ADC_DIG));
-			snd_soc_update_bits(codec, ADC_DIG_CTRL, (0x1<<ENAD), (0x1<<ENAD));
-		}
-		ac10x->adc_enable++;
-		break;
-	case SND_SOC_DAPM_POST_PMD:
-		if (ac10x->adc_enable > 0){
-			ac10x->adc_enable--;
-			if (ac10x->adc_enable == 0){
-				snd_soc_update_bits(codec, ADC_DIG_CTRL, (0x1<<ENAD), (0x0<<ENAD));
-				/*disable adc module clk*/
-				snd_soc_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_ADC_DIG), (0x0<<MOD_CLK_ADC_DIG));
-				snd_soc_update_bits(codec, MOD_RST_CTRL, (0x1<<MOD_RESET_ADC_DIG), (0x0<<MOD_RESET_ADC_DIG));
-			}
-		}
-		break;
-	}
-	mutex_unlock(&ac10x->adc_mutex);
-	return 0;
-}
-static const DECLARE_TLV_DB_SCALE(headphone_vol_tlv, -6300, 100, 0);
-static const DECLARE_TLV_DB_SCALE(speaker_vol_tlv, -4800, 150, 0);
 
-static const DECLARE_TLV_DB_SCALE(aif1_ad_slot0_vol_tlv, -11925, 75, 0);
-static const DECLARE_TLV_DB_SCALE(aif1_ad_slot1_vol_tlv, -11925, 75, 0);
-static const DECLARE_TLV_DB_SCALE(aif1_da_slot0_vol_tlv, -11925, 75, 0);
-static const DECLARE_TLV_DB_SCALE(aif1_da_slot1_vol_tlv, -11925, 75, 0);
-static const DECLARE_TLV_DB_SCALE(aif1_ad_slot0_mix_vol_tlv, -600, 600, 0);
-static const DECLARE_TLV_DB_SCALE(aif1_ad_slot1_mix_vol_tlv, -600, 600, 0);
-static const DECLARE_TLV_DB_SCALE(adc_vol_tlv, -11925, 75, 0);
 static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -11925, 75, 0);
-
-static const DECLARE_TLV_DB_SCALE(dig_vol_tlv, -7308, 116, 0);
 static const DECLARE_TLV_DB_SCALE(dac_mix_vol_tlv, -600, 600, 0);
-static const DECLARE_TLV_DB_SCALE(adc_input_vol_tlv, -450, 150, 0);
-
-/*mic1/mic2: 0db when 000, and from 30db to 48db when 001 to 111*/
-static const DECLARE_TLV_DB_SCALE(mic1_boost_vol_tlv, 0, 200, 0);
-static const DECLARE_TLV_DB_SCALE(mic2_boost_vol_tlv, 0, 200, 0);
-
-static const DECLARE_TLV_DB_SCALE(linein_amp_vol_tlv, -1200, 300, 0);
-
-static const DECLARE_TLV_DB_SCALE(axin_to_l_r_mix_vol_tlv, -450, 150, 0);
-static const DECLARE_TLV_DB_SCALE(mic1_to_l_r_mix_vol_tlv, -450, 150, 0);
-static const DECLARE_TLV_DB_SCALE(mic2_to_l_r_mix_vol_tlv, -450, 150, 0);
-static const DECLARE_TLV_DB_SCALE(linein_to_l_r_mix_vol_tlv, -450, 150, 0);
+static const DECLARE_TLV_DB_SCALE(dig_vol_tlv, -7308, 116, 0);
+static const DECLARE_TLV_DB_SCALE(speaker_vol_tlv, -4800, 150, 0);
+static const DECLARE_TLV_DB_SCALE(headphone_vol_tlv, -6300, 100, 0);
 
 static const struct snd_kcontrol_new ac10x_controls[] = {
-	/*AIF1*/
-	SOC_DOUBLE_TLV("AIF1 ADC timeslot 0 volume", AIF1_VOL_CTRL1, AIF1_AD0L_VOL, AIF1_AD0R_VOL, 0xff, 0, aif1_ad_slot0_vol_tlv),
-	SOC_DOUBLE_TLV("AIF1 ADC timeslot 1 volume", AIF1_VOL_CTRL2, AIF1_AD1L_VOL, AIF1_AD1R_VOL, 0xff, 0, aif1_ad_slot1_vol_tlv),
-	SOC_DOUBLE_TLV("AIF1 DAC timeslot 0 volume", AIF1_VOL_CTRL3, AIF1_DA0L_VOL, AIF1_DA0R_VOL, 0xff, 0, aif1_da_slot0_vol_tlv),
-	SOC_DOUBLE_TLV("AIF1 DAC timeslot 1 volume", AIF1_VOL_CTRL4, AIF1_DA1L_VOL, AIF1_DA1R_VOL, 0xff, 0, aif1_da_slot1_vol_tlv),
-	SOC_DOUBLE_TLV("AIF1 ADC timeslot 0 mixer gain", AIF1_MXR_GAIN, AIF1_AD0L_MXR_GAIN, AIF1_AD0R_MXR_GAIN, 0xf, 0, aif1_ad_slot0_mix_vol_tlv),
-	SOC_DOUBLE_TLV("AIF1 ADC timeslot 1 mixer gain", AIF1_MXR_GAIN, AIF1_AD1L_MXR_GAIN, AIF1_AD1R_MXR_GAIN, 0x3, 0, aif1_ad_slot1_mix_vol_tlv),
-
-	/*ADC*/
-	SOC_DOUBLE_TLV("ADC volume", ADC_VOL_CTRL, ADC_VOL_L, ADC_VOL_R, 0xff, 0, adc_vol_tlv),
 	/*DAC*/
 	SOC_DOUBLE_TLV("DAC volume", DAC_VOL_CTRL, DAC_VOL_L, DAC_VOL_R, 0xff, 0, dac_vol_tlv),
 	SOC_DOUBLE_TLV("DAC mixer gain", DAC_MXR_GAIN, DACL_MXR_GAIN, DACR_MXR_GAIN, 0xf, 0, dac_mix_vol_tlv),
-
 	SOC_SINGLE_TLV("digital volume", DAC_DBG_CTRL, DVC, 0x3f, 1, dig_vol_tlv),
-
-	/*ADC*/
-	SOC_DOUBLE_TLV("ADC input gain", ADC_APC_CTRL, ADCLG, ADCRG, 0x7, 0, adc_input_vol_tlv),
-
-	SOC_SINGLE_TLV("MIC1 boost amplifier gain", ADC_SRCBST_CTRL, ADC_MIC1G, 0x7, 0, mic1_boost_vol_tlv),
-	SOC_SINGLE_TLV("MIC2 boost amplifier gain", ADC_SRCBST_CTRL, ADC_MIC2G, 0x7, 0, mic2_boost_vol_tlv),
-	SOC_SINGLE_TLV("LINEINL-LINEINR pre-amplifier gain", ADC_SRCBST_CTRL, LINEIN_PREG, 0x7, 0, linein_amp_vol_tlv),
-
-	SOC_SINGLE_TLV("MIC1 BST stage to L_R outp mixer gain", OMIXER_BST1_CTRL, OMIXER_MIC1G, 0x7, 0, mic1_to_l_r_mix_vol_tlv),
-	SOC_SINGLE_TLV("MIC2 BST stage to L_R outp mixer gain", OMIXER_BST1_CTRL, OMIXER_MIC2G, 0x7, 0, mic2_to_l_r_mix_vol_tlv),
-	SOC_SINGLE_TLV("LINEINL/R to L_R output mixer gain", OMIXER_BST1_CTRL, LINEING, 0x7, 0, linein_to_l_r_mix_vol_tlv),
-
 	SOC_SINGLE_TLV("speaker volume", SPKOUT_CTRL, SPK_VOL, 0x1f, 0, speaker_vol_tlv),
 	SOC_SINGLE_TLV("headphone volume", HPOUT_CTRL, HP_VOL, 0x3f, 0, headphone_vol_tlv),
 };
-
-/*AIF1 AD0 OUT */
-static const char *aif1out0l_text[] = {
-	"AIF1_AD0L", "AIF1_AD0R","SUM_AIF1AD0L_AIF1AD0R", "AVE_AIF1AD0L_AIF1AD0R"
-};
-static const char *aif1out0r_text[] = {
-	"AIF1_AD0R", "AIF1_AD0L","SUM_AIF1AD0L_AIF1AD0R", "AVE_AIF1AD0L_AIF1AD0R"
-};
-
-static const struct soc_enum aif1out0l_enum =
-	SOC_ENUM_SINGLE(AIF1_ADCDAT_CTRL, 10, 4, aif1out0l_text);
-
-static const struct snd_kcontrol_new aif1out0l_mux =
-	SOC_DAPM_ENUM("AIF1OUT0L Mux", aif1out0l_enum);
-
-static const struct soc_enum aif1out0r_enum =
-	SOC_ENUM_SINGLE(AIF1_ADCDAT_CTRL, 8, 4, aif1out0r_text);
-
-static const struct snd_kcontrol_new aif1out0r_mux =
-	SOC_DAPM_ENUM("AIF1OUT0R Mux", aif1out0r_enum);
-
-
-/*AIF1 AD1 OUT */
-static const char *aif1out1l_text[] = {
-	"AIF1_AD1L", "AIF1_AD1R","SUM_AIF1ADC1L_AIF1ADC1R", "AVE_AIF1ADC1L_AIF1ADC1R"
-};
-static const char *aif1out1r_text[] = {
-	"AIF1_AD1R", "AIF1_AD1L","SUM_AIF1ADC1L_AIF1ADC1R", "AVE_AIF1ADC1L_AIF1ADC1R"
-};
-
-static const struct soc_enum aif1out1l_enum =
-	SOC_ENUM_SINGLE(AIF1_ADCDAT_CTRL, 6, 4, aif1out1l_text);
-
-static const struct snd_kcontrol_new aif1out1l_mux =
-	SOC_DAPM_ENUM("AIF1OUT1L Mux", aif1out1l_enum);
-
-static const struct soc_enum aif1out1r_enum =
-	SOC_ENUM_SINGLE(AIF1_ADCDAT_CTRL, 4, 4, aif1out1r_text);
-
-static const struct snd_kcontrol_new aif1out1r_mux =
-	SOC_DAPM_ENUM("AIF1OUT1R Mux", aif1out1r_enum);
-
-
-/*AIF1 DA0 IN*/
-static const char *aif1in0l_text[] = {
-	"AIF1_DA0L", "AIF1_DA0R", "SUM_AIF1DA0L_AIF1DA0R", "AVE_AIF1DA0L_AIF1DA0R"
-};
-static const char *aif1in0r_text[] = {
-	"AIF1_DA0R", "AIF1_DA0L", "SUM_AIF1DA0L_AIF1DA0R", "AVE_AIF1DA0L_AIF1DA0R"
-};
-
-static const struct soc_enum aif1in0l_enum =
-	SOC_ENUM_SINGLE(AIF1_DACDAT_CTRL, 10, 4, aif1in0l_text);
-
-static const struct snd_kcontrol_new aif1in0l_mux =
-	SOC_DAPM_ENUM("AIF1IN0L Mux", aif1in0l_enum);
-
-static const struct soc_enum aif1in0r_enum =
-	SOC_ENUM_SINGLE(AIF1_DACDAT_CTRL, 8, 4, aif1in0r_text);
-
-static const struct snd_kcontrol_new aif1in0r_mux =
-	SOC_DAPM_ENUM("AIF1IN0R Mux", aif1in0r_enum);
-
-
-/*AIF1 DA1 IN*/
-static const char *aif1in1l_text[] = {
-	"AIF1_DA1L", "AIF1_DA1R","SUM_AIF1DA1L_AIF1DA1R", "AVE_AIF1DA1L_AIF1DA1R"
-};
-static const char *aif1in1r_text[] = {
-	"AIF1_DA1R", "AIF1_DA1L","SUM_AIF1DA1L_AIF1DA1R", "AVE_AIF1DA1L_AIF1DA1R"
-};
-
-static const struct soc_enum aif1in1l_enum =
-	SOC_ENUM_SINGLE(AIF1_DACDAT_CTRL, 6, 4, aif1in1l_text);
-
-static const struct snd_kcontrol_new aif1in1l_mux =
-	SOC_DAPM_ENUM("AIF1IN1L Mux", aif1in1l_enum);
-
-static const struct soc_enum aif1in1r_enum =
-	SOC_ENUM_SINGLE(AIF1_DACDAT_CTRL, 4, 4, aif1in1r_text);
-
-static const struct snd_kcontrol_new aif1in1r_mux =
-	SOC_DAPM_ENUM("AIF1IN1R Mux", aif1in1r_enum);
-
-
-/*0x13register*/
-/*AIF1 ADC0 MIXER SOURCE*/
-static const struct snd_kcontrol_new aif1_ad0l_mxr_src_ctl[] = {
-	SOC_DAPM_SINGLE("AIF1 DA0L Switch", 	AIF1_MXR_SRC,  	AIF1_AD0L_AIF1_DA0L_MXR, 1, 0),
-	SOC_DAPM_SINGLE("ADCL Switch", 		AIF1_MXR_SRC, 	AIF1_AD0L_ADCL_MXR, 1, 0),
-};
-static const struct snd_kcontrol_new aif1_ad0r_mxr_src_ctl[] = {
-	SOC_DAPM_SINGLE("AIF1 DA0R Switch", 	AIF1_MXR_SRC,  	AIF1_AD0R_AIF1_DA0R_MXR, 1, 0),
-	SOC_DAPM_SINGLE("ADCR Switch", 		AIF1_MXR_SRC, 	AIF1_AD0R_ADCR_MXR, 1, 0),
-};
-
-
-/*AIF1 ADC1 MIXER SOURCE*/
-static const struct snd_kcontrol_new aif1_ad1l_mxr_src_ctl[] = {
-	SOC_DAPM_SINGLE("ADCL Switch", 	AIF1_MXR_SRC, 	AIF1_AD1L_ADCL_MXR, 1, 0),
-};
-static const struct snd_kcontrol_new aif1_ad1r_mxr_src_ctl[] = {
-	SOC_DAPM_SINGLE("ADCR Switch", 	AIF1_MXR_SRC, 	AIF1_AD1R_ADCR_MXR, 1, 0),
-};
-
-
-/*4C register*/
-static const struct snd_kcontrol_new dacl_mxr_src_controls[] = {
-	SOC_DAPM_SINGLE("ADCL Switch", 			DAC_MXR_SRC,  	DACL_MXR_ADCL, 1, 0),
-	SOC_DAPM_SINGLE("AIF1DA1L Switch", 		DAC_MXR_SRC, 	DACL_MXR_AIF1_DA1L, 1, 0),
-	SOC_DAPM_SINGLE("AIF1DA0L Switch", 		DAC_MXR_SRC, 	DACL_MXR_AIF1_DA0L, 1, 0),
-};
-static const struct snd_kcontrol_new dacr_mxr_src_controls[] = {
-	SOC_DAPM_SINGLE("ADCR Switch", 			DAC_MXR_SRC,  	DACR_MXR_ADCR, 1, 0),
-	SOC_DAPM_SINGLE("AIF1DA1R Switch", 		DAC_MXR_SRC, 	DACR_MXR_AIF1_DA1R, 1, 0),
-	SOC_DAPM_SINGLE("AIF1DA0R Switch", 		DAC_MXR_SRC, 	DACR_MXR_AIF1_DA0R, 1, 0),
-};
-
-
-/*** output mixer source select ***/
-
-/*defined left output mixer*/
-static const struct snd_kcontrol_new ac10x_loutmix_controls[] = {
-	SOC_DAPM_SINGLE("DACR Switch", OMIXER_SR, LMIXMUTEDACR, 1, 0),
-	SOC_DAPM_SINGLE("DACL Switch", OMIXER_SR, LMIXMUTEDACL, 1, 0),
-	SOC_DAPM_SINGLE("LINEINL Switch", OMIXER_SR, LMIXMUTELINEINL, 1, 0),
-	SOC_DAPM_SINGLE("LINEINL-LINEINR Switch", OMIXER_SR, LMIXMUTELINEINLR, 1, 0),
-	SOC_DAPM_SINGLE("MIC2Booststage Switch", OMIXER_SR, LMIXMUTEMIC2BOOST, 1, 0),
-	SOC_DAPM_SINGLE("MIC1Booststage Switch", OMIXER_SR, LMIXMUTEMIC1BOOST, 1, 0),
-};
-
-/*defined right output mixer*/
-static const struct snd_kcontrol_new ac10x_routmix_controls[] = {
-	SOC_DAPM_SINGLE("DACL Switch", OMIXER_SR, RMIXMUTEDACL, 1, 0),
-	SOC_DAPM_SINGLE("DACR Switch", OMIXER_SR, RMIXMUTEDACR, 1, 0),
-	SOC_DAPM_SINGLE("LINEINR Switch", OMIXER_SR, RMIXMUTELINEINR, 1, 0),
-	SOC_DAPM_SINGLE("LINEINL-LINEINR Switch", OMIXER_SR, RMIXMUTELINEINLR, 1, 0),
-	SOC_DAPM_SINGLE("MIC2Booststage Switch", OMIXER_SR, RMIXMUTEMIC2BOOST, 1, 0),
-	SOC_DAPM_SINGLE("MIC1Booststage Switch", OMIXER_SR, RMIXMUTEMIC1BOOST, 1, 0),
-};
-
-
-/*** hp source select ***/
-
-/*headphone input source*/
-static const char *ac10x_hp_r_func_sel[] = {
-	"DACR HPR Switch", "Right Analog Mixer HPR Switch"};
-static const struct soc_enum ac10x_hp_r_func_enum =
-	SOC_ENUM_SINGLE(HPOUT_CTRL, RHPS, 2, ac10x_hp_r_func_sel);
-
-static const struct snd_kcontrol_new ac10x_hp_r_func_controls =
-	SOC_DAPM_ENUM("HP_R Mux", ac10x_hp_r_func_enum);
-
-static const char *ac10x_hp_l_func_sel[] = {
-	"DACL HPL Switch", "Left Analog Mixer HPL Switch"};
-static const struct soc_enum ac10x_hp_l_func_enum =
-	SOC_ENUM_SINGLE(HPOUT_CTRL, LHPS, 2, ac10x_hp_l_func_sel);
-
-static const struct snd_kcontrol_new ac10x_hp_l_func_controls =
-	SOC_DAPM_ENUM("HP_L Mux", ac10x_hp_l_func_enum);
-
-
-/*spk source select*/
-static const char *ac10x_rspks_func_sel[] = {
-	"MIXER Switch", "MIXR MIXL Switch"};
-static const struct soc_enum ac10x_rspks_func_enum =
-	SOC_ENUM_SINGLE(SPKOUT_CTRL, RSPKS, 2, ac10x_rspks_func_sel);
-
-static const struct snd_kcontrol_new ac10x_rspks_func_controls =
-	SOC_DAPM_ENUM("SPK_R Mux", ac10x_rspks_func_enum);
-
-static const char *ac10x_lspks_l_func_sel[] = {
-	"MIXEL Switch", "MIXL MIXR  Switch"};
-static const struct soc_enum ac10x_lspks_func_enum =
-	SOC_ENUM_SINGLE(SPKOUT_CTRL, LSPKS, 2, ac10x_lspks_l_func_sel);
-
-static const struct snd_kcontrol_new ac10x_lspks_func_controls =
-	SOC_DAPM_ENUM("SPK_L Mux", ac10x_lspks_func_enum);
-
-/*defined left input adc mixer*/
-static const struct snd_kcontrol_new ac10x_ladcmix_controls[] = {
-	SOC_DAPM_SINGLE("MIC1 boost Switch", ADC_SRC, LADCMIXMUTEMIC1BOOST, 1, 0),
-	SOC_DAPM_SINGLE("MIC2 boost Switch", ADC_SRC, LADCMIXMUTEMIC2BOOST, 1, 0),
-	SOC_DAPM_SINGLE("LININL-R Switch", ADC_SRC, LADCMIXMUTELINEINLR, 1, 0),
-	SOC_DAPM_SINGLE("LINEINL Switch", ADC_SRC, LADCMIXMUTELINEINL, 1, 0),
-	SOC_DAPM_SINGLE("Lout_Mixer_Switch", ADC_SRC, LADCMIXMUTELOUTPUT, 1, 0),
-	SOC_DAPM_SINGLE("Rout_Mixer_Switch", ADC_SRC, LADCMIXMUTEROUTPUT, 1, 0),
-};
-
-/*defined right input adc mixer*/
-static const struct snd_kcontrol_new ac10x_radcmix_controls[] = {
-	SOC_DAPM_SINGLE("MIC1 boost Switch", ADC_SRC, RADCMIXMUTEMIC1BOOST, 1, 0),
-	SOC_DAPM_SINGLE("MIC2 boost Switch", ADC_SRC, RADCMIXMUTEMIC2BOOST, 1, 0),
-	SOC_DAPM_SINGLE("LINEINL-R Switch", ADC_SRC, RADCMIXMUTELINEINLR, 1, 0),
-	SOC_DAPM_SINGLE("LINEINR Switch", ADC_SRC, RADCMIXMUTELINEINR, 1, 0),
-	SOC_DAPM_SINGLE("Rout_Mixer_Switch", ADC_SRC, RADCMIXMUTEROUTPUT, 1, 0),
-	SOC_DAPM_SINGLE("Lout_Mixer_Switch", ADC_SRC, RADCMIXMUTELOUTPUT, 1, 0),
-};
-
-/*mic2 source select*/
-static const char *mic2src_text[] = {
-	"none","MIC2"};
-
-static const struct soc_enum mic2src_enum =
-	SOC_ENUM_SINGLE(ADC_SRCBST_CTRL, 7, 2, mic2src_text);
-
-static const struct snd_kcontrol_new mic2src_mux =
-	SOC_DAPM_ENUM("MIC2 SRC", mic2src_enum);
-/*DMIC*/
-static const char *adc_mux_text[] = {
-	"ADC",
-	"DMIC",
-};
-static SOC_ENUM_SINGLE_VIRT_DECL(adc_enum, adc_mux_text);
-static const struct snd_kcontrol_new adcl_mux =
-	SOC_DAPM_ENUM("ADCL Mux", adc_enum);
-static const struct snd_kcontrol_new adcr_mux =
-	SOC_DAPM_ENUM("ADCR Mux", adc_enum);
-
-/*built widget*/
-static const struct snd_soc_dapm_widget ac10x_dapm_widgets[] = {
-	SND_SOC_DAPM_MUX("AIF1OUT0L Mux", AIF1_ADCDAT_CTRL, 15, 0, &aif1out0l_mux),
-	SND_SOC_DAPM_MUX("AIF1OUT0R Mux", AIF1_ADCDAT_CTRL, 14, 0, &aif1out0r_mux),
-
-	SND_SOC_DAPM_MUX("AIF1OUT1L Mux", AIF1_ADCDAT_CTRL, 13, 0, &aif1out1l_mux),
-	SND_SOC_DAPM_MUX("AIF1OUT1R Mux", AIF1_ADCDAT_CTRL, 12, 0, &aif1out1r_mux),
-
-	SND_SOC_DAPM_MUX("AIF1IN0L Mux", AIF1_DACDAT_CTRL, 15, 0, &aif1in0l_mux),
-	SND_SOC_DAPM_MUX("AIF1IN0R Mux", AIF1_DACDAT_CTRL, 14, 0, &aif1in0r_mux),
-
-	SND_SOC_DAPM_MUX("AIF1IN1L Mux", AIF1_DACDAT_CTRL, 13, 0, &aif1in1l_mux),
-	SND_SOC_DAPM_MUX("AIF1IN1R Mux", AIF1_DACDAT_CTRL, 12, 0, &aif1in1r_mux),
-
-	SND_SOC_DAPM_MIXER("AIF1 AD0L Mixer", SND_SOC_NOPM, 0, 0, aif1_ad0l_mxr_src_ctl, ARRAY_SIZE(aif1_ad0l_mxr_src_ctl)),
-	SND_SOC_DAPM_MIXER("AIF1 AD0R Mixer", SND_SOC_NOPM, 0, 0, aif1_ad0r_mxr_src_ctl, ARRAY_SIZE(aif1_ad0r_mxr_src_ctl)),
-
-	SND_SOC_DAPM_MIXER("AIF1 AD1L Mixer", SND_SOC_NOPM, 0, 0, aif1_ad1l_mxr_src_ctl, ARRAY_SIZE(aif1_ad1l_mxr_src_ctl)),
-	SND_SOC_DAPM_MIXER("AIF1 AD1R Mixer", SND_SOC_NOPM, 0, 0, aif1_ad1r_mxr_src_ctl, ARRAY_SIZE(aif1_ad1r_mxr_src_ctl)),
-
-	SND_SOC_DAPM_MIXER_E("DACL Mixer", OMIXER_DACA_CTRL, DACALEN, 0, dacl_mxr_src_controls, ARRAY_SIZE(dacl_mxr_src_controls),
-		     	late_enable_dac, SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_MIXER_E("DACR Mixer", OMIXER_DACA_CTRL, DACAREN, 0, dacr_mxr_src_controls, ARRAY_SIZE(dacr_mxr_src_controls),
-		     	late_enable_dac, SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
-
-	/*dac digital enble*/
-	SND_SOC_DAPM_DAC("DAC En", NULL, DAC_DIG_CTRL, ENDA, 0),
-
-	/*ADC digital enble*/
-	SND_SOC_DAPM_ADC("ADC En", NULL, ADC_DIG_CTRL, ENAD, 0),
-
-	SND_SOC_DAPM_MIXER("Left Output Mixer", OMIXER_DACA_CTRL, LMIXEN, 0,
-			ac10x_loutmix_controls, ARRAY_SIZE(ac10x_loutmix_controls)),
-	SND_SOC_DAPM_MIXER("Right Output Mixer", OMIXER_DACA_CTRL, RMIXEN, 0,
-			ac10x_routmix_controls, ARRAY_SIZE(ac10x_routmix_controls)),
-
-	SND_SOC_DAPM_MUX("HP_R Mux", SND_SOC_NOPM, 0, 0,	&ac10x_hp_r_func_controls),
-	SND_SOC_DAPM_MUX("HP_L Mux", SND_SOC_NOPM, 0, 0,	&ac10x_hp_l_func_controls),
-
-	SND_SOC_DAPM_MUX("SPK_R Mux", SPKOUT_CTRL, RSPK_EN, 0,	&ac10x_rspks_func_controls),
-	SND_SOC_DAPM_MUX("SPK_L Mux", SPKOUT_CTRL, LSPK_EN, 0,	&ac10x_lspks_func_controls),
-
-	SND_SOC_DAPM_PGA("SPK_LR Adder", SND_SOC_NOPM, 0, 0, NULL, 0),
-
-	/*output widget*/
-	SND_SOC_DAPM_OUTPUT("HPOUTL"),
-	SND_SOC_DAPM_OUTPUT("HPOUTR"),
-	SND_SOC_DAPM_OUTPUT("SPK1P"),
-	SND_SOC_DAPM_OUTPUT("SPK2P"),
-	SND_SOC_DAPM_OUTPUT("SPK1N"),
-	SND_SOC_DAPM_OUTPUT("SPK2N"),
-
-	SND_SOC_DAPM_MIXER_E("LEFT ADC input Mixer", ADC_APC_CTRL, ADCLEN, 0,
-		ac10x_ladcmix_controls, ARRAY_SIZE(ac10x_ladcmix_controls),late_enable_adc, SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_MIXER_E("RIGHT ADC input Mixer", ADC_APC_CTRL, ADCREN, 0,
-		ac10x_radcmix_controls, ARRAY_SIZE(ac10x_radcmix_controls),late_enable_adc, SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
-
-	/*mic reference*/
-	SND_SOC_DAPM_PGA("MIC1 PGA", ADC_SRCBST_CTRL, MIC1AMPEN, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("MIC2 PGA", ADC_SRCBST_CTRL, MIC2AMPEN, 0, NULL, 0),
-
-	SND_SOC_DAPM_PGA("LINEIN PGA", SND_SOC_NOPM, 0, 0, NULL, 0),
-
-	SND_SOC_DAPM_MUX("MIC2 SRC", SND_SOC_NOPM, 0, 0, &mic2src_mux),
-
-	/*INPUT widget*/
-	SND_SOC_DAPM_INPUT("MIC1P"),
-	SND_SOC_DAPM_INPUT("MIC1N"),
-
-	SND_SOC_DAPM_MICBIAS("MainMic Bias", ADC_APC_CTRL, MBIASEN, 0),
-	SND_SOC_DAPM_MICBIAS("HMic Bias", SND_SOC_NOPM, 0, 0),
-	//SND_SOC_DAPM_MICBIAS("HMic Bias", ADC_APC_CTRL, HBIASEN, 0),
-	SND_SOC_DAPM_INPUT("MIC2"),
-
-	SND_SOC_DAPM_INPUT("LINEINP"),
-	SND_SOC_DAPM_INPUT("LINEINN"),
-
-	SND_SOC_DAPM_INPUT("D_MIC"),
-	/*aif1 interface*/
-	SND_SOC_DAPM_AIF_IN_E("AIF1DACL", "AIF1 Playback", 0, SND_SOC_NOPM, 0, 0,ac10x_aif1clk,
-		   SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_AIF_IN_E("AIF1DACR", "AIF1 Playback", 0, SND_SOC_NOPM, 0, 0,ac10x_aif1clk,
-		   SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
-
-	SND_SOC_DAPM_AIF_OUT_E("AIF1ADCL", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0,ac10x_aif1clk,
-		   SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_AIF_OUT_E("AIF1ADCR", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0,ac10x_aif1clk,
-		   SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
-
-	/*headphone*/
-	SND_SOC_DAPM_HP("Headphone", ac10x_headphone_event),
-	/*speaker*/
-	SND_SOC_DAPM_SPK("External Speaker", ac10x_speaker_event),
-
-	/*DMIC*/
-	SND_SOC_DAPM_MUX("ADCL Mux", SND_SOC_NOPM, 0, 0, &adcl_mux),
-	SND_SOC_DAPM_MUX("ADCR Mux", SND_SOC_NOPM, 0, 0, &adcr_mux),
-
-	SND_SOC_DAPM_PGA_E("DMICL VIR", SND_SOC_NOPM, 0, 0, NULL, 0,
-				dmic_mux_ev, SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
-
-	SND_SOC_DAPM_PGA_E("DMICR VIR", SND_SOC_NOPM, 0, 0, NULL, 0,
-				dmic_mux_ev, SND_SOC_DAPM_PRE_PMU|SND_SOC_DAPM_POST_PMD),
-};
-
-static const struct snd_soc_dapm_route ac10x_dapm_routes[] = {
-
-	{"AIF1ADCL", NULL, "AIF1OUT0L Mux"},
-	{"AIF1ADCR", NULL, "AIF1OUT0R Mux"},
-
-	{"AIF1ADCL", NULL, "AIF1OUT1L Mux"},
-	{"AIF1ADCR", NULL, "AIF1OUT1R Mux"},
-
-	/* aif1out0 mux 11---13*/
-	{"AIF1OUT0L Mux", "AIF1_AD0L", "AIF1 AD0L Mixer"},
-	{"AIF1OUT0L Mux", "AIF1_AD0R", "AIF1 AD0R Mixer"},
-
-	{"AIF1OUT0R Mux", "AIF1_AD0R", "AIF1 AD0R Mixer"},
-	{"AIF1OUT0R Mux", "AIF1_AD0L", "AIF1 AD0L Mixer"},
-
-	/*AIF1OUT1 mux 11--13 */
-	{"AIF1OUT1L Mux", "AIF1_AD1L", "AIF1 AD1L Mixer"},
-	{"AIF1OUT1L Mux", "AIF1_AD1R", "AIF1 AD1R Mixer"},
-
-	{"AIF1OUT1R Mux", "AIF1_AD1R", "AIF1 AD1R Mixer"},
-	{"AIF1OUT1R Mux", "AIF1_AD1L", "AIF1 AD1L Mixer"},
-
-	/*AIF1 AD0L Mixer*/
-	{"AIF1 AD0L Mixer", "AIF1 DA0L Switch",		"AIF1IN0L Mux"},
-	{"AIF1 AD0L Mixer", "ADCL Switch",		"ADCL Mux"},
-	/*AIF1 AD0R Mixer*/
-	{"AIF1 AD0R Mixer", "AIF1 DA0R Switch",		"AIF1IN0R Mux"},
-	{"AIF1 AD0R Mixer", "ADCR Switch",		"ADCR Mux"},
-
-	/*AIF1 AD1L Mixer*/
-	{"AIF1 AD1L Mixer", "ADCL Switch",		"ADCL Mux"},
-	/*AIF1 AD1R Mixer*/
-	{"AIF1 AD1R Mixer", "ADCR Switch",		"ADCR Mux"},
-
-	/*AIF1 DA0 IN 12h*/
-	{"AIF1IN0L Mux", "AIF1_DA0L",		"AIF1DACL"},
-	{"AIF1IN0L Mux", "AIF1_DA0R",		"AIF1DACR"},
-
-	{"AIF1IN0R Mux", "AIF1_DA0R",		"AIF1DACR"},
-	{"AIF1IN0R Mux", "AIF1_DA0L",		"AIF1DACL"},
-
-	/*AIF1 DA1 IN 12h*/
-	{"AIF1IN1L Mux", "AIF1_DA1L",		"AIF1DACL"},
-	{"AIF1IN1L Mux", "AIF1_DA1R",		"AIF1DACR"},
-
-	{"AIF1IN1R Mux", "AIF1_DA1R",		"AIF1DACR"},
-	{"AIF1IN1R Mux", "AIF1_DA1L",		"AIF1DACL"},
-
-	/*4c*/
-	{"DACL Mixer", "AIF1DA0L Switch",		"AIF1IN0L Mux"},
-	{"DACL Mixer", "AIF1DA1L Switch",		"AIF1IN1L Mux"},
-
-	{"DACL Mixer", "ADCL Switch",		"ADCL Mux"},
-	{"DACR Mixer", "AIF1DA0R Switch",		"AIF1IN0R Mux"},
-	{"DACR Mixer", "AIF1DA1R Switch",		"AIF1IN1R Mux"},
-
-	{"DACR Mixer", "ADCR Switch",		"ADCR Mux"},
-
-	{"Right Output Mixer", "DACR Switch",		"DACR Mixer"},
-	{"Right Output Mixer", "DACL Switch",		"DACL Mixer"},
-
-	{"Right Output Mixer", "LINEINR Switch",		"LINEINN"},
-	{"Right Output Mixer", "LINEINL-LINEINR Switch",		"LINEIN PGA"},
-	{"Right Output Mixer", "MIC2Booststage Switch",		"MIC2 PGA"},
-	{"Right Output Mixer", "MIC1Booststage Switch",		"MIC1 PGA"},
-
-
-	{"Left Output Mixer", "DACL Switch",		"DACL Mixer"},
-	{"Left Output Mixer", "DACR Switch",		"DACR Mixer"},
-
-	{"Left Output Mixer", "LINEINL Switch",		"LINEINP"},
-	{"Left Output Mixer", "LINEINL-LINEINR Switch",		"LINEIN PGA"},
-	{"Left Output Mixer", "MIC2Booststage Switch",		"MIC2 PGA"},
-	{"Left Output Mixer", "MIC1Booststage Switch",		"MIC1 PGA"},
-
-	/*hp mux*/
-	{"HP_R Mux", "DACR HPR Switch",		"DACR Mixer"},
-	{"HP_R Mux", "Right Analog Mixer HPR Switch",		"Right Output Mixer"},
-
-
-	{"HP_L Mux", "DACL HPL Switch",		"DACL Mixer"},
-	{"HP_L Mux", "Left Analog Mixer HPL Switch",		"Left Output Mixer"},
-
-	/*hp endpoint*/
-	{"HPOUTR", NULL,				"HP_R Mux"},
-	{"HPOUTL", NULL,				"HP_L Mux"},
-
-	{"Headphone", NULL,				"HPOUTR"},
-	{"Headphone", NULL,				"HPOUTL"},
-
-	/*External Speaker*/
-	{"External Speaker", NULL, "SPK1P"},
-	{"External Speaker", NULL, "SPK1N"},
-
-	{"External Speaker", NULL, "SPK2P"},
-	{"External Speaker", NULL, "SPK2N"},
-
-	/*spk mux*/
-	{"SPK_LR Adder", NULL,				"Right Output Mixer"},
-	{"SPK_LR Adder", NULL,				"Left Output Mixer"},
-
-	{"SPK_L Mux", "MIXL MIXR  Switch",			"SPK_LR Adder"},
-	{"SPK_L Mux", "MIXEL Switch",				"Left Output Mixer"},
-
-	{"SPK_R Mux", "MIXR MIXL Switch",			"SPK_LR Adder"},
-	{"SPK_R Mux", "MIXER Switch",				"Right Output Mixer"},
-
-	{"SPK1P", NULL,				"SPK_R Mux"},
-	{"SPK1N", NULL,				"SPK_R Mux"},
-
-	{"SPK2P", NULL,				"SPK_L Mux"},
-	{"SPK2N", NULL,				"SPK_L Mux"},
-
-	/*LADC SOURCE mixer*/
-	{"LEFT ADC input Mixer", "MIC1 boost Switch",				"MIC1 PGA"},
-	{"LEFT ADC input Mixer", "MIC2 boost Switch",				"MIC2 PGA"},
-	{"LEFT ADC input Mixer", "LININL-R Switch",				"LINEIN PGA"},
-	{"LEFT ADC input Mixer", "LINEINL Switch",				"LINEINN"},
-	{"LEFT ADC input Mixer", "Lout_Mixer_Switch",				"Left Output Mixer"},
-	{"LEFT ADC input Mixer", "Rout_Mixer_Switch",				"Right Output Mixer"},
-
-	/*RADC SOURCE mixer*/
-	{"RIGHT ADC input Mixer", "MIC1 boost Switch",				"MIC1 PGA"},
-	{"RIGHT ADC input Mixer", "MIC2 boost Switch",				"MIC2 PGA"},
-	{"RIGHT ADC input Mixer", "LINEINL-R Switch",				"LINEIN PGA"},
-	{"RIGHT ADC input Mixer", "LINEINR Switch",				"LINEINP"},
-	{"RIGHT ADC input Mixer", "Rout_Mixer_Switch",				"Right Output Mixer"},
-	{"RIGHT ADC input Mixer", "Lout_Mixer_Switch",				"Left Output Mixer"},
-
-	{"MIC1 PGA", NULL,				"MIC1P"},
-	{"MIC1 PGA", NULL,				"MIC1N"},
-
-	{"MIC2 PGA", NULL,				"MIC2 SRC"},
-
-	{"MIC2 SRC", "MIC2",				"MIC2"},
-
-	{"LINEIN PGA", NULL,				"LINEINP"},
-	{"LINEIN PGA", NULL,				"LINEINN"},
-
-	/*ADC--ADCMUX*/
-	{"ADCR Mux", "ADC", "RIGHT ADC input Mixer"},
-	{"ADCL Mux", "ADC", "LEFT ADC input Mixer"},
-
-	/*DMIC*/
-	{"ADCR Mux", "DMIC", "DMICR VIR"},
-	{"ADCL Mux", "DMIC", "DMICL VIR"},
-
-	{"DMICL VIR", NULL, "D_MIC"},
-	{"DMICR VIR", NULL, "D_MIC"},
-};
-#else	// !_MORE_WIDGETS
-	#if 1
-	static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -11925, 75, 0);
-	static const DECLARE_TLV_DB_SCALE(dac_mix_vol_tlv, -600, 600, 0);
-	static const DECLARE_TLV_DB_SCALE(dig_vol_tlv, -7308, 116, 0);
-	#endif
-	static const DECLARE_TLV_DB_SCALE(speaker_vol_tlv, -4800, 150, 0);
-	static const DECLARE_TLV_DB_SCALE(headphone_vol_tlv, -6300, 100, 0);
-
-	static const struct snd_kcontrol_new ac10x_controls[] = {
-		/*DAC*/
-		#if 1
-		SOC_DOUBLE_TLV("DAC volume", DAC_VOL_CTRL, DAC_VOL_L, DAC_VOL_R, 0xff, 0, dac_vol_tlv),
-		SOC_DOUBLE_TLV("DAC mixer gain", DAC_MXR_GAIN, DACL_MXR_GAIN, DACR_MXR_GAIN, 0xf, 0, dac_mix_vol_tlv),
-		SOC_SINGLE_TLV("digital volume", DAC_DBG_CTRL, DVC, 0x3f, 1, dig_vol_tlv),
-		#endif
-		SOC_SINGLE_TLV("speaker volume", SPKOUT_CTRL, SPK_VOL, 0x1f, 0, speaker_vol_tlv),
-		SOC_SINGLE_TLV("headphone volume", HPOUT_CTRL, HP_VOL, 0x3f, 0, headphone_vol_tlv),
-	};
-#endif
 
 /* PLL divisors */
 struct pll_div {
@@ -1238,20 +422,18 @@ static int ac10x_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 
 	snd_soc_write(codec, DAC_VOL_CTRL, mute? 0: 0xA0A0);
 
-	#if !_MORE_WIDGETS
 	if (!mute) {
 		late_enable_dac(codec, SND_SOC_DAPM_PRE_PMU);
 		ac10x_headphone_event(codec, SND_SOC_DAPM_POST_PMU);
 		if (drc_used) {
 			drc_enable(codec, 1);
 		}
-		if (ac10x->gpiod_spk_amp_switch) {
-			gpiod_set_value(ac10x->gpiod_spk_amp_switch, 1);
+		if (ac10x->gpiod_spk_amp_gate) {
+			gpiod_set_value(ac10x->gpiod_spk_amp_gate, 1);
 		}
 	} else {
-
-		if (ac10x->gpiod_spk_amp_switch) {
-			gpiod_set_value(ac10x->gpiod_spk_amp_switch, 0);
+		if (ac10x->gpiod_spk_amp_gate) {
+			gpiod_set_value(ac10x->gpiod_spk_amp_gate, 0);
 		}
 		if (drc_used) {
 			drc_enable(codec, 0);
@@ -1262,7 +444,6 @@ static int ac10x_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 		ac10x->aif1_clken = 1;
 		ac10x_aif1clk(codec, SND_SOC_DAPM_POST_PMD);
 	}
-	#endif
 	return 0;
 }
 
@@ -1274,9 +455,6 @@ static void ac10x_aif_shutdown(struct snd_pcm_substream *substream, struct snd_s
 	AC10X_DBG("%s,line:%d\n", __func__, __LINE__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-		if(agc_used){
-			agc_enable(codec, 0);
-		}
 		reg_val = (snd_soc_read(codec, AIF_SR_CTRL) >> 12);
 		reg_val &= 0xf;
 		if (codec_dai->playback_active && dmic_used && reg_val == 0x4) {
@@ -1408,67 +586,66 @@ static int ac10x_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 	reg_val = snd_soc_read(codec, AIF_CLK_CTRL);
 	reg_val &= ~(0x1<<AIF1_MSTR_MOD);
 	switch(fmt & SND_SOC_DAIFMT_MASTER_MASK) {
-		case SND_SOC_DAIFMT_CBM_CFM:   /* codec clk & frm master, ap is slave*/
-			pr_warn("AC101 as Master\n");
-			reg_val |= (0x0<<AIF1_MSTR_MOD);
-			break;
-		case SND_SOC_DAIFMT_CBS_CFS:   /* codec clk & frm slave, ap is master*/
-			pr_warn("AC101 as Slave\n");
-			reg_val |= (0x1<<AIF1_MSTR_MOD);
-			break;
-		default:
-			pr_err("unknwon master/slave format\n");
-			return -EINVAL;
+	case SND_SOC_DAIFMT_CBM_CFM:   /* codec clk & frm master, ap is slave*/
+		pr_warn("AC101 as Master\n");
+		reg_val |= (0x0<<AIF1_MSTR_MOD);
+		break;
+	case SND_SOC_DAIFMT_CBS_CFS:   /* codec clk & frm slave, ap is master*/
+		pr_warn("AC101 as Slave\n");
+		reg_val |= (0x1<<AIF1_MSTR_MOD);
+		break;
+	default:
+		pr_err("unknwon master/slave format\n");
+		return -EINVAL;
 	}
 
 	/*
 	 * Enable TDM mode
 	 */
 	reg_val |=  (0x1 << AIF1_TDMM_ENA);
-	// reg_val &= ~(0x1 << AIF1_TDMM_ENA);
 	snd_soc_write(codec, AIF_CLK_CTRL, reg_val);
 
 	/* i2s mode selection */
 	reg_val = snd_soc_read(codec, AIF_CLK_CTRL);
 	reg_val&=~(3<<AIF1_DATA_FMT);
 	switch(fmt & SND_SOC_DAIFMT_FORMAT_MASK){
-		case SND_SOC_DAIFMT_I2S:        /* I2S1 mode */
-			reg_val |= (0x0<<AIF1_DATA_FMT);
-			break;
-		case SND_SOC_DAIFMT_RIGHT_J:    /* Right Justified mode */
-			reg_val |= (0x2<<AIF1_DATA_FMT);
-			break;
-		case SND_SOC_DAIFMT_LEFT_J:     /* Left Justified mode */
-			reg_val |= (0x1<<AIF1_DATA_FMT);
-			break;
-		case SND_SOC_DAIFMT_DSP_A:      /* L reg_val msb after FRM LRC */
-			reg_val |= (0x3<<AIF1_DATA_FMT);
-			break;
-		default:
-			pr_err("%s, line:%d\n", __func__, __LINE__);
-			return -EINVAL;
+	case SND_SOC_DAIFMT_I2S:        /* I2S1 mode */
+		reg_val |= (0x0<<AIF1_DATA_FMT);
+		break;
+	case SND_SOC_DAIFMT_RIGHT_J:    /* Right Justified mode */
+		reg_val |= (0x2<<AIF1_DATA_FMT);
+		break;
+	case SND_SOC_DAIFMT_LEFT_J:     /* Left Justified mode */
+		reg_val |= (0x1<<AIF1_DATA_FMT);
+		break;
+	case SND_SOC_DAIFMT_DSP_A:      /* L reg_val msb after FRM LRC */
+		reg_val |= (0x3<<AIF1_DATA_FMT);
+		break;
+	default:
+		pr_err("%s, line:%d\n", __func__, __LINE__);
+		return -EINVAL;
 	}
 	snd_soc_write(codec, AIF_CLK_CTRL, reg_val);
 
 	/* DAI signal inversions */
 	reg_val = snd_soc_read(codec, AIF_CLK_CTRL);
 	switch(fmt & SND_SOC_DAIFMT_INV_MASK){
-		case SND_SOC_DAIFMT_NB_NF:     /* normal bit clock + nor frame */
-			reg_val &= ~(0x1<<AIF1_LRCK_INV);
-			reg_val &= ~(0x1<<AIF1_BCLK_INV);
-			break;
-		case SND_SOC_DAIFMT_NB_IF:     /* normal bclk + inv frm */
-			reg_val |= (0x1<<AIF1_LRCK_INV);
-			reg_val &= ~(0x1<<AIF1_BCLK_INV);
-			break;
-		case SND_SOC_DAIFMT_IB_NF:     /* invert bclk + nor frm */
-			reg_val &= ~(0x1<<AIF1_LRCK_INV);
-			reg_val |= (0x1<<AIF1_BCLK_INV);
-			break;
-		case SND_SOC_DAIFMT_IB_IF:     /* invert bclk + inv frm */
-			reg_val |= (0x1<<AIF1_LRCK_INV);
-			reg_val |= (0x1<<AIF1_BCLK_INV);
-			break;
+	case SND_SOC_DAIFMT_NB_NF:     /* normal bit clock + nor frame */
+		reg_val &= ~(0x1<<AIF1_LRCK_INV);
+		reg_val &= ~(0x1<<AIF1_BCLK_INV);
+		break;
+	case SND_SOC_DAIFMT_NB_IF:     /* normal bclk + inv frm */
+		reg_val |= (0x1<<AIF1_LRCK_INV);
+		reg_val &= ~(0x1<<AIF1_BCLK_INV);
+		break;
+	case SND_SOC_DAIFMT_IB_NF:     /* invert bclk + nor frm */
+		reg_val &= ~(0x1<<AIF1_LRCK_INV);
+		reg_val |= (0x1<<AIF1_BCLK_INV);
+		break;
+	case SND_SOC_DAIFMT_IB_IF:     /* invert bclk + inv frm */
+		reg_val |= (0x1<<AIF1_LRCK_INV);
+		reg_val |= (0x1<<AIF1_BCLK_INV);
+		break;
 	}
 	snd_soc_write(codec, AIF_CLK_CTRL, reg_val);
 
@@ -1491,16 +668,14 @@ static int ac10x_set_pll(struct snd_soc_dai *codec_dai, int pll_id, int source,
 	if ((freq_in < 128000) || (freq_in > 24576000)) {
 		return -EINVAL;
 	} else if ((freq_in == 24576000) || (freq_in == 22579200)) {
-		switch (pll_id) {
-		case AC10X_MCLK1:
+		if (pll_id == AC10X_MCLK1) {
 			/*select aif1 clk source from mclk1*/
 			snd_soc_update_bits(codec, SYSCLK_CTRL, (0x3<<AIF1CLK_SRC), (0x0<<AIF1CLK_SRC));
-			break;
-		default:
-			return -EINVAL;
+			return 0;
 		}
-		return 0;
+		return -EINVAL;
 	}
+
 	switch (pll_id) {
 	case AC10X_MCLK1:
 		/*pll source from MCLK1*/
@@ -1538,14 +713,11 @@ static int ac10x_set_pll(struct snd_soc_dai *codec_dai, int pll_id, int source,
 static int ac10x_audio_startup(struct snd_pcm_substream *substream,
 	struct snd_soc_dai *codec_dai)
 {
-	struct snd_soc_codec *codec = codec_dai->codec;
+	// struct snd_soc_codec *codec = codec_dai->codec;
 
 	AC10X_DBG("%s,line:%d\n", __func__, __LINE__);
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
-		if(agc_used){
-			agc_enable(codec, 1);
-		}
 	}
 	return 0;
 }
@@ -1580,9 +752,7 @@ static void __ac10x_work_start_clock(struct work_struct *work) {
 	struct ac10x_priv *ac10x = container_of(work, struct ac10x_priv, dlywork.work);
 
 	/* enable global clock */
-	#if !_MORE_WIDGETS
 	ac10x_aif1clk(ac10x->codec, SND_SOC_DAPM_PRE_PMU);
-	#endif
 
 	return;
 }
@@ -1628,7 +798,6 @@ static const struct snd_soc_dai_ops ac10x_aif1_dai_ops = {
 	.startup	= ac10x_audio_startup,
 };
 
-
 static struct snd_soc_dai_driver ac10x_dai[] = {
 	{
 		.name = "ac10x-aif1",
@@ -1657,22 +826,10 @@ static void codec_resume_work(struct work_struct *work)
 {
 	struct ac10x_priv *ac10x = container_of(work, struct ac10x_priv, codec_resume);
 	struct snd_soc_codec *codec = ac10x->codec;
-	int i, ret = 0;
 
 	AC10X_DBG("%s() L%d +++\n", __func__, __LINE__);
 
-	for (i = 0; i < ARRAY_SIZE(ac10x_supplies); i++){
-		ret = regulator_enable(ac10x->supplies[i].consumer);
-
-		if (0 != ret) {
-			pr_err("[ac10x] %s: some error happen, fail to enable regulator!\n", __func__);
-		}
-	}
-	msleep(50);
 	set_configuration(codec);
-	if (agc_used) {
-		agc_config(codec);
-	}
 	if (drc_used) {
 		drc_config(codec);
 	}
@@ -1704,7 +861,7 @@ static ssize_t ac10x_debug_store(struct device *dev,
 		num=val&0xff;
 		printk("\n");
 		printk("read:start add:0x%x,count:0x%x\n",reg,num);
-		do{
+		do {
 			value_r[i] = snd_soc_read(ac10x->codec, reg);
 			printk("0x%x: 0x%04x ",reg,value_r[i]);
 			reg+=1;
@@ -1713,7 +870,7 @@ static ssize_t ac10x_debug_store(struct device *dev,
 				printk("\n");
 			if(i%4==0)
 				printk("\n");
-		}while(i<num);
+		} while(i<num);
 	}
 	return count;
 }
@@ -1742,7 +899,6 @@ static const struct regmap_config ac101_regmap = {
 	.reg_bits = 8,
 	.val_bits = 16,
 	.reg_stride = 1,
-
 	.max_register = 0xB5,
 	.cache_type = REGCACHE_RBTREE,
 };
@@ -1750,11 +906,7 @@ static const struct regmap_config ac101_regmap = {
 static int ac10x_codec_probe(struct snd_soc_codec *codec)
 {
 	int ret = 0;
-	int i = 0;
 	struct ac10x_priv *ac10x;
-	#if _MORE_WIDGETS
-	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
-	#endif
 
 	ac10x = dev_get_drvdata(codec->dev);
 	if (ac10x == NULL) {
@@ -1766,7 +918,6 @@ static int ac10x_codec_probe(struct snd_soc_codec *codec)
 	INIT_DELAYED_WORK(&ac10x->dlywork, __ac10x_work_start_clock);
 	INIT_WORK(&ac10x->codec_resume, codec_resume_work);
 	ac10x->dac_enable = 0;
-	ac10x->adc_enable = 0;
 	ac10x->aif1_clken = 0;
 	ac10x->aif2_clken = 0;
 	mutex_init(&ac10x->dac_mutex);
@@ -1775,30 +926,6 @@ static int ac10x_codec_probe(struct snd_soc_codec *codec)
 
 	register_start_clock(ac10x_start_clock);
 
-	ac10x->num_supplies = ARRAY_SIZE(ac10x_supplies);
-	ac10x->supplies = devm_kzalloc(ac10x->codec->dev,
-						sizeof(struct regulator_bulk_data) *
-						ac10x->num_supplies, GFP_KERNEL);
-	if (!ac10x->supplies) {
-		pr_err("[ac10x] Failed to get mem.\n");
-		return -ENOMEM;
-	}
-	for (i = 0; i < ARRAY_SIZE(ac10x_supplies); i++)
-		ac10x->supplies[i].supply = ac10x_supplies[i];
-
-	ret = regulator_bulk_get(NULL, ac10x->num_supplies, ac10x->supplies);
-	if (ret != 0) {
-		pr_err("[ac10x] Failed to get supplies: %d\n", ret);
-	}
-
-	for (i = 0; i < ARRAY_SIZE(ac10x_supplies); i++){
-		ret = regulator_enable(ac10x->supplies[i].consumer);
-
-		if (0 != ret) {
-			pr_err("[ac10x] %s: some error happen, fail to enable regulator!\n", __func__);
-		}
-	}
-	get_configuration();
 	set_configuration(ac10x->codec);
 
 	/*enable this bit to prevent leakage from ldoin*/
@@ -1810,49 +937,21 @@ static int ac10x_codec_probe(struct snd_soc_codec *codec)
 		pr_err("[ac10x] Failed to register audio mode control, "
 				"will continue without it.\n");
 	}
-
-	#if _MORE_WIDGETS
-	snd_soc_dapm_new_controls(dapm, ac10x_dapm_widgets, ARRAY_SIZE(ac10x_dapm_widgets));
- 	snd_soc_dapm_add_routes(dapm, ac10x_dapm_routes, ARRAY_SIZE(ac10x_dapm_routes));
-	#endif
-
 	return 0;
 }
 
 /* power down chip */
 static int ac10x_codec_remove(struct snd_soc_codec *codec)
 {
-	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
-	int i = 0;
-	int ret = 0;
-
-	for (i = 0; i < ARRAY_SIZE(ac10x_supplies); i++){
-		ret = regulator_disable(ac10x->supplies[i].consumer);
-
-		if (0 != ret) {
-		pr_err("[ac10x] %s: some error happen, fail to disable regulator!\n", __func__);
-		}
-		regulator_put(ac10x->supplies[i].consumer);
-	}
-
+	// struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 	return 0;
 }
 
 static int ac10x_codec_suspend(struct snd_soc_codec *codec)
 {
-	int i ,ret =0;
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 
 	AC10X_DBG("[codec]:suspend\n");
-	ac10x_set_bias_level(codec, SND_SOC_BIAS_OFF);
-	for (i = 0; i < ARRAY_SIZE(ac10x_supplies); i++){
-		ret = regulator_disable(ac10x->supplies[i].consumer);
-
-		if (0 != ret) {
-			pr_err("[ac10x] %s: some error happen, fail to disable regulator!\n", __func__);
-		}
-	}
-
 	regcache_cache_only(ac10x->regmap, true);
 	return 0;
 }
@@ -1930,9 +1029,9 @@ static int ac10x_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		pr_err("failed to create attr group\n");
 	}
 
-	ac10x->gpiod_spk_amp_switch = devm_gpiod_get_optional(&i2c->dev, "spk-amp-switch", GPIOD_OUT_LOW);
-	if (IS_ERR(ac10x->gpiod_spk_amp_switch)) {
-		ac10x->gpiod_spk_amp_switch = NULL;
+	ac10x->gpiod_spk_amp_gate = devm_gpiod_get_optional(&i2c->dev, "spk-amp-switch", GPIOD_OUT_LOW);
+	if (IS_ERR(ac10x->gpiod_spk_amp_gate)) {
+		ac10x->gpiod_spk_amp_gate = NULL;
 		dev_err(&i2c->dev, "failed get spk-amp-switch in device tree\n");
 	}
 	return 0;
@@ -1944,12 +1043,11 @@ static void ac10x_shutdown(struct i2c_client *i2c)
 	struct snd_soc_codec *codec = NULL;
 	struct ac10x_priv *ac10x = i2c_get_clientdata(i2c);
 
-	if (ac10x->codec != NULL) {
-		codec = ac10x->codec;
-	} else {
-		pr_err("no sound card.\n");
+	if (ac10x->codec == NULL) {
+		pr_err("%s() L%d: no sound card.\n", __func__, __LINE__);
 		return;
 	}
+	codec = ac10x->codec;
 
 	/*set headphone volume to 0*/
 	reg_val = snd_soc_read(codec, HPOUT_CTRL);

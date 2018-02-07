@@ -177,213 +177,48 @@ static const struct pll_div ac108_pll_div_list[] = {
 static const DECLARE_TLV_DB_SCALE(tlv_adc_pga_gain, 0, 100, 0);
 static const DECLARE_TLV_DB_SCALE(tlv_ch_digital_vol, -11925,75,0);
 
-#if 0
-/* Analog ADC */
-static const char *analog_adc_mux_text[] = {
-	"Analog ADC1",
-	"Analog ADC2",
-	"Analog ADC3",
-	"Analog ADC4",
-};
+static int ac108_read(u8 reg, u8 *rt_value, struct i2c_client *client) {
+	int ret;
+	u8 read_cmd[3] = { reg, 0, 0 };
+	u8 cmd_len = 1;
 
-/* Channel Mapping */
-static const char *channel_map_mux_text[] = {
-	"1st adc sample",
-	"2st adc sample",
-	"3st adc sample",
-	"4st adc sample",
-};
+	ret = i2c_master_send(client, read_cmd, cmd_len);
+	if (ret != cmd_len) {
+		pr_err("ac108_read error1\n");
+		return -1;
+	}
+	ret = i2c_master_recv(client, rt_value, 1);
+	if (ret != 1) {
+		pr_err("ac108_read error2, ret = %d.\n", ret);
+		return -1;
+	}
 
-/*Tx source select channel*/
-static const char *channels_src_mux_text[] = {
-	"1 channels ",
-	"2 channels ",
-	"3 channels ",
-	"4 channels ",
-	"5 channels ",
-	"6 channels ",
-	"7 channels ",
-	"8 channels ",
-	"9 channels ",
-	"10 channels ",
-	"11 channels ",
-	"12 channels ",
-	"13 channels ",
-	"14 channels ",
-	"15 channels ",
-	"16 channels ",
-};
+	return 0;
+}
 
-static const  unsigned int ac108_channel_enable_values[] = {
-	0x00,
-	0x01,
-	0x03,
-	0x07,
-	0x0f,
-	0x1f,
-	0x3f,
-	0x7f,
-	0xff,
-};
+static int ac108_write(u8 reg, unsigned char val, struct i2c_client *client) {
+	int ret = 0;
+	u8 write_cmd[2] = { reg, val };
 
-static const char *const ac108_channel_low_enable_texts[] = {
-	"disable all",
-	"1-1 channels ",
-	"1-2 channels ",
-	"1-3 channels ",
-	"1-4 channels ",
-	"1-5 channels ",
-	"1-6 channels ",
-	"1-7 channels ",
-	"1-8 channels ",
-};
-static const char *const ac108_channel_high_enable_texts[] = {
-	"disable all",
-	"8-9 channels ",
-	"8-10 channels ",
-	"8-11 channels ",
-	"8-12 channels ",
-	"8-13 channels ",
-	"8-14 channels ",
-	"8-15 channels ",
-	"8-16 channels ",
-};
+	ret = i2c_master_send(client, write_cmd, 2);
+	if (ret != 2) {
+		pr_err("ac108_write error->[REG-0x%02x,val-0x%02x]\n", reg, val);
+		return -1;
+	}
+	return 0;
+}
 
-static const char *const ac108_data_source_texts[] = {
-	"disable all",
-	"ADC1 data",
-	"ADC2 data",
-	"ADC3 data",
-	"ADC4 data",
-};
-static const  unsigned int ac108_data_source_values[] = {
-	0x00,
-	0x01,
-	0x02,
-	0x04,
-	0x08,
-};
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_tx1_channel_low_enum,
-								  I2S_TX1_CTRL2, 0, 0xff,
-								  ac108_channel_low_enable_texts,
-								  ac108_channel_enable_values);
+static int ac108_update_bits(u8 reg, u8 mask, u8 val, struct i2c_client *client) {
+	u8 val_old, val_new;
 
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_tx1_channel_high_enum,
-								  I2S_TX1_CTRL3, 0, 0xff,
-								  ac108_channel_high_enable_texts,
-								  ac108_channel_enable_values);
+	ac108_read(reg, &val_old, client);
+	val_new = (val_old & ~mask) | (val & mask);
+	if (val_new != val_old) {
+		ac108_write(reg, val_new, client);
+	}
 
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_tx2_channel_low_enum,
-								  I2S_TX2_CTRL2, 0, 0xff,
-								  ac108_channel_low_enable_texts,
-								  ac108_channel_enable_values);
-
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_tx2_channel_high_enum,
-								  I2S_TX2_CTRL3, 0, 0xff,
-								  ac108_channel_high_enable_texts,
-								  ac108_channel_enable_values);
-/*0x76: ADC1 Digital Mixer Source Control Register*/
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_adc1_data_src_enum,
-								  ADC1_DMIX_SRC, 0, 0x0f,
-								  ac108_data_source_texts,
-								  ac108_data_source_values);
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_adc1_data_gc_enum,
-								  ADC1_DMIX_SRC, ADC1_ADC1_DMXL_GC, 0xf0,
-								  ac108_data_source_texts,
-								  ac108_data_source_values);
-/*0x77: ADC2 Digital Mixer Source Control Register*/
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_adc2_data_src_enum,
-								  ADC2_DMIX_SRC, 0, 0x0f,
-								  ac108_data_source_texts,
-								  ac108_data_source_values);
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_adc2_data_gc_enum,
-								  ADC2_DMIX_SRC, ADC2_ADC1_DMXL_GC, 0xf0,
-								  ac108_data_source_texts,
-								  ac108_data_source_values);
-/*0x78: ADC3 Digital Mixer Source Control Register*/
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_adc3_data_src_enum,
-								  ADC3_DMIX_SRC, 0, 0x0f,
-								  ac108_data_source_texts,
-								  ac108_data_source_values);
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_adc3_data_gc_enum,
-								  ADC3_DMIX_SRC, ADC3_ADC1_DMXL_GC, 0xf0,
-								  ac108_data_source_texts,
-								  ac108_data_source_values);
-/*0x79: ADC4 Digital Mixer Source Control Register*/
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_adc4_data_src_enum,
-								  ADC4_DMIX_SRC, 0, 0x0f,
-								  ac108_data_source_texts,
-								  ac108_data_source_values);
-static SOC_VALUE_ENUM_SINGLE_DECL(ac108_adc4_data_gc_enum,
-								  ADC4_DMIX_SRC, ADC4_ADC1_DMXL_GC, 0xf0,
-								  ac108_data_source_texts,
-								  ac108_data_source_values);
-
-static const struct soc_enum ac108_enum[] = {
-	/*0x38:TX1 Channel (slot) number Select for each output*/
-	SOC_ENUM_SINGLE(I2S_TX1_CTRL1, TX1_CHSEL, 16, channels_src_mux_text),
-
-	/*0x40:TX1 Channel (slot) number Select for each output*/
-	SOC_ENUM_SINGLE(I2S_TX2_CTRL1, TX2_CHSEL, 16, channels_src_mux_text),
-
-	/*0x3c:  TX1 Channel Mapping Control 1*/
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL1, TX1_CH1_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL1, TX1_CH2_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL1, TX1_CH3_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL1, TX1_CH4_MAP, 4, channel_map_mux_text),
-
-	/*0x3d:  TX1 Channel Mapping Control 2*/
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL2, TX1_CH5_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL2, TX1_CH6_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL2, TX1_CH7_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL2, TX1_CH8_MAP, 4, channel_map_mux_text),
-
-	/*0x3e:  TX1 Channel Mapping Control 3*/
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL3, TX1_CH9_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL3, TX1_CH10_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL3, TX1_CH11_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL3, TX1_CH12_MAP, 4, channel_map_mux_text),
-
-	/*0x3f:  TX1 Channel Mapping Control 4*/
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL4, TX1_CH13_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL4, TX1_CH14_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL4, TX1_CH15_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL4, TX1_CH16_MAP, 4, channel_map_mux_text),
-
-	/*0x44:  TX2 Channel Mapping Control 1*/
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL1, TX2_CH1_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL1, TX2_CH2_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL1, TX2_CH3_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL1, TX2_CH4_MAP, 4, channel_map_mux_text),
-
-	/*0x45:  TX2 Channel Mapping Control 2*/
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL2, TX2_CH5_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL2, TX2_CH6_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL2, TX2_CH7_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL2, TX2_CH8_MAP, 4, channel_map_mux_text),
-
-	/*0x46:  TX2 Channel Mapping Control 3*/
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL3, TX2_CH9_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL3, TX2_CH10_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL3, TX2_CH11_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL3, TX2_CH12_MAP, 4, channel_map_mux_text),
-
-	/*0x47:  TX2 Channel Mapping Control 4*/
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL4, TX2_CH13_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL4, TX2_CH14_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL4, TX2_CH15_MAP, 4, channel_map_mux_text),
-	SOC_ENUM_SINGLE(I2S_TX2_CHMP_CTRL4, TX2_CH16_MAP, 4, channel_map_mux_text),
-
-	/*0x63: ADC Digital Source Select Register*/
-	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC4_SRS, 4, analog_adc_mux_text),
-	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC3_SRS, 4, analog_adc_mux_text),
-	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC2_SRS, 4, analog_adc_mux_text),
-	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC1_SRS, 4, analog_adc_mux_text),
-};
-#endif
-
-static int ac108_read(u8 reg, u8 *rt_value, struct i2c_client *client);
-static int ac108_update_bits(u8 reg, u8 mask, u8 val, struct i2c_client *client);
+	return 0;
+}
 
 /**
  * snd_ac108_get_volsw - single mixer get callback
@@ -506,78 +341,6 @@ static const struct snd_kcontrol_new ac108_snd_controls[] = {
 	SOC_AC108_SINGLE_TLV("ADC7 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
 	/*0x93: Analog PGA4 Control Register*/
 	SOC_AC108_SINGLE_TLV("ADC8 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
-
-
-	#if 0
-	SOC_SINGLE("OUT1 Mute", I2S_FMT_CTRL3, 3, 1, 0),
-	SOC_SINGLE("OUT2 Mute", I2S_FMT_CTRL3, 4, 1, 0),
-
-	/*0x39:TX1 Channel1 ~Channel8 (slot) enable*/
-	SOC_ENUM("TX1 Channel1~8 enable", ac108_tx1_channel_low_enum),
-	/*0x3A:TX1 Channel1 ~Channel8 (slot) enable*/
-	SOC_ENUM("TX1 Channel9~16 enable", ac108_tx1_channel_high_enum),
-	/*0x41:TX2 Channel1 ~Channel8 (slot) enable*/
-	SOC_ENUM("TX2 Channel1~8 enable", ac108_tx2_channel_low_enum),
-	/*0x42:TX2 Channel1 ~Channel8 (slot) enable*/
-	SOC_ENUM("TX2 Channel9~16 enable", ac108_tx2_channel_high_enum),
-
-
-	/*0x96-0x9F: use the default value*/
-
-	SOC_ENUM("Tx1 Channels", ac108_enum[0]),
-	SOC_ENUM("Tx2 Channels", ac108_enum[1]),
-
-	SOC_ENUM("Tx1 Channels 1 MAP", ac108_enum[2]),
-	SOC_ENUM("Tx1 Channels 2 MAP", ac108_enum[3]),
-	SOC_ENUM("Tx1 Channels 3 MAP", ac108_enum[4]),
-	SOC_ENUM("Tx1 Channels 4 MAP", ac108_enum[5]),
-	SOC_ENUM("Tx1 Channels 5 MAP", ac108_enum[6]),
-	SOC_ENUM("Tx1 Channels 6 MAP", ac108_enum[7]),
-	SOC_ENUM("Tx1 Channels 7 MAP", ac108_enum[8]),
-	SOC_ENUM("Tx1 Channels 8 MAP", ac108_enum[9]),
-	SOC_ENUM("Tx1 Channels 9 MAP", ac108_enum[10]),
-	SOC_ENUM("Tx1 Channels 10 MAP", ac108_enum[11]),
-	SOC_ENUM("Tx1 Channels 11 MAP", ac108_enum[12]),
-	SOC_ENUM("Tx1 Channels 12 MAP", ac108_enum[13]),
-	SOC_ENUM("Tx1 Channels 13 MAP", ac108_enum[14]),
-	SOC_ENUM("Tx1 Channels 14 MAP", ac108_enum[15]),
-	SOC_ENUM("Tx1 Channels 15 MAP", ac108_enum[16]),
-	SOC_ENUM("Tx1 Channels 16 MAP", ac108_enum[17]),
-
-	SOC_ENUM("Tx2 Channels 1 MAP", ac108_enum[18]),
-	SOC_ENUM("Tx2 Channels 2 MAP", ac108_enum[19]),
-	SOC_ENUM("Tx2 Channels 3 MAP", ac108_enum[20]),
-	SOC_ENUM("Tx2 Channels 4 MAP", ac108_enum[21]),
-	SOC_ENUM("Tx2 Channels 5 MAP", ac108_enum[22]),
-	SOC_ENUM("Tx2 Channels 6 MAP", ac108_enum[23]),
-	SOC_ENUM("Tx2 Channels 7 MAP", ac108_enum[24]),
-	SOC_ENUM("Tx2 Channels 8 MAP", ac108_enum[25]),
-	SOC_ENUM("Tx2 Channels 9 MAP", ac108_enum[26]),
-	SOC_ENUM("Tx2 Channels 10 MAP", ac108_enum[27]),
-	SOC_ENUM("Tx2 Channels 11 MAP", ac108_enum[28]),
-	SOC_ENUM("Tx2 Channels 12 MAP", ac108_enum[29]),
-	SOC_ENUM("Tx2 Channels 13 MAP", ac108_enum[30]),
-	SOC_ENUM("Tx2 Channels 14 MAP", ac108_enum[31]),
-	SOC_ENUM("Tx2 Channels 15 MAP", ac108_enum[32]),
-	SOC_ENUM("Tx2 Channels 16 MAP", ac108_enum[33]),
-
-	SOC_ENUM("ADC4 Source", ac108_enum[34]),
-	SOC_ENUM("ADC3 Source", ac108_enum[35]),
-	SOC_ENUM("ADC2 Source", ac108_enum[36]),
-	SOC_ENUM("ADC1 Source", ac108_enum[37]),
-
-	SOC_ENUM("ADC1 Digital Mixer gc", ac108_adc1_data_gc_enum),
-	SOC_ENUM("ADC1 Digital Mixer src", ac108_adc1_data_src_enum),
-
-	SOC_ENUM("ADC2 Digital Mixer gc", ac108_adc2_data_gc_enum),
-	SOC_ENUM("ADC2 Digital Mixer src", ac108_adc2_data_src_enum),
-
-	SOC_ENUM("ADC3 Digital Mixer gc", ac108_adc3_data_gc_enum),
-	SOC_ENUM("ADC3 Digital Mixer src", ac108_adc3_data_src_enum),
-
-	SOC_ENUM("ADC4 Digital Mixer gc", ac108_adc4_data_gc_enum),
-	SOC_ENUM("ADC4 Digital Mixer src", ac108_adc4_data_src_enum),
-	#endif
 };
 
 
@@ -687,48 +450,6 @@ static const struct snd_soc_dapm_route ac108_dapm_routes[] = {
 	{ "MIC4N", NULL, "Channel 4 EN" },
 
 };
-static int ac108_read(u8 reg, u8 *rt_value, struct i2c_client *client) {
-	int ret;
-	u8 read_cmd[3] = { reg, 0, 0 };
-	u8 cmd_len = 1;
-
-	ret = i2c_master_send(client, read_cmd, cmd_len);
-	if (ret != cmd_len) {
-		pr_err("ac108_read error1\n");
-		return -1;
-	}
-	ret = i2c_master_recv(client, rt_value, 1);
-	if (ret != 1) {
-		pr_err("ac108_read error2, ret = %d.\n", ret);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int ac108_write(u8 reg, unsigned char val, struct i2c_client *client) {
-	int ret = 0;
-	u8 write_cmd[2] = { reg, val };
-
-	ret = i2c_master_send(client, write_cmd, 2);
-	if (ret != 2) {
-		pr_err("ac108_write error->[REG-0x%02x,val-0x%02x]\n", reg, val);
-		return -1;
-	}
-	return 0;
-}
-
-static int ac108_update_bits(u8 reg, u8 mask, u8 val, struct i2c_client *client) {
-	u8 val_old, val_new;
-
-	ac108_read(reg, &val_old, client);
-	val_new = (val_old & ~mask) | (val & mask);
-	if (val_new != val_old) {
-		ac108_write(reg, val_new, client);
-	}
-
-	return 0;
-}
 
 #if 0
 static int ac108_multi_chips_read(u8 reg, u8 *rt_value, struct ac108_priv *ac108) {
@@ -877,6 +598,7 @@ static int ac108_multi_chips_slots(struct ac108_priv *ac, int slots) {
 	 * ...
 	 */
 	for (i = 0; i < ac->codec_index; i++) {
+		/* rotate map, due to channels rotated by CPU_DAI */
 		const unsigned vec_mask[] = {
 			0x3 << 6 | 0x3,	// slots 6,7,0,1
 			0xF << 2,	// slots 2,3,4,5
@@ -906,7 +628,6 @@ static int ac108_multi_chips_slots(struct ac108_priv *ac, int slots) {
 		unsigned vec;
 
 		/* 0x38-0x3A I2S_TX1_CTRLx */
-		/* rotate map, due to channels rotated by CPU_DAI */
 		if (ac->codec_index == 1) {
 			vec = 0xFUL;
 		} else {
@@ -1017,9 +738,6 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 			ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac108);
 		} else {
 			/*TDM mode or normal mode*/
-			/**
-			 * TODO: need test.
-			 */
 			ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac108);
 		}
 
@@ -1105,7 +823,6 @@ static int ac108_set_sysclk(struct snd_soc_dai *dai, int clk_id, unsigned int fr
  * @return int 
  */
 static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
-
 	unsigned char tx_offset, lrck_polarity, brck_polarity;
 	struct ac108_priv *ac108 = dev_get_drvdata(dai->dev);
 
@@ -1236,8 +953,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 
 	/**
 	 * 0x60: 
-	 * MSB / LSB First Select: This driver only support MSB First 
-	 * Select . 
+	 * MSB / LSB First Select: This driver only support MSB First Select . 
 	 * OUT2_MUTE,OUT1_MUTE shoule be set in widget. 
 	 * LRCK = 1 BCLK width 
 	 * Linear PCM 
@@ -1428,17 +1144,16 @@ static int ac108_add_widgets(struct snd_soc_codec *codec) {
 	}
 	snd_soc_add_codec_controls(codec, ac108_snd_controls, ctrl_cnt);
 
-	snd_soc_dapm_new_controls(dapm, ac108_dapm_widgets,
-							  ARRAY_SIZE(ac108_dapm_widgets));
+	snd_soc_dapm_new_controls(dapm, ac108_dapm_widgets,ARRAY_SIZE(ac108_dapm_widgets));
 	snd_soc_dapm_add_routes(dapm, ac108_dapm_routes, ARRAY_SIZE(ac108_dapm_routes));
 
 	return 0;
 }
-static int ac108_probe(struct snd_soc_codec *codec) {
 
+
+static int ac108_probe(struct snd_soc_codec *codec) {
 	dev_set_drvdata(codec->dev, ac108);
 	ac108_add_widgets(codec);
-
 	return 0;
 }
 
@@ -1551,8 +1266,7 @@ static struct attribute_group ac108_debug_attr_group = {
 };
 
 
-static int ac108_i2c_probe(struct i2c_client *i2c,
-						   const struct i2c_device_id *i2c_id) {
+static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i2c_id) {
 	int ret = 0;
 	struct device_node *np = i2c->dev.of_node;
 	unsigned int val = 0;
