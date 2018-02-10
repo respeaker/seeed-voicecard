@@ -12,25 +12,25 @@
  * the License, or (at your option) any later version.
  *
  */
-#ifndef _SNDCODEC_H
-#define _SNDCODEC_H
-//#include <linux/mfd/ac100-mfd.h>
+#ifndef __AC101_REGS_H__
+#define __AC101_REGS_H__
+
 /*pll source*/
-#define AC10X_MCLK1 1
-#define AC10X_MCLK2 2
-#define AC10X_BCLK1 3
-#define AC10X_BCLK2 4
+#define AC101_MCLK1 1
+#define AC101_MCLK2 2
+#define AC101_BCLK1 3
+#define AC101_BCLK2 4
 
 #define AIF1_CLK 1
 #define AIF2_CLK 2
 
 #define	CHIP_AUDIO_RST		0x0
-#define PLL_CTRL1			0x1
-#define PLL_CTRL2			0x2
-#define SYSCLK_CTRL			0x3
-#define MOD_CLK_ENA			0x4
+#define PLL_CTRL1		0x1
+#define PLL_CTRL2		0x2
+#define SYSCLK_CTRL		0x3
+#define MOD_CLK_ENA		0x4
 #define MOD_RST_CTRL		0x5
-#define AIF_SR_CTRL			0x6
+#define AIF_SR_CTRL		0x6
 
 #define AIF1_CLK_CTRL		0x10
 #define AIF1_ADCDAT_CTRL	0x11
@@ -77,11 +77,11 @@
 /*PLL_CTRL1*/
 #define DPLL_DAC_BIAS		14
 #define PLL_POSTDIV_M		8
-#define CLOSE_LOOP			6
-#define INT					0
+#define CLOSE_LOOP		6
+#define INT			0
 
 /*PLL_CTRL2*/
-#define PLL_EN				15
+#define PLL_EN			15
 #define PLL_LOCK_STATUS		14
 #define PLL_PREDIV_NI		4
 #define PLL_POSTDIV_NF		0
@@ -167,11 +167,11 @@
 /*AIF1_MXR_SRC*/
 #define AIF1_AD0L_AIF1_DA0L_MXR		15
 #define AIF1_AD0L_AIF2_DACL_MXR		14
-#define AIF1_AD0L_ADCL_MXR			13
+#define AIF1_AD0L_ADCL_MXR		13
 #define AIF1_AD0L_AIF2_DACR_MXR		12
 #define AIF1_AD0R_AIF1_DA0R_MXR		11
 #define AIF1_AD0R_AIF2_DACR_MXR		10
-#define AIF1_AD0R_ADCR_MXR			9
+#define AIF1_AD0R_ADCR_MXR		9
 #define AIF1_AD0R_AIF2_DACL_MXR		8
 #define AIF1_AD1L_AIF2_DACL_MXR		7
 #define AIF1_AD1L_ADCL_MXR		6
@@ -262,7 +262,7 @@
 #define ENDWA_N				14
 #define DAC_MOD_DBG			13
 #define DAC_PTN_SEL			6
-#define DVC					0
+#define DVC				0
 
 /*DAC_MXR_SRC*/
 #define DACL_MXR_AIF1_DA0L		15
@@ -286,8 +286,8 @@
 #define ADCLEN				11
 #define ADCLG				8
 #define MBIASEN				7
-#define MMIC_BIAS_CHOP_EN	6
-#define MMIC_BIAS_CHOP_CKS	4
+#define MMIC_BIAS_CHOP_EN		6
+#define MMIC_BIAS_CHOP_CKS		4
 #define HBIASMOD			2
 #define HBIASEN				1
 #define HBIASADCEN			0
@@ -343,9 +343,9 @@
 
 /*OMIXER_BST1_CTRL*/
 #define BIASVOLTAGE			12
-#define AXG					9
-#define OMIXER_MIC1G		6
-#define OMIXER_MIC2G		3
+#define AXG				9
+#define OMIXER_MIC1G			6
+#define OMIXER_MIC2G			3
 #define LINEING				0
 
 /*HPOUT_CTRL*/
@@ -408,9 +408,9 @@
 /*ADDA_TUNE3*/
 #define LDOEN				15
 #define LDO_SEL				12
-#define BIASCALIVERIFY		11
+#define BIASCALIVERIFY			11
 #define BIASMODE			10
-#define BIASCALIDATA		9
+#define BIASCALIDATA			9
 #define OSCS				1
 #define OSCEN				0
 
@@ -420,14 +420,5 @@
 #define  DACA_CHND_ENA		7
 #define HPPA_MXRD_ENA		6
 #define HPVL_CTRL_OUT		0
-struct spk_gpio {
-	u32 gpio;
-	bool used;
-};
-#ifdef AC10X_DEBG
-    #define AC10X_DBG(format,args...)  printk("[AC101] "format,##args)
-#else
-    #define AC10X_DBG(...)
-#endif
 
-#endif
+#endif//__AC101_REGS_H__
