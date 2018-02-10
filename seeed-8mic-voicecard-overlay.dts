@@ -103,28 +103,6 @@
 					system-clock-id = <1>;
 				};
 			};
-
-			simple-audio-card,dai-link@1 {
-				format = "dsp_a";
-				bitclock-master = <&codec1_dai>;
-				frame-master = <&codec1_dai>;
-				/* bitclock-inversion; */
-				/* frame-inversion; */
-
-				cpu {
-					sound-dai = <&i2s>;
-					dai-tdm-slot-num     = <2>;
-					dai-tdm-slot-width   = <32>;
-					dai-tdm-slot-tx-mask = <1 1 0 0>;
-					dai-tdm-slot-rx-mask = <1 1 0 0>;
-				};
-
-				codec1_dai: codec {
-					sound-dai = <&ac101>;
-					clocks =  <&ac10x_mclk>;
-					system-clock-id = <1>;
-				};
-			};
 		};
 	};
 

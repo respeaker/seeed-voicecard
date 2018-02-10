@@ -202,32 +202,35 @@ err:
 	return ret;
 }
 
-static int (* _start_clock)(void);
+static int (* _set_clock)(int y_start_n_stop);
 
-int register_start_clock(int (*start_clock)(void)) {
-	_start_clock = start_clock;
+int asoc_simple_card_register_set_clock(int (*set_clock)(int)) {
+	_set_clock = set_clock;
 	return 0;
 }
-EXPORT_SYMBOL(register_start_clock);
+EXPORT_SYMBOL(asoc_simple_card_register_set_clock);
 
 static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *dai = rtd->codec_dai;
 	int ret = 0;
 
-	dev_dbg(rtd->card->dev, "%s() stream=%d  cmd=%d\n",
-		__FUNCTION__, substream->stream, cmd);
+	dev_dbg(rtd->card->dev, "%s() stream=%d  cmd=%d play:%d, capt:%d\n",
+		__FUNCTION__, substream->stream, cmd,
+		dai->playback_active, dai->capture_active);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		if (_start_clock) _start_clock();
+		if (_set_clock) _set_clock(1);
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		if (_set_clock) _set_clock(0);
 		break;
 	default:
 		ret = -EINVAL;

@@ -16,6 +16,9 @@
 #define __AC10X_H__
 
 #define AC101_I2C_ID		4
+#define _MASTER_AC108		0
+#define _MASTER_AC101		1
+#define _MASTER_MULTI_CODEC	_MASTER_AC108
 
 #ifdef AC101_DEBG
     #define AC101_DBG(format,args...)  printk("[AC101] "format,##args)
@@ -23,8 +26,13 @@
     #define AC101_DBG(...)
 #endif
 
+#define _I2C_MUTEX_EN		1
+
 struct ac10x_priv {
 	struct i2c_client *i2c[4];
+	#if _I2C_MUTEX_EN
+	struct mutex i2c_mutex;
+	#endif
 	int codec_index;
 	unsigned sysclk;
 	unsigned mclk;	/* master clock or aif_clock/aclk */
@@ -32,7 +40,6 @@ struct ac10x_priv {
 	unsigned char i2s_mode;
 	unsigned char data_protocol;
 	struct delayed_work dlywork;
-	int trgr_cnt;
 	int tdm_chips_cnt;
 
 /* struct for ac101 .begin */
@@ -48,6 +55,7 @@ struct ac10x_priv {
 	u8 aif2_clken;
 
 	struct work_struct codec_resume;
+	struct delayed_work dlywork101;
 	struct gpio_desc* gpiod_spk_amp_gate;
 /* struct for ac101 .end */
 };
@@ -77,5 +85,8 @@ int ac101_set_bias_level(struct snd_soc_codec *codec, enum snd_soc_bias_level le
 int ac101_probe(struct i2c_client *i2c, const struct i2c_device_id *id);
 void ac101_shutdown(struct i2c_client *i2c);
 int ac101_remove(struct i2c_client *i2c);
+
+/* simple card export */
+int asoc_simple_card_register_set_clock(int (*set_clock)(int));
 
 #endif//__AC10X_H__
