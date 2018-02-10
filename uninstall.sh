@@ -17,7 +17,7 @@ uname_r=$(uname -r)
 echo "remove dtbos"
 rm  /boot/overlays/seeed-2mic-voicecard.dtbo || true
 rm  /boot/overlays/seeed-4mic-voicecard.dtbo || true
-rm  /boot/overlays/seeed-6mic-voicecard.dtbo || true
+rm  /boot/overlays/seeed-8mic-voicecard.dtbo || true
 
 echo "remove alsa configs"
 rm -rf  /etc/voicecard/ || true
@@ -35,6 +35,7 @@ rm  -rf /var/lib/dkms/seeed-voicecard || true
 echo "remove kernel modules"
 rm  /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-wm8960.ko || true
 rm  /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-ac108.ko || true
+rm  /lib/modules/${uname_r}/kernel/sound/soc/generic/snd-soc-simple-card.ko || true
 
 echo "------------------------------------------------------"
 echo "Please reboot your raspberry pi to apply all settings"

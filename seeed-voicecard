@@ -73,7 +73,7 @@ if [ "x${is_3b}" == "x3b" ] && [ "x${is_35}" == "x35" ] ; then
 
     sed -i -e "s/${old}/hw:${hw},0/g" /etc/asound.conf  
 
-    cp /etc/voicecard/ac101-ok-20180119.state /var/lib/alsa/asound.state
+    cp /etc/voicecard/ac108_6mic.state /var/lib/alsa/asound.state
 fi
 
 alsactl restore

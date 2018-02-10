@@ -36,13 +36,13 @@ function install_module {
   fi
 
   if [[ -e /usr/src/$mod-$ver || -e /var/lib/dkms/$mod/$ver ]]; then
-    dkms remove -m $mod -v $ver --all
+    dkms remove --force -m $mod -v $ver --all
     rm -rf /usr/src/$mod-$ver
   fi
   mkdir -p /usr/src/$mod-$ver
   cp -a $src/* /usr/src/$mod-$ver/
   dkms add -m $mod -v $ver
-  dkms build $kernels -m $mod -v $ver && dkms install $kernels -m $mod -v $ver
+  dkms build $kernels -m $mod -v $ver && dkms install --force $kernels -m $mod -v $ver
 
   mkdir -p /var/lib/dkms/$mod/$ver/$marker
 }
@@ -53,11 +53,15 @@ install_module "./" "seeed-voicecard"
 # install dtbos
 cp seeed-2mic-voicecard.dtbo /boot/overlays
 cp seeed-4mic-voicecard.dtbo /boot/overlays
+cp seeed-8mic-voicecard.dtbo /boot/overlays
 
 #install alsa plugins
-install -D ac108_plugin/libasound_module_pcm_ac108.so   /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
+# no need this plugin now
+# install -D ac108_plugin/libasound_module_pcm_ac108.so   /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
 
 #set kernel moduels
+grep -q "snd-soc-simple-card" /etc/modules || \
+  echo "snd-soc-simple-card" >> /etc/modules
 grep -q "snd-soc-ac108" /etc/modules || \
   echo "snd-soc-ac108" >> /etc/modules
 grep -q "snd-soc-wm8960" /etc/modules || \
