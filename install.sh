@@ -11,13 +11,8 @@ if [ "x${is_Raspberry}" != "xRaspberry" ] ; then
   exit 1
 fi
 
-ver="0.2"
-card=$1
+ver="0.3"
 
-if [ "x${card}" = "x" ] ; then
-  echo "Usage: ./install 2mic|4mic"
-  exit 1
-fi
 
 # we create a dir with this version to ensure that 'dkms remove' won't delete
 # the sources during kernel updates
@@ -51,21 +46,25 @@ function install_module {
 
   mkdir -p /var/lib/dkms/$mod/$ver/$marker
 }
-if [ ! -f "/boot/overlays/seeed-4mic-voicecard.dtbo" ] && [ ! -f "/lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-ac108.ko" ] ; then
-  install_module "./" "seeed-voicecard"
-  cp seeed-2mic-voicecard.dtbo /boot/overlays
-  cp seeed-4mic-voicecard.dtbo /boot/overlays
-  install -D ac108_plugin/libasound_module_pcm_ac108.so   /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
-else
-  echo "card driver already installed"
-fi
 
+install_module "./" "seeed-voicecard"
+
+
+# install dtbos
+cp seeed-2mic-voicecard.dtbo /boot/overlays
+cp seeed-4mic-voicecard.dtbo /boot/overlays
+
+#install alsa plugins
+install -D ac108_plugin/libasound_module_pcm_ac108.so   /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
+
+#set kernel moduels
 grep -q "snd-soc-ac108" /etc/modules || \
   echo "snd-soc-ac108" >> /etc/modules
 grep -q "snd-soc-wm8960" /etc/modules || \
   echo "snd-soc-wm8960" >> /etc/modules  
 
-
+#set dtoverlays
+sed -i -e 's:#dtparam=i2c_arm=on:dtparam=i2c_arm=on:g'  /boot/config.txt || true
 grep -q "dtoverlay=i2s-mmap" /boot/config.txt || \
   echo "dtoverlay=i2s-mmap" >> /boot/config.txt
 
@@ -73,36 +72,15 @@ grep -q "dtoverlay=i2s-mmap" /boot/config.txt || \
 grep -q "dtparam=i2s=on" /boot/config.txt || \
   echo "dtparam=i2s=on" >> /boot/config.txt
 
-has_2mic=$(grep seeed-2mic-voicecard /boot/config.txt)
-has_4mic=$(grep seeed-4mic-voicecard /boot/config.txt)
-case "${card}" in
-   "2mic") 
-    echo "cp wm8960_asound.state /var/lib/alsa/asound.state"
-    cp wm8960_asound.state /var/lib/alsa/asound.state
-    cp asound_2mic.conf /etc/asound.conf
-    if [ "x${has_4mic}" != x ] ; then
-      echo "has 4mic before, now remove it"
-      sed -i "s/dtoverlay=seeed-4mic-voicecard//g" /boot/config.txt
-    fi
-    grep -q "dtoverlay=seeed-2mic-voicecard" /boot/config.txt || \
-      echo "dtoverlay=seeed-2mic-voicecard" >> /boot/config.txt
-      
-   ;;
-   "4mic") 
-    echo "cp ac108_asound.state /var/lib/alsa/asound.state"
-    cp ac108_asound.state /var/lib/alsa/asound.state
-    cp asound_4mic.conf /etc/asound.conf
-    if [ "x${has_2mic}" != x ] ; then
-      echo "has 2mic before, now remove it"
-      sed -i "s/dtoverlay=seeed-2mic-voicecard//g" /boot/config.txt
-    fi
-    grep -q "dtoverlay=seeed-4mic-voicecard" /boot/config.txt || \
-      echo "dtoverlay=seeed-4mic-voicecard" >> /boot/config.txt    
-   ;;
-   *) 
-    echo "Please use 2mic or 4mic"
-   ;;
-esac
+#install config files
+mkdir /etc/voicecard || true
+cp *.conf /etc/voicecard
+cp *.state /etc/voicecard
+
+
+cp seeed-voicecard /usr/bin/
+cp seeed-voicecard.service /lib/systemd/system/
+systemctl enable  seeed-voicecard.service 
 
 echo "------------------------------------------------------"
 echo "Please reboot your raspberry pi to apply all settings"

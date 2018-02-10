@@ -4,21 +4,20 @@
 
 The drivers of [ReSpeaker Mic Hat](https://www.seeedstudio.com/ReSpeaker-2-Mics-Pi-HAT-p-2874.html) and [ReSpeaker 4 Mic Array](https://www.seeedstudio.com/ReSpeaker-4-Mic-Array-for-Raspberry-Pi-p-2941.html) for Raspberry Pi.
 
+### Install seeed-voicecard
+Get the seeed voice card source code. and install all linux kernel drivers
+```bash
+git clone https://github.com/respeaker/seeed-voicecard
+cd seeed-voicecard
+sudo ./install.sh 
+sudo reboot
+```
+
 ## ReSpeaker Mic Hat
 
 [![](https://github.com/SeeedDocument/MIC_HATv1.0_for_raspberrypi/blob/master/img/mic_hatv1.0.png?raw=true)](https://www.seeedstudio.com/ReSpeaker-2-Mics-Pi-HAT-p-2874.html)
 
-
 While the upstream wm8960 codec is not currently supported by current Pi kernel builds, upstream wm8960 has some bugs, we had fixed it. we must it build manually.
-
-Get the seeed voice card source code.
-```bash
-git clone https://github.com/respeaker/seeed-voicecard
-cd seeed-voicecard
-#for ReSpeaker 2-mic
-sudo ./install.sh 2mic
-sudo reboot
-```
 
 Check that the sound card name matches the source code seeed-voicecard.
 
@@ -49,6 +48,9 @@ card 1: seeed2micvoicec [seeed-2mic-voicecard], device 0: bcm2835-i2s-wm8960-hif
   Subdevice #0: subdevice #0
 pi@raspberrypi:~/seeed-voicecard $ 
 ```
+If you want to change the alsa settings, You can use `sudo alsactl --file=/etc/voicecard/wm8960_asound.state  store` to save it.
+
+
 
 #### Next step
 Go to https://github.com/respeaker/mic_hat to build voice enabled projects with Google Assistant SDK or Alexa Voice Service.
@@ -58,15 +60,6 @@ Go to https://github.com/respeaker/mic_hat to build voice enabled projects with 
 [![](https://github.com/SeeedDocument/ReSpeaker-4-Mic-Array-for-Raspberry-Pi/blob/master/img/features.png?raw=true)](https://www.seeedstudio.com/ReSpeaker-4-Mic-Array-for-Raspberry-Pi-p-2941.html)
 
 The 4 Mic Array uses ac108 which includes 4 ADCs, we also write ac108 rapberry pi linux kernel driver.
-
-```bash
-git clone https://github.com/respeaker/seeed-voicecard
-cd seeed-voicecard
-sudo ./install.sh 4mic
-
-#reboot your Raspbian OS
-sudo reboot
-```
 
 Check that the sound card name matches the source code seeed-voicecard.
 
@@ -100,9 +93,9 @@ plughw:CARD=seeed4micvoicec,DEV=0
     Hardware device with all software conversions
 pi@raspberrypi:~ $ 
 ```
-If you want to change the alsa settings, You can use `sudo alsactl --file=asound.state store` to save it.
+If you want to change the alsa settings, You can use `sudo alsactl --file=/etc/voicecard/ac108_asound.state  store` to save it.
 
-Test:
+#### Test:
 ```bash
 #for ReSpeaker 2-mic
 #It will capture sound an playback on hw:1
@@ -118,32 +111,15 @@ arecord -Dac108 -f S32_LE -r 16000 -c 4 a.wav
 If you want to upgrade the driver , you need uninstall the driver first.
 
 ```
-pi@raspberrypi:~/seeed-voicecard $ sudo ./uninstall.sh 4mic
-delete dtoverlay=seeed-4mic-voicecard in /boot/config.txt
-delete snd-soc-ac108 in /etc/modules
-------------------------------------------------------
-Please reboot your raspberry pi to apply all settings
-Thank you!
-------------------------------------------------------
-pi@raspberrypi:~/seeed-voicecard $ sudo ./uninstall.sh 2mic
-delete dtoverlay=seeed-2mic-voicecard in /boot/config.txt
-remove seeed-2mic-voicecard.dtbo in /boot/overlays
-remove snd-soc-wm8960.ko
-delete snd-soc-wm8960 in /etc/modules
+pi@raspberrypi:~/seeed-voicecard $ sudo ./uninstall.sh 
+...
 ------------------------------------------------------
 Please reboot your raspberry pi to apply all settings
 Thank you!
 ------------------------------------------------------
 ```
 
-### with Google Assistant
-if you run the assistant but the playback is speed up considerably, try to configure alsa:
 
-```bash
-sudo cp asound.conf /etc/asound.conf
-```
-
-If the alsa configuration doesn't solve the issue, try to use pulseaudio. See [#4](https://github.com/respeaker/seeed-voicecard/issues/4)
 
 
 Enjoy !
