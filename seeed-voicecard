@@ -20,6 +20,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+set -x
+exec 1>/var/log/$(basename $0).log 2>&1
+
+
 is_1a=$(i2cdetect -y  1 0x1a 0x1a | grep 1a | awk '{print $2}')
 is_35=$(i2cdetect -y  1 0x35 0x35 | grep 35 | awk '{print $2}')
 is_3b=$(i2cdetect -y  1 0x3b 0x3b | grep 3b | awk '{print $2}')
@@ -50,13 +54,13 @@ if [ "x${is_3b}" == "x3b" ] && [ "x${is_35}" == "x" ] ; then
     cp /etc/voicecard/asound_4mic.conf /etc/asound.conf
 
     echo "get slavepcm line number"
-    line=$(grep -n slavepcm /etc/asound.conf | awk '{print $1}' | sed 's/://')
+    line=$(grep -n ac108-slavepcm /etc/asound.conf | awk '{print $1}' | sed 's/://')
 
     echo "delete ${line} slavepcm hw number"
     sed -i -e "${line}d"  /etc/asound.conf
 
-    echo "inset slavepcm hw:${hw},0"
-    sed -i "${line}i slavepcm \"hw:${hw},0\""  /etc/asound.conf
+    echo "insert slavepcm hw:${hw},0"
+    sed -i "${line}i slave.pcm \"hw:${hw},0\""  /etc/asound.conf
 
     cp /etc/voicecard/ac108_asound.state /var/lib/alsa/asound.state
 fi
