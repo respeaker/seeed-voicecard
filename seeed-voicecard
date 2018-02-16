@@ -22,6 +22,14 @@
 
 set -x
 exec 1>/var/log/$(basename $0).log 2>&1
+#enable i2c interface
+dtparam i2c_arm=on
+modprobe i2c-dev
+
+#enable spi interface
+dtparam spi=on
+sleep 1
+
 
 
 is_1a=$(i2cdetect -y  1 0x1a 0x1a | grep 1a | awk '{print $2}')
