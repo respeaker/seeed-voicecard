@@ -318,6 +318,7 @@ static int snd_ac108_put_volsw(struct snd_kcontrol *kcontrol,
 	.put = snd_ac108_put_volsw, \
 	.private_value = SOC_SINGLE_VALUE(reg, shift, max, invert, chip) }
 
+/* single ac108 */
 static const struct snd_kcontrol_new ac108_snd_controls[] = {
 	/* ### chip 0 ### */
 	/*0x70: ADC1 Digital Channel Volume Control Register*/
@@ -337,25 +338,46 @@ static const struct snd_kcontrol_new ac108_snd_controls[] = {
 	SOC_AC108_SINGLE_TLV("ADC3 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
 	/*0x93: Analog PGA4 Control Register*/
 	SOC_AC108_SINGLE_TLV("ADC4 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
-
+};
+/* multiple ac108s */
+static const struct snd_kcontrol_new ac108tdm_snd_controls[] = {
 	/* ### chip 1 ### */
 	/*0x70: ADC1 Digital Channel Volume Control Register*/
-	SOC_AC108_SINGLE_TLV("CH5 digital volume", ADC1_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
+	SOC_AC108_SINGLE_TLV("CH1 digital volume", ADC1_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
 	/*0x71: ADC2 Digital Channel Volume Control Register*/
-	SOC_AC108_SINGLE_TLV("CH6 digital volume", ADC2_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
+	SOC_AC108_SINGLE_TLV("CH2 digital volume", ADC2_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
 	/*0x72: ADC3 Digital Channel Volume Control Register*/
-	SOC_AC108_SINGLE_TLV("CH7 digital volume", ADC3_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
+	SOC_AC108_SINGLE_TLV("CH3 digital volume", ADC3_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
 	/*0x73: ADC4 Digital Channel Volume Control Register*/
-	SOC_AC108_SINGLE_TLV("CH8 digital volume", ADC4_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
+	SOC_AC108_SINGLE_TLV("CH4 digital volume", ADC4_DVOL_CTRL, 0, 0xff, 0, 1, tlv_ch_digital_vol),
 
 	/*0x90: Analog PGA1 Control Register*/
-	SOC_AC108_SINGLE_TLV("ADC5 PGA gain", ANA_PGA1_CTRL, ADC1_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
+	SOC_AC108_SINGLE_TLV("ADC1 PGA gain", ANA_PGA1_CTRL, ADC1_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
 	/*0x91: Analog PGA2 Control Register*/
-	SOC_AC108_SINGLE_TLV("ADC6 PGA gain", ANA_PGA2_CTRL, ADC2_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
+	SOC_AC108_SINGLE_TLV("ADC2 PGA gain", ANA_PGA2_CTRL, ADC2_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
 	/*0x92: Analog PGA3 Control Register*/
-	SOC_AC108_SINGLE_TLV("ADC7 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
+	SOC_AC108_SINGLE_TLV("ADC3 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
 	/*0x93: Analog PGA4 Control Register*/
-	SOC_AC108_SINGLE_TLV("ADC8 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
+	SOC_AC108_SINGLE_TLV("ADC4 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, 1, tlv_adc_pga_gain),
+
+	/* ### chip 0 ### */
+	/*0x70: ADC1 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH5 digital volume", ADC1_DVOL_CTRL, 0, 0xff, 0, 0, tlv_ch_digital_vol),
+	/*0x71: ADC2 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH6 digital volume", ADC2_DVOL_CTRL, 0, 0xff, 0, 0, tlv_ch_digital_vol),
+	/*0x72: ADC3 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH7 digital volume", ADC3_DVOL_CTRL, 0, 0xff, 0, 0, tlv_ch_digital_vol),
+	/*0x73: ADC4 Digital Channel Volume Control Register*/
+	SOC_AC108_SINGLE_TLV("CH8 digital volume", ADC4_DVOL_CTRL, 0, 0xff, 0, 0, tlv_ch_digital_vol),
+
+	/*0x90: Analog PGA1 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC5 PGA gain", ANA_PGA1_CTRL, ADC1_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+	/*0x91: Analog PGA2 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC6 PGA gain", ANA_PGA2_CTRL, ADC2_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+	/*0x92: Analog PGA3 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC7 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
+	/*0x93: Analog PGA4 Control Register*/
+	SOC_AC108_SINGLE_TLV("ADC8 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, 0, tlv_adc_pga_gain),
 };
 
 
@@ -1197,13 +1219,15 @@ static  struct snd_soc_dai_driver *ac108_dai[] = {
 static int ac108_add_widgets(struct snd_soc_codec *codec) {
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+	const struct snd_kcontrol_new* snd_kcntl = ac108_snd_controls;
 	int ctrl_cnt = ARRAY_SIZE(ac108_snd_controls);
 
 	/* only register controls correspond to exist chips */
-	if (ac10x->tdm_chips_cnt < 2) {
-		ctrl_cnt /= 2;
+	if (ac10x->tdm_chips_cnt >= 2) {
+		snd_kcntl = ac108tdm_snd_controls;
+		ctrl_cnt = ARRAY_SIZE(ac108tdm_snd_controls);
 	}
-	snd_soc_add_codec_controls(codec, ac108_snd_controls, ctrl_cnt);
+	snd_soc_add_codec_controls(codec, snd_kcntl, ctrl_cnt);
 
 	snd_soc_dapm_new_controls(dapm, ac108_dapm_widgets,ARRAY_SIZE(ac108_dapm_widgets));
 	snd_soc_dapm_add_routes(dapm, ac108_dapm_routes, ARRAY_SIZE(ac108_dapm_routes));
@@ -1413,7 +1437,7 @@ static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i
 __ret:
 	/* when all i2c prepared, we bind codec to i2c[_MASTER_INDEX] */
 	if ((ac10x->codec_index != 0 && ac10x->tdm_chips_cnt < 2)
-	|| (ac10x->codec_index == ac10x->tdm_chips_cnt && ac10x->i2c101)) {
+	|| (ac10x->i2c[0] && ac10x->i2c[1] && ac10x->i2c101)) {
 		#if _MASTER_MULTI_CODEC == _MASTER_AC108
 		asoc_simple_card_register_set_clock(ac108_set_clock);
 		#endif
