@@ -83,7 +83,6 @@
 
 			simple-audio-card,dai-link@0 {
 				format = "dsp_a";
-				/* below is dummy master, real clock master is ac101 */
 				bitclock-master = <&codec0_dai>;
 				frame-master = <&codec0_dai>;
 				/* bitclock-inversion; */

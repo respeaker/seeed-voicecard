@@ -48,7 +48,6 @@ struct ac10x_priv {
 	struct regmap* regmap101;
 
 	struct mutex dac_mutex;
-	struct mutex adc_mutex;
 	u8 dac_enable;
 	struct mutex aifclk_mutex;
 	u8 aif1_clken;

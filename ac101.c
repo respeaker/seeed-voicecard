@@ -348,6 +348,15 @@ static int snd_ac101_get_volsw(struct snd_kcontrol *kcontrol,
 		ucontrol->value.integer.value[0] =
 			mc->max - ucontrol->value.integer.value[0];
 	}
+
+	if (snd_soc_volsw_is_stereo(mc)) {
+		val = (ret >> mc->rshift) & mask;
+		ucontrol->value.integer.value[1] = val - mc->min;
+		if (invert) {
+			ucontrol->value.integer.value[1] =
+				mc->max - ucontrol->value.integer.value[1];
+		}
+	}
 	return 0;
 }
 
@@ -379,10 +388,17 @@ static int snd_ac101_put_volsw(struct snd_kcontrol *kcontrol,
 		val = mc->max - val;
 	}
 
-	mask = mask << mc->shift;
-	val = val << mc->shift;
+	ret = ac101_update_bits(static_ac10x->codec, mc->reg, mask << mc->shift, val << mc->shift);
 
-	ret = ac101_update_bits(static_ac10x->codec, mc->reg, mask, val);
+	if (! snd_soc_volsw_is_stereo(mc)) {
+		return ret;
+	}
+	val = ((ucontrol->value.integer.value[1] + mc->min) & mask);
+	if (invert) {
+		val = mc->max - val;
+	}
+
+	ret = ac101_update_bits(static_ac10x->codec, mc->reg, mask << mc->rshift, val << mc->rshift);
 	return ret;
 }
 
@@ -695,22 +711,6 @@ int ac101_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-#if 0
-static int ac101_set_dai_sysclk(struct snd_soc_dai *codec_dai,
-				  int clk_id, unsigned int freq, int dir)
-{
-	struct snd_soc_codec *codec = codec_dai->codec;
-	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
-
-	AC101_DBG("%s,line:%d, id=%d freq=%d, dir=%d\n", __func__, __LINE__,
-		clk_id, freq, dir);
-
-	ac10x->sysclk = freq;
-
-	return 0;
-}
-#endif
-
 int ac101_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 {
 	int reg_val;
@@ -820,6 +820,20 @@ static int ac101_set_clock(int y_start_n_stop) {
 #endif
 
 #if 0
+static int ac101_set_dai_sysclk(struct snd_soc_dai *codec_dai,
+				  int clk_id, unsigned int freq, int dir)
+{
+	struct snd_soc_codec *codec = codec_dai->codec;
+	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
+
+	AC101_DBG("%s,line:%d, id=%d freq=%d, dir=%d\n", __func__, __LINE__,
+		clk_id, freq, dir);
+
+	ac10x->sysclk = freq;
+
+	return 0;
+}
+
 static int ac101_trigger(struct snd_pcm_substream *substream, int cmd,
 			     struct snd_soc_dai *dai)
 {
@@ -936,7 +950,6 @@ int ac101_codec_probe(struct snd_soc_codec *codec)
 	ac10x->aif1_clken = 0;
 	ac10x->aif2_clken = 0;
 	mutex_init(&ac10x->dac_mutex);
-	mutex_init(&ac10x->adc_mutex);
 	mutex_init(&ac10x->aifclk_mutex);
 
 	#if _MASTER_MULTI_CODEC == _MASTER_AC101
