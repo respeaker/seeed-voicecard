@@ -26,14 +26,11 @@
     #define AC101_DBG(...)
 #endif
 
-#define _I2C_MUTEX_EN		1
 
 struct ac10x_priv {
 	struct i2c_client *i2c[4];
-	#if _I2C_MUTEX_EN
-	struct mutex i2c_mutex;
-	#endif
-	int codec_index;
+	struct regmap* i2cmap[4];
+	int codec_cnt;
 	unsigned sysclk;
 	unsigned mclk;	/* master clock or aif_clock/aclk */
 	int clk_id;
@@ -58,11 +55,6 @@ struct ac10x_priv {
 	struct gpio_desc* gpiod_spk_amp_gate;
 /* struct for ac101 .end */
 };
-
-/* register level access */
-int ac10x_read(u8 reg, u8 *rt_value, struct i2c_client *client);
-int ac10x_write(u8 reg, unsigned char val, struct i2c_client *client);
-int ac10x_update_bits(u8 reg, u8 mask, u8 val, struct i2c_client *client);
 
 /* AC101 DAI operations */
 int ac101_audio_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *codec_dai);
