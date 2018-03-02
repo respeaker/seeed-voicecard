@@ -95,6 +95,101 @@ pi@raspberrypi:~ $
 ```
 If you want to change the alsa settings, You can use `sudo alsactl --file=/etc/voicecard/ac108_asound.state  store` to save it.
 
+## 6-Mics Circular Array Kit for Raspberry Pi
+
+The 6 Mics Circular Array Kit uses ac108 x 2 / ac101 x 1 / 6 micphones, includes 8 ADCs and 2 DACs.
+
+The driver is implemented with 8 input channels & 8 output channels.
+>**The first 6 input channel are MIC recording data,  
+the rest 2 input channel are echo channel of playback  
+The first 2 output channel are playing data, the rest 6 output channel are dummy**
+
+
+Check that the sound card name matches the source code seeed-voicecard.
+```bash
+#for ReSpeaker 6-mic
+pi@raspberrypi:~ $ arecord -L
+null
+    Discard all samples (playback) or generate zero samples (capture)
+default
+playback
+dmixed
+ac108
+multiapps
+ac101
+sysdefault:CARD=seeed8micvoicec
+    seeed-8mic-voicecard,
+    Default Audio Device
+dmix:CARD=seeed8micvoicec,DEV=0
+    seeed-8mic-voicecard,
+    Direct sample mixing device
+dsnoop:CARD=seeed8micvoicec,DEV=0
+    seeed-8mic-voicecard,
+    Direct sample snooping device
+hw:CARD=seeed8micvoicec,DEV=0
+    seeed-8mic-voicecard,
+    Direct hardware device without any conversions
+plughw:CARD=seeed8micvoicec,DEV=0
+    seeed-8mic-voicecard,
+    Hardware device with all software conversions
+    
+pi@raspberrypi:~ $ aplay -L
+null
+    Discard all samples (playback) or generate zero samples (capture)
+default
+playback
+dmixed
+ac108
+multiapps
+ac101
+sysdefault:CARD=ALSA
+    bcm2835 ALSA, bcm2835 ALSA
+    Default Audio Device
+dmix:CARD=ALSA,DEV=0
+    bcm2835 ALSA, bcm2835 ALSA
+    Direct sample mixing device
+dmix:CARD=ALSA,DEV=1
+    bcm2835 ALSA, bcm2835 IEC958/HDMI
+    Direct sample mixing device
+dsnoop:CARD=ALSA,DEV=0
+    bcm2835 ALSA, bcm2835 ALSA
+    Direct sample snooping device
+dsnoop:CARD=ALSA,DEV=1
+    bcm2835 ALSA, bcm2835 IEC958/HDMI
+    Direct sample snooping device
+hw:CARD=ALSA,DEV=0
+    bcm2835 ALSA, bcm2835 ALSA
+    Direct hardware device without any conversions
+hw:CARD=ALSA,DEV=1
+    bcm2835 ALSA, bcm2835 IEC958/HDMI
+    Direct hardware device without any conversions
+plughw:CARD=ALSA,DEV=0
+    bcm2835 ALSA, bcm2835 ALSA
+    Hardware device with all software conversions
+plughw:CARD=ALSA,DEV=1
+    bcm2835 ALSA, bcm2835 IEC958/HDMI
+    Hardware device with all software conversions
+sysdefault:CARD=seeed8micvoicec
+    seeed-8mic-voicecard,
+    Default Audio Device
+dmix:CARD=seeed8micvoicec,DEV=0
+    seeed-8mic-voicecard,
+    Direct sample mixing device
+dsnoop:CARD=seeed8micvoicec,DEV=0
+    seeed-8mic-voicecard,
+    Direct sample snooping device
+hw:CARD=seeed8micvoicec,DEV=0
+    seeed-8mic-voicecard,
+    Direct hardware device without any conversions
+plughw:CARD=seeed8micvoicec,DEV=0
+    seeed-8mic-voicecard,
+    Hardware device with all software conversions
+```
+
+## 4-Mics Linear Array Kit for Raspberry Pi
+In contrast to 6-Mics Circular Array Kit for Raspberry Pi,
+the difference is only first 4 input channels are valid capturing data.
+
 #### Test:
 ```bash
 #for ReSpeaker 2-mic
@@ -107,6 +202,20 @@ arecord -f cd -Dhw:1 | aplay -Dhw:1
 #It will capture sound on AC108 and save as a.wav
 arecord -Dac108 -f S32_LE -r 16000 -c 4 a.wav
 ```
+
+```bash
+#for ReSpeaker 6-mic
+#It will capture sound on AC108 and save as a.wav
+arecord -Dac108 -f S32_LE -r 16000 -c 8 a.wav
+#Take care of that the captured mic audio is on the first 6 channels
+
+#It will play sound file a.wav on AC101
+aplay -D ac101 a.wav
+#Do not use -D plughw:1,0 directly except your wave file is single channel only.
+```
+**Note: for developer using ReSpeaker 6-mic doing capturing & playback the same time,
+capturing must be start first, or else the capturing channels will miss order.**
+
 ### uninstall seeed-voicecard
 If you want to upgrade the driver , you need uninstall the driver first.
 
