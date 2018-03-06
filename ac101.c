@@ -442,8 +442,9 @@ struct kv_map {
 };
 
 /*
- *	Note : pll code from original tdm/i2s driver.
- * 	freq_out = freq_in * N/(m*(2k+1)) , k=1,N=N_i+N_f,N_f=factor*0.2;
+ * Note : pll code from original tdm/i2s driver.
+ * freq_out = freq_in * N/(M*(2k+1)) , k=1,N=N_i+N_f,N_f=factor*0.2;
+ * 		N_i[0,1023], N_f_factor[0,7], m[1,64]=REG_VAL[1-63,0]
  */
 static const struct pll_div codec_pll_div[] = {
 	{128000, 22579200, 1, 529, 1},
@@ -463,7 +464,7 @@ static const struct pll_div codec_pll_div[] = {
 	{6000000, 24576000, 25, 307, 1},
 	{13000000, 24576000, 42, 238, 1},
 	{19200000, 24576000, 25, 96, 0},
-	{24000000, 24576000, 39, 119, 4},/*((119 + 4 * 0.2) * 24000000) / (39 * (2 * 1 + 1)) */
+	{24000000, 24576000, 25, 76, 4},/* accurate */
 	{11289600, 22579200, 1, 6, 0},
 	{12288000, 24576000, 1, 6, 0},
 };
@@ -536,8 +537,10 @@ int ac101_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 		ac101_headphone_event(codec, SND_SOC_DAPM_PRE_PMD);
 		late_enable_dac(codec, SND_SOC_DAPM_POST_PMD);
 
+		#if _MASTER_MULTI_CODEC != _MASTER_AC101
 		ac10x->aif1_clken = 1;
 		ac101_aif1clk(codec, SND_SOC_DAPM_POST_PMD);
+		#endif
 	}
 	return 0;
 }
@@ -604,6 +607,7 @@ static int ac101_set_pll(struct snd_soc_dai *codec_dai, int pll_id, int source,
 		}
 	}
 	/*config pll m*/
+	if (m  == 64) m = 0;
 	ac101_update_bits(codec, PLL_CTRL1, (0x3f<<PLL_POSTDIV_M), (m<<PLL_POSTDIV_M));
 	/*config pll n*/
 	ac101_update_bits(codec, PLL_CTRL2, (0x3ff<<PLL_PREDIV_NI), (n_i<<PLL_PREDIV_NI));
@@ -702,6 +706,8 @@ int ac101_hw_params(struct snd_pcm_substream *substream,
 			}
 		}
 		ac101_update_bits(codec, AIF_CLK_CTRL, (0xf<<AIF1_BCLK_DIV), i<<AIF1_BCLK_DIV);
+	} else {
+		ac101_set_pll(codec_dai, AC101_MCLK1, 0, ac10x->sysclk, freq_out);
 	}
 
 	AC101_DBG("rate: %d , channels: %d , samp_res: %d",
@@ -766,6 +772,10 @@ int ac101_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 	case SND_SOC_DAIFMT_DSP_A:      /* L reg_val msb after FRM LRC */
 		reg_val |= (0x3<<AIF1_DATA_FMT);
 		break;
+	case SND_SOC_DAIFMT_DSP_B:
+		/* TODO: data offset set to 0 */
+		reg_val |= (0x3<<AIF1_DATA_FMT);
+		break;
 	default:
 		pr_err("%s, line:%d\n", __func__, __LINE__);
 		return -EINVAL;
@@ -814,6 +824,9 @@ static int ac101_set_clock(int y_start_n_stop) {
 	if (y_start_n_stop) {
 		/* enable global clock */
 		ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_PRE_PMU);
+	} else {
+		static_ac10x->aif1_clken = 1;
+		ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_POST_PMD);
 	}
 	return 0;
 }

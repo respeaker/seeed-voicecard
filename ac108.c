@@ -104,7 +104,7 @@ static const struct pll_div ac108_pll_div_list[] = {
 	{ 16000000, 24576000, 12, 0, 400, 9, 1 },
 	{ 19200000, 24576000, 15, 0, 410, 9, 1 },
 	{ 19680000, 24576000, 15, 0, 400, 9, 1 },
-	{ 24000000, 24576000, 9,  0, 205, 9, 1 },
+	{ 24000000, 24576000, 4,  0, 128,24, 0 }, //accurate
 
 	{ 400000,   22579200, 0,  0, 566, 4, 1 },
 	{ 512000,   22579200, 0,  0, 880, 9, 1 },
@@ -122,7 +122,7 @@ static const struct pll_div ac108_pll_div_list[] = {
 	{ 16000000, 22579200, 11, 0, 340, 9, 1 },
 	{ 19200000, 22579200, 13, 0, 330, 9, 1 },
 	{ 19680000, 22579200, 14, 0, 345, 9, 1 },
-	{ 24000000, 22579200, 16, 0, 320, 9, 1 },
+	{ 24000000, 22579200, 24, 0, 588,24, 0 }, // accurate
 
 	{ 12288000, 24576000, 9,  0, 400, 9, 1 }, //24576000/2
 	{ 11289600, 22579200, 9,  0, 400, 9, 1 }, //22579200/2
@@ -216,12 +216,11 @@ static int snd_ac108_get_volsw(struct snd_kcontrol *kcontrol,
 	if ((ret = ac10x_read(mc->reg, &val, ac10x->i2cmap[chip])) < 0)
 		return ret;
 
-	val = (val >> mc->shift) & mask;
-	ucontrol->value.integer.value[0] = val - mc->min;
+	val = ((val >> mc->shift) & mask) - mc->min;
 	if (invert) {
-		ucontrol->value.integer.value[0] =
-			mc->max - ucontrol->value.integer.value[0];
+		val = mc->max - val;
 	}
+	ucontrol->value.integer.value[0] = val;
 	return 0;
 }
 
@@ -532,7 +531,7 @@ static int ac108_configure_clocking(struct ac10x_priv *ac10x, unsigned int rate)
 		ac108_multi_chips_update_bits(PLL_CTRL4, 0xff << PLL_LOOPDIV_LSB, (unsigned char)ac108_pll_div.n << PLL_LOOPDIV_LSB, ac10x);
 		ac108_multi_chips_update_bits(PLL_CTRL3, 0x03 << PLL_LOOPDIV_MSB, (ac108_pll_div.n >> 8) << PLL_LOOPDIV_MSB, ac10x);
 		ac108_multi_chips_update_bits(PLL_CTRL2, 0x1f << PLL_PREDIV1 | 0x01 << PLL_PREDIV2,
-									  ac108_pll_div.m1 << PLL_PREDIV1 | ac108_pll_div.m2 << PLL_PREDIV2, ac10x);
+							 ac108_pll_div.m1 << PLL_PREDIV1 | ac108_pll_div.m2 << PLL_PREDIV2, ac10x);
 
 		/*0x18: PLL clk lock enable*/
 		ac108_multi_chips_update_bits(PLL_LOCK_CTRL, 0x1 << PLL_LOCK_EN, 0x1 << PLL_LOCK_EN, ac10x);
@@ -545,7 +544,7 @@ static int ac108_configure_clocking(struct ac10x_priv *ac10x, unsigned int rate)
 		 * pll,enable sysclk 
 		 */
 		ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x01 << PLLCLK_EN | 0x03 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN,
-									  0x01 << PLLCLK_EN | 0x00 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac10x);
+							   0x01 << PLLCLK_EN | 0x00 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac10x);
 		ac10x->mclk = ac108_pll_div.freq_out;
 	}
 	if (ac10x->clk_id == SYSCLK_SRC_MCLK) {
@@ -725,9 +724,12 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 		}
 
 	} else {
+		unsigned div;
+
 		/*TDM mode or normal mode*/
-		ac108_multi_chips_write(I2S_LRCK_CTRL2, ac108_samp_res[samp_res].real_val * channels - 1, ac10x);
-		ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac10x);
+		div = ac108_samp_res[samp_res].real_val * channels - 1;
+		ac108_multi_chips_write(I2S_LRCK_CTRL2, (div & 0xFF), ac10x);
+		ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, (div >> 8) << 0, ac10x);
 	}
 
 	/**
@@ -819,7 +821,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 			 * 0x30:chip is master mode ,BCLK & LRCK output
 			 */
 			ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
-							0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac10x);
+								0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac10x);
 			/* multi_chips: only one chip set as Master, and the others also need to set as Slave */
 			ac10x_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x2 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
 			break;
@@ -869,11 +871,10 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		tx_offset = 0;
 		break;
 	default:
-		ac10x->i2s_mode = LEFT_JUSTIFIED_FORMAT;
-		tx_offset = 1;
-		return -EINVAL;
 		pr_err("AC108 I2S format config error:%u\n\n", fmt & SND_SOC_DAIFMT_FORMAT_MASK);
+		return -EINVAL;
 	}
+
 	/*AC108 config BCLK&LRCK polarity*/
 	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
 	case SND_SOC_DAIFMT_NB_NF:
@@ -912,7 +913,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 
 	/**
 	 *0x31: 0: normal mode, negative edge drive and positive edge sample
-			1: invert mode, positive edge drive and negative edge sample
+		1: invert mode, positive edge drive and negative edge sample
 	 */
 	ac108_multi_chips_update_bits(I2S_BCLK_CTRL,  0x01 << BCLK_POLARITY, brck_polarity << BCLK_POLARITY, ac10x);
 	/**
@@ -957,6 +958,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 /*
  * due to miss channels order in cpu_dai, we meed defer the clock starting.
  */
+#if _MASTER_MULTI_CODEC == _MASTER_AC108
 static int ac108_set_clock(int y_start_n_stop) {
 	u8 r;
 
@@ -983,6 +985,7 @@ static int ac108_set_clock(int y_start_n_stop) {
 
 	return 0;
 }
+#endif
 
 static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 			     struct snd_soc_dai *dai)
@@ -1001,18 +1004,18 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		/* disable global clock if lrck disabled */
 		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
-		if ((r & (0x01 << LRCK_IOEN)) == 0) {
+		if ((r & (0x02 << LRCK_IOEN)) && (r & (0x01 << LRCK_IOEN)) == 0) {
 			/* disable global clock */
 			ac108_multi_chips_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac10x);
-
-			/*0x21: Module clock enable<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
-			ac108_multi_chips_write(MOD_CLK_EN, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
-
-			/*0x22: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
-			ac108_multi_chips_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
-
-			/* delayed clock starting, move to simple_card_trigger() */
 		}
+
+		/*0x21: Module clock enable<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
+		ac108_multi_chips_write(MOD_CLK_EN, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
+
+		/*0x22: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
+		ac108_multi_chips_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
+
+		/* delayed clock starting, move to simple_card_trigger() */
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
@@ -1342,7 +1345,7 @@ static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i
 	if (of_property_read_u32(np, "tdm-chips-count", &val)) val = 1;
 	ac10x->tdm_chips_cnt = val;
 
-	pr_err(" i2c_id number      : %d\n", index);
+	pr_err(" ac10x i2c_id number: %d\n", index);
 	pr_err(" ac10x data protocol: %d\n", ac10x->data_protocol);
 
 	ac10x->i2c[index] = i2c;
