@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/seeed-voicecard/Lobby](https://badges.gitter.im/seeed-voicecard/Lobby.svg)](https://gitter.im/seeed-voicecard/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-The drivers of [ReSpeaker Mic Hat](https://www.seeedstudio.com/ReSpeaker-2-Mics-Pi-HAT-p-2874.html) and [ReSpeaker 4 Mic Array](https://www.seeedstudio.com/ReSpeaker-4-Mic-Array-for-Raspberry-Pi-p-2941.html) for Raspberry Pi.
+The drivers of [ReSpeaker Mic Hat](https://www.seeedstudio.com/ReSpeaker-2-Mics-Pi-HAT-p-2874.html),[ReSpeaker 4 Mic Array](https://www.seeedstudio.com/ReSpeaker-4-Mic-Array-for-Raspberry-Pi-p-2941.html),[6-Mics Circular Array Kit](), and [4-Mics Linear Array Kit]() for Raspberry Pi.
 
 ### Install seeed-voicecard
 Get the seeed voice card source code. and install all linux kernel drivers
@@ -64,7 +64,7 @@ The 4 Mic Array uses ac108 which includes 4 ADCs, we also write ac108 rapberry p
 Check that the sound card name matches the source code seeed-voicecard.
 
 ```bash
-#for ReSpeaker 4-mic
+#for ReSpeaker 4 Mic Array
 pi@raspberrypi:~ $ arecord -L
 null
     Discard all samples (playback) or generate zero samples (capture)
@@ -95,9 +95,11 @@ pi@raspberrypi:~ $
 ```
 If you want to change the alsa settings, You can use `sudo alsactl --file=/etc/voicecard/ac108_asound.state  store` to save it.
 
-## 6-Mics Circular Array Kit for Raspberry Pi
+## 6-Mics Circular Array Kit
 
-The 6 Mics Circular Array Kit uses ac108 x 2 / ac101 x 1 / 6 micphones, includes 8 ADCs and 2 DACs.
+[![](https://user-images.githubusercontent.com/3901856/37193936-d727868a-23a6-11e8-8096-2c531ff479fc.png)]()
+
+The 6 Mics Circular Array Kit uses ac108 x 2 / ac101 x 1 / micphones x 6, includes 8 ADCs and 2 DACs.
 
 The driver is implemented with 8 input channels & 8 output channels.
 >**The first 6 input channel are MIC recording data,  
@@ -107,7 +109,7 @@ The first 2 output channel are playing data, the rest 6 output channel are dummy
 
 Check that the sound card name matches the source code seeed-voicecard.
 ```bash
-#for ReSpeaker 6-mic
+#for 6 Mic Circular Array
 pi@raspberrypi:~ $ arecord -L
 null
     Discard all samples (playback) or generate zero samples (capture)
@@ -186,7 +188,10 @@ plughw:CARD=seeed8micvoicec,DEV=0
     Hardware device with all software conversions
 ```
 
-## 4-Mics Linear Array Kit for Raspberry Pi
+## 4-Mics Linear Array Kit
+
+[![](https://user-images.githubusercontent.com/3901856/37194106-a0ccebce-23a7-11e8-88c5-ec611e44ec49.png)]()
+
 In contrast to 6-Mics Circular Array Kit for Raspberry Pi,
 the difference is only first 4 input channels are valid capturing data.
 
@@ -204,7 +209,7 @@ arecord -Dac108 -f S32_LE -r 16000 -c 4 a.wav
 ```
 
 ```bash
-#for ReSpeaker 6-mic
+#for 6-Mics Circular Array Kit and 4-Mics Linear Array Kit
 #It will capture sound on AC108 and save as a.wav
 arecord -Dac108 -f S32_LE -r 16000 -c 8 a.wav
 #Take care of that the captured mic audio is on the first 6 channels
@@ -213,7 +218,7 @@ arecord -Dac108 -f S32_LE -r 16000 -c 8 a.wav
 aplay -D ac101 a.wav
 #Do not use -D plughw:1,0 directly except your wave file is single channel only.
 ```
-**Note: for developer using ReSpeaker 6-mic doing capturing & playback the same time,
+**Note: for developer using 6-Mics Circular Array Kit(or 4-Mics Linear Array Kit) doing capturing & playback the same time,
 capturing must be start first, or else the capturing channels will miss order.**
 
 ### uninstall seeed-voicecard
