@@ -224,7 +224,7 @@ capturing must be start first, or else the capturing channels will miss order.**
 ### Coherence
 
 Estimate the magnitude squared coherence using Welch’s method.
-![4-mics-linear-array-kit coherence](https://user-images.githubusercontent.com/3901856/37268469-2869dd34-2601-11e8-9a4e-a831b3af82fe.png)  
+![4-mics-linear-array-kit coherence](https://user-images.githubusercontent.com/3901856/37277486-beb1dd96-261f-11e8-898b-84405bfc7cea.png)  
 Note: 'CO 1-2' means the coherence between channel 1 and channel 2.
 
 ```bash
@@ -232,8 +232,8 @@ Note: 'CO 1-2' means the coherence between channel 1 and channel 2.
 sudo apt install python-numpy python-scipy python-matplotlib
 python tools/coherence.py a.wav
 
-Requirement of the input audio file:
-- formt: WAV(Microsoft) signed 16-bit PCM
+# Requirement of the input audio file:
+- format: WAV(Microsoft) signed 16-bit PCM
 - channels: >=2
 ```
 
