@@ -97,7 +97,7 @@ If you want to change the alsa settings, You can use `sudo alsactl --file=/etc/v
 
 ## 6-Mics Circular Array Kit
 
-[![](https://user-images.githubusercontent.com/3901856/37193936-d727868a-23a6-11e8-8096-2c531ff479fc.png)]()
+[![](https://user-images.githubusercontent.com/3901856/37268348-6adef768-2600-11e8-8861-588b1c3ea142.png)]()
 
 The 6 Mics Circular Array Kit uses ac108 x 2 / ac101 x 1 / micphones x 6, includes 8 ADCs and 2 DACs.
 
@@ -195,7 +195,7 @@ plughw:CARD=seeed8micvoicec,DEV=0
 In contrast to 6-Mics Circular Array Kit for Raspberry Pi,
 the difference is only first 4 input channels are valid capturing data.
 
-#### Test:
+### Usage:
 ```bash
 #for ReSpeaker 2-mic
 #It will capture sound an playback on hw:1
@@ -220,6 +220,22 @@ aplay -D ac101 a.wav
 ```
 **Note: for developer using 6-Mics Circular Array Kit(or 4-Mics Linear Array Kit) doing capturing & playback the same time,
 capturing must be start first, or else the capturing channels will miss order.**
+
+### Coherence
+
+Estimate the magnitude squared coherence using Welch’s method.
+![4-mics-linear-array-kit coherence](https://user-images.githubusercontent.com/3901856/37268469-2869dd34-2601-11e8-9a4e-a831b3af82fe.png)  
+Note: 'CO 1-2' means the coherence between channel 1 and channel 2.
+
+```bash
+# How to get the coherence of the captured audio(a.wav for example).
+sudo apt install python-numpy python-scipy python-matplotlib
+python tools/coherence.py a.wav
+
+Requirement of the input audio file:
+- formt: WAV(Microsoft) signed 16-bit PCM
+- channels: >=2
+```
 
 ### uninstall seeed-voicecard
 If you want to upgrade the driver , you need uninstall the driver first.
