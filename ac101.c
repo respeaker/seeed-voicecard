@@ -260,16 +260,17 @@ static int ac101_headphone_event(struct snd_soc_codec* codec, int event) {
 		/*open*/
 		AC101_DBG("post:open:%s,line:%d\n", __func__, __LINE__);
 		ac101_update_bits(codec, OMIXER_DACA_CTRL, (0xf<<HPOUTPUTENABLE), (0xf<<HPOUTPUTENABLE));
-		ac101_update_bits(codec, HPOUT_CTRL, (0x1<<HPPA_EN), (0x1<<HPPA_EN));
 		msleep(10);
+		ac101_update_bits(codec, HPOUT_CTRL, (0x1<<HPPA_EN), (0x1<<HPPA_EN));
 		ac101_update_bits(codec, HPOUT_CTRL, (0x3<<LHPPA_MUTE), (0x3<<LHPPA_MUTE));
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/*close*/
 		AC101_DBG("pre:close:%s,line:%d\n", __func__, __LINE__);
-		ac101_update_bits(codec, HPOUT_CTRL, (0x1<<HPPA_EN), (0x0<<HPPA_EN));
-		ac101_update_bits(codec, OMIXER_DACA_CTRL, (0xf<<HPOUTPUTENABLE), (0x0<<HPOUTPUTENABLE));
 		ac101_update_bits(codec, HPOUT_CTRL, (0x3<<LHPPA_MUTE), (0x0<<LHPPA_MUTE));
+		msleep(10);
+		ac101_update_bits(codec, OMIXER_DACA_CTRL, (0xf<<HPOUTPUTENABLE), (0x0<<HPOUTPUTENABLE));
+		ac101_update_bits(codec, HPOUT_CTRL, (0x1<<HPPA_EN), (0x0<<HPPA_EN));
 		break;
 	}
 	return 0;
@@ -521,22 +522,29 @@ int ac101_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 	ac101_write(codec, DAC_VOL_CTRL, mute? 0: 0xA0A0);
 
 	if (!mute) {
+		#if _MASTER_MULTI_CODEC != _MASTER_AC101
+		/* enable global clock */
+		ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_PRE_PMU);
+		#endif
+
 		late_enable_dac(codec, SND_SOC_DAPM_PRE_PMU);
 		ac101_headphone_event(codec, SND_SOC_DAPM_POST_PMU);
 		if (drc_used) {
 			drc_enable(codec, 1);
 		}
+
+		/* Enable Left & Right Speaker */
+		ac101_update_bits(codec, SPKOUT_CTRL, (0x1 << LSPK_EN) | (0x1 << RSPK_EN), (0x1 << LSPK_EN) | (0x1 << RSPK_EN));
 		if (ac10x->gpiod_spk_amp_gate) {
 			gpiod_set_value(ac10x->gpiod_spk_amp_gate, 1);
 		}
-		#if _MASTER_MULTI_CODEC != _MASTER_AC101
-		/* enable global clock */
-		ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_PRE_PMU);
-		#endif
+
 	} else {
 		if (ac10x->gpiod_spk_amp_gate) {
-			gpiod_set_value(ac10x->gpiod_spk_amp_gate, 0);
+			gpiod_set_value(ac10x->gpiod_spk_amp_gate, 1);
 		}
+		/* Disable Left & Right Speaker */
+		ac101_update_bits(codec, SPKOUT_CTRL, (0x1 << LSPK_EN) | (0x1 << RSPK_EN), (0x0 << LSPK_EN) | (0x0 << RSPK_EN));
 		if (drc_used) {
 			drc_enable(codec, 0);
 		}
@@ -578,6 +586,11 @@ static int ac101_set_pll(struct snd_soc_dai *codec_dai, int pll_id, int source,
 
 	AC101_DBG("%s, line:%d, pll_id:%d\n", __func__, __LINE__, pll_id);
 
+	/* select aif1 clk srouce from mclk1 */
+	ac101_update_bits(codec, SYSCLK_CTRL, (0x3<<AIF1CLK_SRC), (0x0<<AIF1CLK_SRC));
+	/* disable pll */
+	ac101_update_bits(codec, PLL_CTRL2, (0x1<<PLL_EN), (0<<PLL_EN));
+
 	if (!freq_out)
 		return 0;
 	if ((freq_in < 128000) || (freq_in > 24576000)) {
@@ -612,14 +625,14 @@ static int ac101_set_pll(struct snd_soc_dai *codec_dai, int pll_id, int source,
 			break;
 		}
 	}
-	/*config pll m*/
+	/* config pll m */
 	if (m  == 64) m = 0;
 	ac101_update_bits(codec, PLL_CTRL1, (0x3f<<PLL_POSTDIV_M), (m<<PLL_POSTDIV_M));
-	/*config pll n*/
+	/* config pll n */
 	ac101_update_bits(codec, PLL_CTRL2, (0x3ff<<PLL_PREDIV_NI), (n_i<<PLL_PREDIV_NI));
 	ac101_update_bits(codec, PLL_CTRL2, (0x7<<PLL_POSTDIV_NF), (n_f<<PLL_POSTDIV_NF));
+	/* enable pll */
 	ac101_update_bits(codec, PLL_CTRL2, (0x1<<PLL_EN), (1<<PLL_EN));
-	/*enable pll_enable*/
 	ac101_update_bits(codec, SYSCLK_CTRL, (0x1<<PLLCLK_ENA),  (0x1<<PLLCLK_ENA));
 	ac101_update_bits(codec, SYSCLK_CTRL, (0x3<<AIF1CLK_SRC), (0x3<<AIF1CLK_SRC));
 
