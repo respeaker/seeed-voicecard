@@ -32,6 +32,8 @@ struct ac10x_priv {
 	struct regmap* i2cmap[4];
 	int codec_cnt;
 	unsigned sysclk;
+#define _FREQ_24_576K		24576000
+#define _FREQ_22_579K		22579200
 	unsigned mclk;	/* master clock or aif_clock/aclk */
 	int clk_id;
 	unsigned char i2s_mode;
@@ -39,7 +41,7 @@ struct ac10x_priv {
 	struct delayed_work dlywork;
 	int tdm_chips_cnt;
 
-/* struct for ac101 .begin */
+	/* memboer for ac101 .begin */
 	struct snd_soc_codec *codec;
 	struct i2c_client *i2c101;
 	struct regmap* regmap101;
@@ -53,7 +55,7 @@ struct ac10x_priv {
 	struct work_struct codec_resume;
 	struct delayed_work dlywork101;
 	struct gpio_desc* gpiod_spk_amp_gate;
-/* struct for ac101 .end */
+	/* member for ac101 .end */
 };
 
 /* AC101 DAI operations */

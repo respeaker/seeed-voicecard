@@ -448,32 +448,35 @@ struct kv_map {
  * 		N_i[0,1023], N_f_factor[0,7], m[1,64]=REG_VAL[1-63,0]
  */
 static const struct pll_div codec_pll_div[] = {
-	{128000,   22579200,  1, 529, 1},
-	{192000,   22579200,  1, 352, 4},
-	{256000,   22579200,  1, 264, 3},
-	{384000,   22579200,  1, 176, 2},/*((176+2*0.2)*6000000)/(38*(2*1+1))*/
-	{2822400,  22579200,  1,  24, 0},/* accurate, 11025 * 256 */
-	{5644800,  22579200,  1,  12, 0},/* accurate, 22050 * 256 */
-	{6000000,  22579200, 38, 429, 0},/*((429+0*0.2)*6000000)/(38*(2*1+1))*/
-	{11289600, 22579200,  1,   6, 0},/* accurate, 44100 * 256 */
-	{13000000, 22579200, 19, 99, 0},
-	{19200000, 22579200, 25, 88, 1},
-	{24000000, 22579200, 63, 177, 4}, /* 22577778 Hz */
+	{128000,   _FREQ_22_579K,  1, 529, 1},
+	{192000,   _FREQ_22_579K,  1, 352, 4},
+	{256000,   _FREQ_22_579K,  1, 264, 3},
+	{384000,   _FREQ_22_579K,  1, 176, 2}, /*((176+2*0.2)*6000000)/(38*(2*1+1))*/
+	{1411200,  _FREQ_22_579K,  1,  48, 0},
+	{2822400,  _FREQ_22_579K,  1,  24, 0}, /* accurate, 11025 * 256 */
+	{5644800,  _FREQ_22_579K,  1,  12, 0}, /* accurate, 22050 * 256 */
+	{6000000,  _FREQ_22_579K, 38, 429, 0}, /*((429+0*0.2)*6000000)/(38*(2*1+1))*/
+	{11289600, _FREQ_22_579K,  1,   6, 0}, /* accurate, 44100 * 256 */
+	{13000000, _FREQ_22_579K, 19, 99, 0},
+	{19200000, _FREQ_22_579K, 25, 88, 1},
+	{24000000, _FREQ_22_579K, 63, 177, 4}, /* 22577778 Hz */
 
-	{128000,   24576000,  1, 576, 0},
-	{192000,   24576000,  1, 384, 0},
-	{256000,   24576000,  1, 288, 0},
-	{384000,   24576000,  1, 192, 0},
-	{1411200,  22579200,  1,  48, 0},
-	{2048000,  24576000,  1,  36, 0}, /* accurate,  8000 * 256 */
-	{3072000,  24576000,  1,  24, 0}, /* accurate, 12000 * 256 */
-	{4096000,  24576000,  1,  18, 0}, /* accurate, 16000 * 256 */
-	{6000000,  24576000, 25, 307, 1},
-	{6144000,  24576000,  1,  12, 0}, /* accurate, 24000 * 256 */
-	{12288000, 24576000,  1,   6, 0}, /* accurate, 48000 * 256 */
-	{13000000, 24576000, 42, 238, 1},
-	{19200000, 24576000, 25,  96, 0},
-	{24000000, 24576000, 25,  76, 4},/* accurate */
+	{128000,   _FREQ_24_576K,  1, 576, 0},
+	{192000,   _FREQ_24_576K,  1, 384, 0},
+	{256000,   _FREQ_24_576K,  1, 288, 0},
+	{384000,   _FREQ_24_576K,  1, 192, 0},
+	{2048000,  _FREQ_24_576K,  1,  36, 0}, /* accurate,  8000 * 256 */
+	{3072000,  _FREQ_24_576K,  1,  24, 0}, /* accurate, 12000 * 256 */
+	{4096000,  _FREQ_24_576K,  1,  18, 0}, /* accurate, 16000 * 256 */
+	{6000000,  _FREQ_24_576K, 25, 307, 1},
+	{6144000,  _FREQ_24_576K,  4,  48, 0}, /* accurate, 24000 * 256 */
+	{12288000, _FREQ_24_576K,  8,  48, 0}, /* accurate, 48000 * 256 */
+	{13000000, _FREQ_24_576K, 42, 238, 1},
+	{19200000, _FREQ_24_576K, 25,  96, 0},
+	{24000000, _FREQ_24_576K, 25,  76, 4}, /* accurate */
+
+	{_FREQ_22_579K, _FREQ_22_579K,  8,  24, 0}, /* accurate, 88200 * 256 */
+	{_FREQ_24_576K, _FREQ_24_576K,  8,  24, 0}, /* accurate, 96000 * 256 */
 };
 
 static const struct aif1_fs codec_aif1_fs[] = {
@@ -593,15 +596,14 @@ static int ac101_set_pll(struct snd_soc_dai *codec_dai, int pll_id, int source,
 
 	if (!freq_out)
 		return 0;
-	if ((freq_in < 128000) || (freq_in > 24576000)) {
+	if ((freq_in < 128000) || (freq_in > _FREQ_24_576K)) {
 		return -EINVAL;
-	} else if ((freq_in == 24576000) || (freq_in == 22579200)) {
+	} else if ((freq_in == _FREQ_24_576K) || (freq_in == _FREQ_22_579K)) {
 		if (pll_id == AC101_MCLK1) {
 			/*select aif1 clk source from mclk1*/
 			ac101_update_bits(codec, SYSCLK_CTRL, (0x3<<AIF1CLK_SRC), (0x0<<AIF1CLK_SRC));
 			return 0;
 		}
-		return -EINVAL;
 	}
 
 	switch (pll_id) {
@@ -685,7 +687,7 @@ int ac101_hw_params(struct snd_pcm_substream *substream,
 	ac101_update_bits(codec, AIF_CLK_CTRL, (0x7<<AIF1_LRCK_DIV), codec_aif1_lrck[i].bit<<AIF1_LRCK_DIV);
 
 	/* set PLL output freq */
-	freq_out = 24576000;
+	freq_out = _FREQ_24_576K;
 	for (i = 0; i < ARRAY_SIZE(codec_aif1_fs); i++) {
 		if (codec_aif1_fs[i].samp_rate == params_rate(params)) {
 			if (codec_dai->capture_active && dmic_used && codec_aif1_fs[i].samp_rate == 44100) {
@@ -694,7 +696,7 @@ int ac101_hw_params(struct snd_pcm_substream *substream,
 				ac101_update_bits(codec, AIF_SR_CTRL, (0xf<<AIF1_FS), ((codec_aif1_fs[i].srbit)<<AIF1_FS));
 			}
 			if (codec_aif1_fs[i].series == _SERIES_22_579K)
-				freq_out = 22579200;
+				freq_out = _FREQ_22_579K;
 			break;
 		}
 	}

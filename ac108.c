@@ -88,69 +88,69 @@ static const unsigned ac108_bclkdivs[] = {
 
 /* FOUT =(FIN * N) / [(M1+1) * (M2+1)*(K1+1)*(K2+1)] ;	M1[0,31],  M2[0,1],  N[0,1023],  K1[0,31],  K2[0,1] */
 static const struct pll_div ac108_pll_div_list[] = {
-	{ 400000,   24576000, 0,  0, 614, 4, 1 },
-	{ 512000,   24576000, 0,  0, 960, 9, 1 }, //24576000/48
-	{ 768000,   24576000, 0,  0, 640, 9, 1 }, //24576000/32
-	{ 800000,   24576000, 0,  0, 614, 9, 1 },
-	{ 1024000,  24576000, 0,  0, 480, 9, 1 }, //24576000/24
-	{ 1600000,  24576000, 0,  0, 307, 9, 1 },
-	{ 2048000,  24576000, 0,  0, 240, 9, 1 }, //24576000/12
-	{ 3072000,  24576000, 0,  0, 160, 9, 1 }, //24576000/8
-	{ 4096000,  24576000, 2,  0, 360, 9, 1 }, //24576000/6
-	{ 6000000,  24576000, 4,  0, 410, 9, 1 },
-	{ 12000000, 24576000, 9,  0, 410, 9, 1 },
-	{ 13000000, 24576000, 8,  0, 340, 9, 1 },
-	{ 15360000, 24576000, 12, 0, 415, 9, 1 },
-	{ 16000000, 24576000, 12, 0, 400, 9, 1 },
-	{ 19200000, 24576000, 15, 0, 410, 9, 1 },
-	{ 19680000, 24576000, 15, 0, 400, 9, 1 },
-	{ 24000000, 24576000, 4,  0, 128,24, 0 }, //accurate
+	{ 400000,   _FREQ_24_576K, 0,  0, 614, 4, 1 },
+	{ 512000,   _FREQ_24_576K, 0,  0, 960, 9, 1 }, //_FREQ_24_576K/48
+	{ 768000,   _FREQ_24_576K, 0,  0, 640, 9, 1 }, //_FREQ_24_576K/32
+	{ 800000,   _FREQ_24_576K, 0,  0, 614, 9, 1 },
+	{ 1024000,  _FREQ_24_576K, 0,  0, 480, 9, 1 }, //_FREQ_24_576K/24
+	{ 1600000,  _FREQ_24_576K, 0,  0, 307, 9, 1 },
+	{ 2048000,  _FREQ_24_576K, 0,  0, 240, 9, 1 }, //_FREQ_24_576K/12
+	{ 3072000,  _FREQ_24_576K, 0,  0, 160, 9, 1 }, //_FREQ_24_576K/8
+	{ 4096000,  _FREQ_24_576K, 2,  0, 360, 9, 1 }, //_FREQ_24_576K/6
+	{ 6000000,  _FREQ_24_576K, 4,  0, 410, 9, 1 },
+	{ 12000000, _FREQ_24_576K, 9,  0, 410, 9, 1 },
+	{ 13000000, _FREQ_24_576K, 8,  0, 340, 9, 1 },
+	{ 15360000, _FREQ_24_576K, 12, 0, 415, 9, 1 },
+	{ 16000000, _FREQ_24_576K, 12, 0, 400, 9, 1 },
+	{ 19200000, _FREQ_24_576K, 15, 0, 410, 9, 1 },
+	{ 19680000, _FREQ_24_576K, 15, 0, 400, 9, 1 },
+	{ 24000000, _FREQ_24_576K, 4,  0, 128,24, 0 }, //accurate
 
-	{ 400000,   22579200, 0,  0, 566, 4, 1 },
-	{ 512000,   22579200, 0,  0, 880, 9, 1 },
-	{ 768000,   22579200, 0,  0, 587, 9, 1 },
-	{ 800000,   22579200, 0,  0, 567, 9, 1 },
-	{ 1024000,  22579200, 0,  0, 440, 9, 1 },
-	{ 1600000,  22579200, 1,  0, 567, 9, 1 },
-	{ 2048000,  22579200, 0,  0, 220, 9, 1 },
-	{ 3072000,  22579200, 0,  0, 148, 9, 1 },
-	{ 4096000,  22579200, 2,  0, 330, 9, 1 },
-	{ 6000000,  22579200, 2,  0, 227, 9, 1 },
-	{ 12000000, 22579200, 8,  0, 340, 9, 1 },
-	{ 13000000, 22579200, 9,  0, 350, 9, 1 },
-	{ 15360000, 22579200, 10, 0, 325, 9, 1 },
-	{ 16000000, 22579200, 11, 0, 340, 9, 1 },
-	{ 19200000, 22579200, 13, 0, 330, 9, 1 },
-	{ 19680000, 22579200, 14, 0, 345, 9, 1 },
-	{ 24000000, 22579200, 24, 0, 588,24, 0 }, // accurate
+	{ 400000,   _FREQ_22_579K, 0,  0, 566, 4, 1 },
+	{ 512000,   _FREQ_22_579K, 0,  0, 880, 9, 1 },
+	{ 768000,   _FREQ_22_579K, 0,  0, 587, 9, 1 },
+	{ 800000,   _FREQ_22_579K, 0,  0, 567, 9, 1 },
+	{ 1024000,  _FREQ_22_579K, 0,  0, 440, 9, 1 },
+	{ 1600000,  _FREQ_22_579K, 1,  0, 567, 9, 1 },
+	{ 2048000,  _FREQ_22_579K, 0,  0, 220, 9, 1 },
+	{ 3072000,  _FREQ_22_579K, 0,  0, 148, 9, 1 },
+	{ 4096000,  _FREQ_22_579K, 2,  0, 330, 9, 1 },
+	{ 6000000,  _FREQ_22_579K, 2,  0, 227, 9, 1 },
+	{ 12000000, _FREQ_22_579K, 8,  0, 340, 9, 1 },
+	{ 13000000, _FREQ_22_579K, 9,  0, 350, 9, 1 },
+	{ 15360000, _FREQ_22_579K, 10, 0, 325, 9, 1 },
+	{ 16000000, _FREQ_22_579K, 11, 0, 340, 9, 1 },
+	{ 19200000, _FREQ_22_579K, 13, 0, 330, 9, 1 },
+	{ 19680000, _FREQ_22_579K, 14, 0, 345, 9, 1 },
+	{ 24000000, _FREQ_22_579K, 24, 0, 588,24, 0 }, // accurate
 
-	{ 12288000, 24576000, 9,  0, 400, 9, 1 }, //24576000/2
-	{ 11289600, 22579200, 9,  0, 400, 9, 1 }, //22579200/2
+	{ 12288000, _FREQ_24_576K, 9,  0, 400, 9, 1 }, //_FREQ_24_576K/2
+	{ 11289600, _FREQ_22_579K, 9,  0, 400, 9, 1 }, //_FREQ_22_579K/2
 
-	{ 24576000 / 1,   24576000, 9,  0, 200, 9, 1 }, //24576000
-	{ 24576000 / 4,   24576000, 4,  0, 400, 9, 1 }, //6144000
-	{ 24576000 / 16,  24576000, 0,  0, 320, 9, 1 }, //1536000
-	{ 24576000 / 64,  24576000, 0,  0, 640, 4, 1 }, //384000
-	{ 24576000 / 96,  24576000, 0,  0, 960, 4, 1 }, //256000
-	{ 24576000 / 128, 24576000, 0,  0, 512, 1, 1 }, //192000
-	{ 24576000 / 176, 24576000, 0,  0, 880, 4, 0 }, //140000
-	{ 24576000 / 192, 24576000, 0,  0, 960, 4, 0 }, //128000
+	{ _FREQ_24_576K / 1,   _FREQ_24_576K, 9,  0, 200, 9, 1 }, //_FREQ_24_576K
+	{ _FREQ_24_576K / 4,   _FREQ_24_576K, 4,  0, 400, 9, 1 }, //6144000
+	{ _FREQ_24_576K / 16,  _FREQ_24_576K, 0,  0, 320, 9, 1 }, //1536000
+	{ _FREQ_24_576K / 64,  _FREQ_24_576K, 0,  0, 640, 4, 1 }, //384000
+	{ _FREQ_24_576K / 96,  _FREQ_24_576K, 0,  0, 960, 4, 1 }, //256000
+	{ _FREQ_24_576K / 128, _FREQ_24_576K, 0,  0, 512, 1, 1 }, //192000
+	{ _FREQ_24_576K / 176, _FREQ_24_576K, 0,  0, 880, 4, 0 }, //140000
+	{ _FREQ_24_576K / 192, _FREQ_24_576K, 0,  0, 960, 4, 0 }, //128000
 
-	{ 22579200 / 1,   22579200, 9,  0, 200, 9, 1 }, //22579200
-	{ 22579200 / 4,   22579200, 4,  0, 400, 9, 1 }, //5644800
-	{ 22579200 / 16,  22579200, 0,  0, 320, 9, 1 }, //1411200
-	{ 22579200 / 64,  22579200, 0,  0, 640, 4, 1 }, //352800
-	{ 22579200 / 96,  22579200, 0,  0, 960, 4, 1 }, //235200
-	{ 22579200 / 128, 22579200, 0,  0, 512, 1, 1 }, //176400
-	{ 22579200 / 176, 22579200, 0,  0, 880, 4, 0 }, //128290
-	{ 22579200 / 192, 22579200, 0,  0, 960, 4, 0 }, //117600
+	{ _FREQ_22_579K / 1,   _FREQ_22_579K, 9,  0, 200, 9, 1 }, //_FREQ_22_579K
+	{ _FREQ_22_579K / 4,   _FREQ_22_579K, 4,  0, 400, 9, 1 }, //5644800
+	{ _FREQ_22_579K / 16,  _FREQ_22_579K, 0,  0, 320, 9, 1 }, //1411200
+	{ _FREQ_22_579K / 64,  _FREQ_22_579K, 0,  0, 640, 4, 1 }, //352800
+	{ _FREQ_22_579K / 96,  _FREQ_22_579K, 0,  0, 960, 4, 1 }, //235200
+	{ _FREQ_22_579K / 128, _FREQ_22_579K, 0,  0, 512, 1, 1 }, //176400
+	{ _FREQ_22_579K / 176, _FREQ_22_579K, 0,  0, 880, 4, 0 }, //128290
+	{ _FREQ_22_579K / 192, _FREQ_22_579K, 0,  0, 960, 4, 0 }, //117600
 
-	{ 22579200 / 6,   22579200, 2,  0, 360, 9, 1 }, //3763200
-	{ 22579200 / 8,   22579200, 0,  0, 160, 9, 1 }, //2822400
-	{ 22579200 / 12,  22579200, 0,  0, 240, 9, 1 }, //1881600
-	{ 22579200 / 24,  22579200, 0,  0, 480, 9, 1 }, //940800
-	{ 22579200 / 32,  22579200, 0,  0, 640, 9, 1 }, //705600
-	{ 22579200 / 48,  22579200, 0,  0, 960, 9, 1 }, //470400
+	{ _FREQ_22_579K / 6,   _FREQ_22_579K, 2,  0, 360, 9, 1 }, //3763200
+	{ _FREQ_22_579K / 8,   _FREQ_22_579K, 0,  0, 160, 9, 1 }, //2822400
+	{ _FREQ_22_579K / 12,  _FREQ_22_579K, 0,  0, 240, 9, 1 }, //1881600
+	{ _FREQ_22_579K / 24,  _FREQ_22_579K, 0,  0, 480, 9, 1 }, //940800
+	{ _FREQ_22_579K / 32,  _FREQ_22_579K, 0,  0, 640, 9, 1 }, //705600
+	{ _FREQ_22_579K / 48,  _FREQ_22_579K, 0,  0, 960, 9, 1 }, //470400
 };
 
 
@@ -158,7 +158,7 @@ static const struct pll_div ac108_pll_div_list[] = {
 #define AC108_CHANNELS_MAX		8		/* range[1, 16] */
 #define AC108_RATES			(SNDRV_PCM_RATE_8000_96000 &		\
 					~(SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_64000 | \
-					SNDRV_PCM_RATE_88200))
+					SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000))
 #define AC108_FORMATS			(/*SNDRV_PCM_FMTBIT_S16_LE | \
 					SNDRV_PCM_FMTBIT_S20_3LE |   \
 					SNDRV_PCM_FMTBIT_S24_LE |*/  \
@@ -438,7 +438,7 @@ static const struct snd_soc_dapm_route ac108_dapm_routes[] = {
 
 };
 
-static int ac108_multi_chips_write(u8 reg, u8 val, struct ac10x_priv *ac10x) {
+static int ac108_multi_write(u8 reg, u8 val, struct ac10x_priv *ac10x) {
 	u8 i;
 	for (i = 0; i < ac10x->codec_cnt; i++) {
 		ac10x_write(reg, val, ac10x->i2cmap[i]);
@@ -446,7 +446,7 @@ static int ac108_multi_chips_write(u8 reg, u8 val, struct ac10x_priv *ac10x) {
 	return 0;
 }
 
-static int ac108_multi_chips_update_bits(u8 reg, u8 mask, u8 val, struct ac10x_priv *ac10x) {
+static int ac108_multi_update_bits(u8 reg, u8 mask, u8 val, struct ac10x_priv *ac10x) {
 	u8 i;
 	for (i = 0; i < ac10x->codec_cnt; i++) {
 		ac10x_update_bits(reg, mask, val, ac10x->i2cmap[i]);
@@ -464,7 +464,7 @@ static unsigned int ac108_codec_read(struct snd_soc_codec *codec, unsigned int r
 
 static int ac108_codec_write(struct snd_soc_codec *codec, unsigned int reg, unsigned int val) {
 	struct ac10x_priv *ac10x = dev_get_drvdata(codec->dev);
-	ac108_multi_chips_write(reg, val, ac10x);
+	ac108_multi_write(reg, val, ac10x);
 	return 0;
 }
 
@@ -479,15 +479,15 @@ static void ac108_configure_power(struct ac10x_priv *ac10x) {
 	/**
 	 * 0x06:Enable Analog LDO
 	 */
-	ac108_multi_chips_update_bits(PWR_CTRL6, 0x01 << LDO33ANA_ENABLE, 0x01 << LDO33ANA_ENABLE, ac10x);
+	ac108_multi_update_bits(PWR_CTRL6, 0x01 << LDO33ANA_ENABLE, 0x01 << LDO33ANA_ENABLE, ac10x);
 	/**
 	 * 0x07: 
 	 * Control VREF output and micbias voltage ? 
 	 * REF faststart disable, enable Enable VREF (needed for Analog 
 	 * LDO and MICBIAS) 
 	 */
-	ac108_multi_chips_update_bits(PWR_CTRL7, 0x1f << VREF_SEL | 0x01 << VREF_FASTSTART_ENABLE | 0x01 << VREF_ENABLE,
-								  0x13 << VREF_SEL | 0x00 << VREF_FASTSTART_ENABLE | 0x01 << VREF_ENABLE, ac10x);
+	ac108_multi_update_bits(PWR_CTRL7, 0x1f << VREF_SEL | 0x01 << VREF_FASTSTART_ENABLE | 0x01 << VREF_ENABLE,
+					   0x13 << VREF_SEL | 0x00 << VREF_FASTSTART_ENABLE | 0x01 << VREF_ENABLE, ac10x);
 	/**
 	 * 0x09: 
 	 * Disable fast-start circuit on VREFP 
@@ -495,10 +495,9 @@ static void ac108_configure_power(struct ac10x_priv *ac10x) {
 	 * IGEN_TRIM=100=+25% 
 	 * Enable VREFP (needed by all audio input channels) 
 	 */
-	ac108_multi_chips_update_bits(PWR_CTRL9, 0x01 << VREFP_FASTSTART_ENABLE | 0x03 << VREFP_RESCTRL |
-								  0x07 << IGEN_TRIM | 0x01 << VREFP_ENABLE,
-								  0x00 << VREFP_FASTSTART_ENABLE | 0x00 << VREFP_RESCTRL |
-								  0x04 << IGEN_TRIM | 0x01 << VREFP_ENABLE, ac10x);
+	ac108_multi_update_bits(PWR_CTRL9, 0x01 << VREFP_FASTSTART_ENABLE | 0x03 << VREFP_RESCTRL | 0x07 << IGEN_TRIM | 0x01 << VREFP_ENABLE,
+					   0x00 << VREFP_FASTSTART_ENABLE | 0x00 << VREFP_RESCTRL | 0x04 << IGEN_TRIM | 0x01 << VREFP_ENABLE,
+					   ac10x);
 }
 
 /**
@@ -526,33 +525,33 @@ static int ac108_configure_clocking(struct ac10x_priv *ac10x, unsigned int rate)
 			}
 		}
 		/* 0x11,0x12,0x13,0x14: Config PLL DIV param M1/M2/N/K1/K2 */
-		ac108_multi_chips_update_bits(PLL_CTRL5, 0x1f << PLL_POSTDIV1 | 0x01 << PLL_POSTDIV2, ac108_pll_div.k1 << PLL_POSTDIV1 |
-									  ac108_pll_div.k2 << PLL_POSTDIV2, ac10x);
-		ac108_multi_chips_update_bits(PLL_CTRL4, 0xff << PLL_LOOPDIV_LSB, (unsigned char)ac108_pll_div.n << PLL_LOOPDIV_LSB, ac10x);
-		ac108_multi_chips_update_bits(PLL_CTRL3, 0x03 << PLL_LOOPDIV_MSB, (ac108_pll_div.n >> 8) << PLL_LOOPDIV_MSB, ac10x);
-		ac108_multi_chips_update_bits(PLL_CTRL2, 0x1f << PLL_PREDIV1 | 0x01 << PLL_PREDIV2,
-							 ac108_pll_div.m1 << PLL_PREDIV1 | ac108_pll_div.m2 << PLL_PREDIV2, ac10x);
+		ac108_multi_update_bits(PLL_CTRL5, 0x1f << PLL_POSTDIV1 | 0x01 << PLL_POSTDIV2,
+						   ac108_pll_div.k1 << PLL_POSTDIV1 | ac108_pll_div.k2 << PLL_POSTDIV2, ac10x);
+		ac108_multi_update_bits(PLL_CTRL4, 0xff << PLL_LOOPDIV_LSB, (unsigned char)ac108_pll_div.n << PLL_LOOPDIV_LSB, ac10x);
+		ac108_multi_update_bits(PLL_CTRL3, 0x03 << PLL_LOOPDIV_MSB, (ac108_pll_div.n >> 8) << PLL_LOOPDIV_MSB, ac10x);
+		ac108_multi_update_bits(PLL_CTRL2, 0x1f << PLL_PREDIV1 | 0x01 << PLL_PREDIV2,
+						    ac108_pll_div.m1 << PLL_PREDIV1 | ac108_pll_div.m2 << PLL_PREDIV2, ac10x);
 
 		/*0x18: PLL clk lock enable*/
-		ac108_multi_chips_update_bits(PLL_LOCK_CTRL, 0x1 << PLL_LOCK_EN, 0x1 << PLL_LOCK_EN, ac10x);
+		ac108_multi_update_bits(PLL_LOCK_CTRL, 0x1 << PLL_LOCK_EN, 0x1 << PLL_LOCK_EN, ac10x);
 		/*0x10: PLL Common voltage Enable, PLL Enable,PLL loop divider factor detection enable*/
-		ac108_multi_chips_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN | 0x01 << PLL_NDET,
-							 0x01 << PLL_EN | 0x01 << PLL_COM_EN | 0x01 << PLL_NDET, ac10x);
+		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN | 0x01 << PLL_NDET,
+						   0x01 << PLL_EN | 0x01 << PLL_COM_EN | 0x01 << PLL_NDET, ac10x);
 
 		/**
 		 * 0x20: enable pll,pll source from mclk, sysclk source from 
 		 * pll,enable sysclk 
 		 */
-		ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x01 << PLLCLK_EN | 0x03 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN,
-							   0x01 << PLLCLK_EN | 0x00 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac10x);
+		ac108_multi_update_bits(SYSCLK_CTRL, 0x01 << PLLCLK_EN | 0x03 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN,
+						     0x01 << PLLCLK_EN | 0x00 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac10x);
 		ac10x->mclk = ac108_pll_div.freq_out;
 	}
 	if (ac10x->clk_id == SYSCLK_SRC_MCLK) {
 		/**
 		 *0x20: sysclk source from  mclk,enable sysclk 
 		 */
-		ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x01 << PLLCLK_EN | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN,
-									  0x00 << PLLCLK_EN | 0x00 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac10x);
+		ac108_multi_update_bits(SYSCLK_CTRL, 0x01 << PLLCLK_EN | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN,
+						     0x00 << PLLCLK_EN | 0x00 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac10x);
 		ac10x->mclk = ac10x->sysclk;
 	}
 
@@ -689,6 +688,10 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 		return -EINVAL;
 	}
 
+	if (channels == 8 &&  ac108_sample_rate[rate].real_val == 96000) {
+		/* 24.576M bit clock is not support by ac108 */
+		return -EINVAL;
+	}
 
 	dev_dbg(dai->dev, "rate: %d , channels: %d , samp_res: %d",
 			ac108_sample_rate[rate].real_val,
@@ -715,12 +718,12 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 */
 	if (ac10x->i2s_mode != PCM_FORMAT) {
 		if (ac10x->data_protocol) {
-			ac108_multi_chips_write(I2S_LRCK_CTRL2, ac108_samp_res[samp_res].real_val - 1, ac10x);
+			ac108_multi_write(I2S_LRCK_CTRL2, ac108_samp_res[samp_res].real_val - 1, ac10x);
 			/*encoding mode, the max LRCK period value < 32,so the 2-High bit is zero*/
-			ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac10x);
+			ac108_multi_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac10x);
 		} else {
 			/*TDM mode or normal mode*/
-			ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac10x);
+			ac108_multi_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, 0x00, ac10x);
 		}
 
 	} else {
@@ -728,8 +731,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 
 		/*TDM mode or normal mode*/
 		div = ac108_samp_res[samp_res].real_val * channels - 1;
-		ac108_multi_chips_write(I2S_LRCK_CTRL2, (div & 0xFF), ac10x);
-		ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, (div >> 8) << 0, ac10x);
+		ac108_multi_write(I2S_LRCK_CTRL2, (div & 0xFF), ac10x);
+		ac108_multi_update_bits(I2S_LRCK_CTRL1, 0x03 << 0, (div >> 8) << 0, ac10x);
 	}
 
 	/**
@@ -737,16 +740,16 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 * TX Encoding mode will add  4bits to mark channel number 
 	 * TODO: need a chat to explain this 
 	 */
-	ac108_multi_chips_update_bits(I2S_FMT_CTRL2, 0x07 << SAMPLE_RESOLUTION | 0x07 << SLOT_WIDTH_SEL,
-								  ac108_samp_res[samp_res].reg_val << SAMPLE_RESOLUTION
-								  | ac108_samp_res[samp_res].reg_val << SLOT_WIDTH_SEL, ac10x);
+	ac108_multi_update_bits(I2S_FMT_CTRL2, 0x07 << SAMPLE_RESOLUTION | 0x07 << SLOT_WIDTH_SEL,
+						ac108_samp_res[samp_res].reg_val << SAMPLE_RESOLUTION
+ 						  | ac108_samp_res[samp_res].reg_val << SLOT_WIDTH_SEL, ac10x);
 
 	/**
 	 * 0x60: 
 	 * ADC Sample Rate synchronised with I2S1 clock zone 
 	 */
-	ac108_multi_chips_update_bits(ADC_SPRC, 0x0f << ADC_FS_I2S1, ac108_sample_rate[rate].reg_val << ADC_FS_I2S1, ac10x);
-	ac108_multi_chips_write(HPF_EN,0x0f,ac10x);
+	ac108_multi_update_bits(ADC_SPRC, 0x0f << ADC_FS_I2S1, ac108_sample_rate[rate].reg_val << ADC_FS_I2S1, ac10x);
+	ac108_multi_write(HPF_EN,0x0f,ac10x);
 	ac108_configure_clocking(ac10x, ac108_sample_rate[rate].real_val);
 
 	/*
@@ -758,7 +761,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 			break;
 		}
 	}
-	ac108_multi_chips_update_bits(I2S_BCLK_CTRL,  0x0F << BCLKDIV, i << BCLKDIV, ac10x);
+	ac108_multi_update_bits(I2S_BCLK_CTRL,  0x0F << BCLKDIV, i << BCLKDIV, ac10x);
 
 	/*
 	 * slots allocation for each chip
@@ -781,10 +784,10 @@ static int ac108_set_sysclk(struct snd_soc_dai *dai, int clk_id, unsigned int fr
 
 	switch (clk_id) {
 	case SYSCLK_SRC_MCLK:
-		ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x1 << SYSCLK_SRC, SYSCLK_SRC_MCLK << SYSCLK_SRC, ac10x);
+		ac108_multi_update_bits(SYSCLK_CTRL, 0x1 << SYSCLK_SRC, SYSCLK_SRC_MCLK << SYSCLK_SRC, ac10x);
 		break;
 	case SYSCLK_SRC_PLL:
-		ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x1 << SYSCLK_SRC, SYSCLK_SRC_PLL << SYSCLK_SRC, ac10x);
+		ac108_multi_update_bits(SYSCLK_CTRL, 0x1 << SYSCLK_SRC, SYSCLK_SRC_PLL << SYSCLK_SRC, ac10x);
 		break;
 	default:
 		return -EINVAL;
@@ -820,8 +823,8 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 			/**
 			 * 0x30:chip is master mode ,BCLK & LRCK output
 			 */
-			ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
-								0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac10x);
+			ac108_multi_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
+							  0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac10x);
 			/* multi_chips: only one chip set as Master, and the others also need to set as Slave */
 			ac10x_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x2 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
 			break;
@@ -835,8 +838,8 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		 * 0x30:chip is slave mode, BCLK & LRCK input,enable SDO1_EN and 
 		 *  SDO2_EN, Transmitter Block Enable, Globe Enable
 		 */
-		ac108_multi_chips_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
-							0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac10x);
+		ac108_multi_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
+						  0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac10x);
 		break;
 	default:
 		pr_err("AC108 Master/Slave mode config error:%u\n\n", (fmt & SND_SOC_DAIFMT_MASTER_MASK) >> 12);
@@ -915,19 +918,19 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 	 *0x31: 0: normal mode, negative edge drive and positive edge sample
 		1: invert mode, positive edge drive and negative edge sample
 	 */
-	ac108_multi_chips_update_bits(I2S_BCLK_CTRL,  0x01 << BCLK_POLARITY, brck_polarity << BCLK_POLARITY, ac10x);
+	ac108_multi_update_bits(I2S_BCLK_CTRL,  0x01 << BCLK_POLARITY, brck_polarity << BCLK_POLARITY, ac10x);
 	/**
 	 * 0x32: same as 0x31
 	 */
-	ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x01 << LRCK_POLARITY, lrck_polarity << LRCK_POLARITY, ac10x);
+	ac108_multi_update_bits(I2S_LRCK_CTRL1, 0x01 << LRCK_POLARITY, lrck_polarity << LRCK_POLARITY, ac10x);
 	/**
 	 * 0x34:Encoding Mode Selection,Mode 
 	 * Selection,data is offset by 1 BCLKs to LRCK 
 	 * normal mode for the last half cycle of BCLK in the slot ?
 	 * turn to hi-z state (TDM) when not transferring slot ?
 	 */
-	ac108_multi_chips_update_bits(I2S_FMT_CTRL1, 0x01 << ENCD_SEL | 0x03 << MODE_SEL | 0x01 << TX2_OFFSET |
-								  0x01 << TX1_OFFSET | 0x01 << TX_SLOT_HIZ | 0x01 << TX_STATE,
+	ac108_multi_update_bits(I2S_FMT_CTRL1,	0x01 << ENCD_SEL | 0x03 << MODE_SEL | 0x01 << TX2_OFFSET |
+						0x01 << TX1_OFFSET | 0x01 << TX_SLOT_HIZ | 0x01 << TX_STATE,
 								  ac10x->data_protocol << ENCD_SEL 	|
 								  ac10x->i2s_mode << MODE_SEL 		|
 								  tx_offset << TX2_OFFSET 			|
@@ -944,10 +947,10 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 	 *  
 	 * TODO:pcm mode, bit[0:1] and bit[2] is special
 	 */
-	ac108_multi_chips_update_bits(I2S_FMT_CTRL3, 0x01 << TX_MLS | 0x03 << SEXT  | 0x01 << LRCK_WIDTH | 0x03 << TX_PDM,
-						     0x00 << TX_MLS | 0x03 << SEXT  | 0x00 << LRCK_WIDTH | 0x00 << TX_PDM, ac10x);
+	ac108_multi_update_bits(I2S_FMT_CTRL3,	0x01 << TX_MLS | 0x03 << SEXT  | 0x01 << LRCK_WIDTH | 0x03 << TX_PDM,
+						0x00 << TX_MLS | 0x03 << SEXT  | 0x00 << LRCK_WIDTH | 0x00 << TX_PDM, ac10x);
 
-	ac108_multi_chips_write(HPF_EN, 0x00, ac10x);
+	ac108_multi_write(HPF_EN, 0x00, ac10x);
 
 	if (ac10x->i2c101) {
 		return ac101_set_dai_fmt(dai, fmt);
@@ -972,14 +975,14 @@ static int ac108_set_clock(int y_start_n_stop) {
 		}
 
 		/* enable global clock */
-		ac108_multi_chips_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
+		ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
 	} else {
 		/* disable lrck clock if it's enabled */
 		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
 		if (r & (0x01 << LRCK_IOEN)) {
-			ac108_multi_chips_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac10x);
+			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac10x);
 			ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x02 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
-			ac108_multi_chips_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
+			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
 		}
 	}
 
@@ -1006,14 +1009,14 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
 		if ((r & (0x02 << LRCK_IOEN)) && (r & (0x01 << LRCK_IOEN)) == 0) {
 			/* disable global clock */
-			ac108_multi_chips_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac10x);
+			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac10x);
 		}
 
 		/*0x21: Module clock enable<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
-		ac108_multi_chips_write(MOD_CLK_EN, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
+		ac108_multi_write(MOD_CLK_EN, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
 
 		/*0x22: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
-		ac108_multi_chips_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
+		ac108_multi_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
 
 		/* delayed clock starting, move to simple_card_trigger() */
 		break;
@@ -1163,10 +1166,10 @@ static int ac108_set_bias_level(struct snd_soc_codec *codec, enum snd_soc_bias_l
 
 	switch (level) {
 	case SND_SOC_BIAS_ON:
-		ac108_multi_chips_update_bits(ANA_ADC1_CTRL1, 0x01 << ADC1_MICBIAS_EN,  0x01 << ADC1_MICBIAS_EN, ac10x);
-		ac108_multi_chips_update_bits(ANA_ADC2_CTRL1, 0x01 << ADC2_MICBIAS_EN,  0x01 << ADC2_MICBIAS_EN, ac10x);
-		ac108_multi_chips_update_bits(ANA_ADC3_CTRL1, 0x01 << ADC3_MICBIAS_EN,  0x01 << ADC3_MICBIAS_EN, ac10x);
-		ac108_multi_chips_update_bits(ANA_ADC4_CTRL1, 0x01 << ADC4_MICBIAS_EN,  0x01 << ADC4_MICBIAS_EN, ac10x);
+		ac108_multi_update_bits(ANA_ADC1_CTRL1, 0x01 << ADC1_MICBIAS_EN,  0x01 << ADC1_MICBIAS_EN, ac10x);
+		ac108_multi_update_bits(ANA_ADC2_CTRL1, 0x01 << ADC2_MICBIAS_EN,  0x01 << ADC2_MICBIAS_EN, ac10x);
+		ac108_multi_update_bits(ANA_ADC3_CTRL1, 0x01 << ADC3_MICBIAS_EN,  0x01 << ADC3_MICBIAS_EN, ac10x);
+		ac108_multi_update_bits(ANA_ADC4_CTRL1, 0x01 << ADC4_MICBIAS_EN,  0x01 << ADC4_MICBIAS_EN, ac10x);
 		break;
 
 	case SND_SOC_BIAS_PREPARE:
@@ -1177,10 +1180,10 @@ static int ac108_set_bias_level(struct snd_soc_codec *codec, enum snd_soc_bias_l
 		break;
 
 	case SND_SOC_BIAS_OFF:
-		ac108_multi_chips_update_bits(ANA_ADC1_CTRL1, 0x01 << ADC1_MICBIAS_EN,  0x00 << ADC1_MICBIAS_EN, ac10x);
-		ac108_multi_chips_update_bits(ANA_ADC2_CTRL1, 0x01 << ADC2_MICBIAS_EN,  0x00 << ADC2_MICBIAS_EN, ac10x);
-		ac108_multi_chips_update_bits(ANA_ADC3_CTRL1, 0x01 << ADC3_MICBIAS_EN,  0x00 << ADC3_MICBIAS_EN, ac10x);
-		ac108_multi_chips_update_bits(ANA_ADC4_CTRL1, 0x01 << ADC4_MICBIAS_EN,  0x00 << ADC4_MICBIAS_EN, ac10x);
+		ac108_multi_update_bits(ANA_ADC1_CTRL1, 0x01 << ADC1_MICBIAS_EN,  0x00 << ADC1_MICBIAS_EN, ac10x);
+		ac108_multi_update_bits(ANA_ADC2_CTRL1, 0x01 << ADC2_MICBIAS_EN,  0x00 << ADC2_MICBIAS_EN, ac10x);
+		ac108_multi_update_bits(ANA_ADC3_CTRL1, 0x01 << ADC3_MICBIAS_EN,  0x00 << ADC3_MICBIAS_EN, ac10x);
+		ac108_multi_update_bits(ANA_ADC4_CTRL1, 0x01 << ADC4_MICBIAS_EN,  0x00 << ADC4_MICBIAS_EN, ac10x);
 		break;
 	}
 
@@ -1253,7 +1256,7 @@ static ssize_t ac108_store(struct device *dev, struct device_attribute *attr, co
 	if (flag) {
 		reg = (val >> 8) & 0xFF;
 		value_w = val & 0xFF;
-		ac108_multi_chips_write(reg, value_w, ac10x);
+		ac108_multi_write(reg, value_w, ac10x);
 		printk("Write 0x%02x to REG:0x%02x\n", value_w, reg);
 	} else {
 		reg = (val >> 8) & 0xFF;
