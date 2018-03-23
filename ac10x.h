@@ -1,6 +1,12 @@
 /*
- * sound\soc\sunxi\virtual_audio\ac100.h
- * (C) Copyright 2010-2016
+ * ac10x.h
+ *
+ * (C) Copyright 2017-2018
+ * Seeed Technology Co., Ltd. <www.seeedstudio.com>
+ *
+ * PeterYang <linsheng.yang@seeed.cc>
+ *
+ * (C) Copyright 2010-2017
  * Reuuimlla Technology Co., Ltd. <www.reuuimllatech.com>
  * huangxin <huangxin@reuuimllatech.com>
  *
@@ -18,7 +24,7 @@
 #define AC101_I2C_ID		4
 #define _MASTER_AC108		0
 #define _MASTER_AC101		1
-#define _MASTER_MULTI_CODEC	_MASTER_AC108
+#define _MASTER_MULTI_CODEC	_MASTER_AC101
 
 #ifdef AC101_DEBG
     #define AC101_DBG(format,args...)  printk("[AC101] "format,##args)

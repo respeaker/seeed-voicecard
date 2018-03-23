@@ -1,6 +1,12 @@
 /*
- * sound\soc\sunxi\virtual_audio\ac100.h
- * (C) Copyright 2010-2016
+ * ac101_regs.h
+ *
+ * (C) Copyright 2017-2018
+ * Seeed Technology Co., Ltd. <www.seeedstudio.com>
+ *
+ * PeterYang <linsheng.yang@seeed.cc>
+ *
+ * (C) Copyright 2010-2017
  * Reuuimlla Technology Co., Ltd. <www.reuuimllatech.com>
  * huangxin <huangxin@reuuimllatech.com>
  *

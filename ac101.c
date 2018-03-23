@@ -1,5 +1,6 @@
 /*
  * ac101.c
+ *
  * (C) Copyright 2017-2018
  * Seeed Technology Co., Ltd. <www.seeedstudio.com>
  *
@@ -554,10 +555,8 @@ int ac101_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 		ac101_headphone_event(codec, SND_SOC_DAPM_PRE_PMD);
 		late_enable_dac(codec, SND_SOC_DAPM_POST_PMD);
 
-		#if _MASTER_MULTI_CODEC != _MASTER_AC101
 		ac10x->aif1_clken = 1;
 		ac101_aif1clk(codec, SND_SOC_DAPM_POST_PMD);
-		#endif
 	}
 	return 0;
 }
@@ -847,8 +846,10 @@ static int ac101_set_clock(int y_start_n_stop) {
 		/* enable global clock */
 		ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_PRE_PMU);
 	} else {
+		#if 0
 		static_ac10x->aif1_clken = 1;
 		ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_POST_PMD);
+		#endif
 	}
 	return 0;
 }

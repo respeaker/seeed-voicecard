@@ -94,9 +94,9 @@ static const struct pll_div ac108_pll_div_list[] = {
 	{ 800000,   _FREQ_24_576K, 0,  0, 614, 9, 1 },
 	{ 1024000,  _FREQ_24_576K, 0,  0, 480, 9, 1 }, //_FREQ_24_576K/24
 	{ 1600000,  _FREQ_24_576K, 0,  0, 307, 9, 1 },
-	{ 2048000,  _FREQ_24_576K, 0,  0, 240, 9, 1 }, //_FREQ_24_576K/12
-	{ 3072000,  _FREQ_24_576K, 0,  0, 160, 9, 1 }, //_FREQ_24_576K/8
-	{ 4096000,  _FREQ_24_576K, 2,  0, 360, 9, 1 }, //_FREQ_24_576K/6
+	{ 2048000,  _FREQ_24_576K, 0,  0, 240, 9, 1 }, /* accurate,  8000 * 256 */
+	{ 3072000,  _FREQ_24_576K, 0,  0, 160, 9, 1 }, /* accurate, 12000 * 256 */
+	{ 4096000,  _FREQ_24_576K, 2,  0, 360, 9, 1 }, /* accurate, 16000 * 256 */
 	{ 6000000,  _FREQ_24_576K, 4,  0, 410, 9, 1 },
 	{ 12000000, _FREQ_24_576K, 9,  0, 410, 9, 1 },
 	{ 13000000, _FREQ_24_576K, 8,  0, 340, 9, 1 },
@@ -104,7 +104,7 @@ static const struct pll_div ac108_pll_div_list[] = {
 	{ 16000000, _FREQ_24_576K, 12, 0, 400, 9, 1 },
 	{ 19200000, _FREQ_24_576K, 15, 0, 410, 9, 1 },
 	{ 19680000, _FREQ_24_576K, 15, 0, 400, 9, 1 },
-	{ 24000000, _FREQ_24_576K, 4,  0, 128,24, 0 }, //accurate
+	{ 24000000, _FREQ_24_576K, 4,  0, 128,24, 0 }, // accurate, 24M -> 24.576M */
 
 	{ 400000,   _FREQ_22_579K, 0,  0, 566, 4, 1 },
 	{ 512000,   _FREQ_22_579K, 0,  0, 880, 9, 1 },
@@ -122,13 +122,12 @@ static const struct pll_div ac108_pll_div_list[] = {
 	{ 16000000, _FREQ_22_579K, 11, 0, 340, 9, 1 },
 	{ 19200000, _FREQ_22_579K, 13, 0, 330, 9, 1 },
 	{ 19680000, _FREQ_22_579K, 14, 0, 345, 9, 1 },
-	{ 24000000, _FREQ_22_579K, 24, 0, 588,24, 0 }, // accurate
+	{ 24000000, _FREQ_22_579K, 24, 0, 588,24, 0 }, // accurate, 24M -> 22.5792M */
 
-	{ 12288000, _FREQ_24_576K, 9,  0, 400, 9, 1 }, //_FREQ_24_576K/2
-	{ 11289600, _FREQ_22_579K, 9,  0, 400, 9, 1 }, //_FREQ_22_579K/2
 
 	{ _FREQ_24_576K / 1,   _FREQ_24_576K, 9,  0, 200, 9, 1 }, //_FREQ_24_576K
-	{ _FREQ_24_576K / 4,   _FREQ_24_576K, 4,  0, 400, 9, 1 }, //6144000
+	{ _FREQ_24_576K / 2,   _FREQ_24_576K, 9,  0, 400, 9, 1 }, /*12288000,accurate, 48000 * 256 */
+	{ _FREQ_24_576K / 4,   _FREQ_24_576K, 4,  0, 400, 9, 1 }, /*6144000, accurate, 24000 * 256 */
 	{ _FREQ_24_576K / 16,  _FREQ_24_576K, 0,  0, 320, 9, 1 }, //1536000
 	{ _FREQ_24_576K / 64,  _FREQ_24_576K, 0,  0, 640, 4, 1 }, //384000
 	{ _FREQ_24_576K / 96,  _FREQ_24_576K, 0,  0, 960, 4, 1 }, //256000
@@ -137,7 +136,8 @@ static const struct pll_div ac108_pll_div_list[] = {
 	{ _FREQ_24_576K / 192, _FREQ_24_576K, 0,  0, 960, 4, 0 }, //128000
 
 	{ _FREQ_22_579K / 1,   _FREQ_22_579K, 9,  0, 200, 9, 1 }, //_FREQ_22_579K
-	{ _FREQ_22_579K / 4,   _FREQ_22_579K, 4,  0, 400, 9, 1 }, //5644800
+	{ _FREQ_22_579K / 2,   _FREQ_22_579K, 9,  0, 400, 9, 1 }, /*11289600,accurate, 44100 * 256 */
+	{ _FREQ_22_579K / 4,   _FREQ_22_579K, 4,  0, 400, 9, 1 }, /*5644800, accurate, 22050 * 256 */
 	{ _FREQ_22_579K / 16,  _FREQ_22_579K, 0,  0, 320, 9, 1 }, //1411200
 	{ _FREQ_22_579K / 64,  _FREQ_22_579K, 0,  0, 640, 4, 1 }, //352800
 	{ _FREQ_22_579K / 96,  _FREQ_22_579K, 0,  0, 960, 4, 1 }, //235200
@@ -146,7 +146,7 @@ static const struct pll_div ac108_pll_div_list[] = {
 	{ _FREQ_22_579K / 192, _FREQ_22_579K, 0,  0, 960, 4, 0 }, //117600
 
 	{ _FREQ_22_579K / 6,   _FREQ_22_579K, 2,  0, 360, 9, 1 }, //3763200
-	{ _FREQ_22_579K / 8,   _FREQ_22_579K, 0,  0, 160, 9, 1 }, //2822400
+	{ _FREQ_22_579K / 8,   _FREQ_22_579K, 0,  0, 160, 9, 1 }, /*2822400, accurate, 11025 * 256 */
 	{ _FREQ_22_579K / 12,  _FREQ_22_579K, 0,  0, 240, 9, 1 }, //1881600
 	{ _FREQ_22_579K / 24,  _FREQ_22_579K, 0,  0, 480, 9, 1 }, //940800
 	{ _FREQ_22_579K / 32,  _FREQ_22_579K, 0,  0, 640, 9, 1 }, //705600
@@ -510,14 +510,26 @@ static void ac108_configure_power(struct ac10x_priv *ac10x) {
  * 
  * @return int : fail or success
  */
-static int ac108_configure_clocking(struct ac10x_priv *ac10x, unsigned int rate) {
+static int ac108_config_pll(struct ac10x_priv *ac10x, unsigned rate, unsigned lrck_ratio) {
 	unsigned int i = 0;
 	struct pll_div ac108_pll_div = { 0 };
 
 	if (ac10x->clk_id == SYSCLK_SRC_PLL) {
+		unsigned pll_src, pll_freq_in;
+
+		if (lrck_ratio == 0) {
+			/* PLL clock source from MCLK */
+			pll_freq_in = ac10x->sysclk;
+			pll_src = 0x0;
+		} else {
+			/* PLL clock source from BCLK */
+			pll_freq_in = rate * lrck_ratio;
+			pll_src = 0x1;
+		}
+
 		/* FOUT =(FIN * N) / [(M1+1) * (M2+1)*(K1+1)*(K2+1)] */
 		for (i = 0; i < ARRAY_SIZE(ac108_pll_div_list); i++) {
-			if (ac108_pll_div_list[i].freq_in == ac10x->sysclk && ac108_pll_div_list[i].freq_out % rate == 0) {
+			if (ac108_pll_div_list[i].freq_in == pll_freq_in && ac108_pll_div_list[i].freq_out % rate == 0) {
 				ac108_pll_div = ac108_pll_div_list[i];
 				dev_dbg(&ac10x->i2c[_MASTER_INDEX]->dev, "AC108 PLL freq_in match:%u, freq_out:%u\n\n",
 								ac108_pll_div.freq_in, ac108_pll_div.freq_out);
@@ -534,21 +546,21 @@ static int ac108_configure_clocking(struct ac10x_priv *ac10x, unsigned int rate)
 
 		/*0x18: PLL clk lock enable*/
 		ac108_multi_update_bits(PLL_LOCK_CTRL, 0x1 << PLL_LOCK_EN, 0x1 << PLL_LOCK_EN, ac10x);
+
 		/*0x10: PLL Common voltage Enable, PLL Enable,PLL loop divider factor detection enable*/
 		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN | 0x01 << PLL_NDET,
 						   0x01 << PLL_EN | 0x01 << PLL_COM_EN | 0x01 << PLL_NDET, ac10x);
 
 		/**
-		 * 0x20: enable pll,pll source from mclk, sysclk source from 
-		 * pll,enable sysclk 
+		 * 0x20: enable pll, pll source from mclk/bclk, sysclk source from pll, enable sysclk
 		 */
-		ac108_multi_update_bits(SYSCLK_CTRL, 0x01 << PLLCLK_EN | 0x03 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN,
-						     0x01 << PLLCLK_EN | 0x00 << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac10x);
+		ac108_multi_update_bits(SYSCLK_CTRL, 0x01 << PLLCLK_EN | 0x03  << PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN,
+						     0x01 << PLLCLK_EN |pll_src<< PLLCLK_SRC | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac10x);
 		ac10x->mclk = ac108_pll_div.freq_out;
 	}
 	if (ac10x->clk_id == SYSCLK_SRC_MCLK) {
 		/**
-		 *0x20: sysclk source from  mclk,enable sysclk 
+		 *0x20: sysclk source from mclk, enable sysclk
 		 */
 		ac108_multi_update_bits(SYSCLK_CTRL, 0x01 << PLLCLK_EN | 0x01 << SYSCLK_SRC | 0x01 << SYSCLK_EN,
 						     0x00 << PLLCLK_EN | 0x00 << SYSCLK_SRC | 0x01 << SYSCLK_EN, ac10x);
@@ -688,7 +700,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 		return -EINVAL;
 	}
 
-	if (channels == 8 &&  ac108_sample_rate[rate].real_val == 96000) {
+	if (channels == 8 && ac108_sample_rate[rate].real_val == 96000) {
 		/* 24.576M bit clock is not support by ac108 */
 		return -EINVAL;
 	}
@@ -749,8 +761,13 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 * ADC Sample Rate synchronised with I2S1 clock zone 
 	 */
 	ac108_multi_update_bits(ADC_SPRC, 0x0f << ADC_FS_I2S1, ac108_sample_rate[rate].reg_val << ADC_FS_I2S1, ac10x);
-	ac108_multi_write(HPF_EN,0x0f,ac10x);
-	ac108_configure_clocking(ac10x, ac108_sample_rate[rate].real_val);
+	ac108_multi_write(HPF_EN, 0x0F, ac10x);
+
+	if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
+		ac108_config_pll(ac10x, ac108_sample_rate[rate].real_val, ac108_samp_res[samp_res].real_val * channels);
+	} else {
+		ac108_config_pll(ac10x, ac108_sample_rate[rate].real_val, 0);
+	}
 
 	/*
 	 * master mode only
@@ -761,7 +778,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 			break;
 		}
 	}
-	ac108_multi_update_bits(I2S_BCLK_CTRL,  0x0F << BCLKDIV, i << BCLKDIV, ac10x);
+	ac108_multi_update_bits(I2S_BCLK_CTRL, 0x0F << BCLKDIV, i << BCLKDIV, ac10x);
 
 	/*
 	 * slots allocation for each chip
@@ -818,7 +835,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 
 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:    /*AC108 Master*/
-		if (ac10x->tdm_chips_cnt < 2 || _MASTER_MULTI_CODEC == _MASTER_AC108) {
+		if (! ac10x->i2c101 || _MASTER_MULTI_CODEC == _MASTER_AC108) {
 			dev_dbg(dai->dev, "AC108 set to work as Master\n");
 			/**
 			 * 0x30:chip is master mode ,BCLK & LRCK output
@@ -961,7 +978,6 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 /*
  * due to miss channels order in cpu_dai, we meed defer the clock starting.
  */
-#if _MASTER_MULTI_CODEC == _MASTER_AC108
 static int ac108_set_clock(int y_start_n_stop) {
 	u8 r;
 
@@ -988,7 +1004,6 @@ static int ac108_set_clock(int y_start_n_stop) {
 
 	return 0;
 }
-#endif
 
 static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 			     struct snd_soc_dai *dai)
@@ -1375,12 +1390,12 @@ static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i
 	}
 
 __ret:
-	/* when all i2c prepared, we bind codec to i2c[_MASTER_INDEX] */
+	/* It's time to bind codec to i2c[_MASTER_INDEX] when all i2c are ready */
 	if ((ac10x->codec_cnt != 0 && ac10x->tdm_chips_cnt < 2)
 	|| (ac10x->i2c[0] && ac10x->i2c[1] && ac10x->i2c101)) {
-		#if _MASTER_MULTI_CODEC == _MASTER_AC108
-		asoc_simple_card_register_set_clock(ac108_set_clock);
-		#endif
+		if (! ac10x->i2c101 || _MASTER_MULTI_CODEC == _MASTER_AC108) {
+			asoc_simple_card_register_set_clock(ac108_set_clock);
+		}
 		/* no playback stream */
 		if (! ac10x->i2c101) {
 			memset(&ac108_dai[_MASTER_INDEX]->playback, '\0', sizeof ac108_dai[_MASTER_INDEX]->playback);
