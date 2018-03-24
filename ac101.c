@@ -698,8 +698,10 @@ int ac101_hw_params(struct snd_pcm_substream *substream,
 	AC101_DBG("%s() L%d +++\n", __func__, __LINE__);
 
 	if (_MASTER_MULTI_CODEC == _MASTER_AC101 && ac101_sysclk_started()) {
-		/* not configure hw_param twice, tell the caller it's started */
-		return 1;
+		/* not configure hw_param twice if stream is playback, tell the caller it's started */
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			return 1;
+		}
 	}
 
 	/* get channels count & slot size */
