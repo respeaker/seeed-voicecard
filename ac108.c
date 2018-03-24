@@ -647,16 +647,23 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	int ret = 0;
 	u8 v;
 
-	dev_dbg(dai->dev, "%s() stream=%d play:%d capt:%d +++\n", __func__,
-			substream->stream, dai->playback_active, dai->capture_active);
+	dev_dbg(dai->dev, "%s() stream=%s play:%d capt:%d +++\n", __func__,
+			snd_pcm_stream_str(substream),
+			dai->playback_active, dai->capture_active);
 
 	if (ac10x->i2c101) {
 		ret = ac101_hw_params(substream, params, dai);
+		if (ret > 0) {
+			dev_dbg(dai->dev, "%s() L%d returned\n", __func__, __LINE__);
+			/* not configure hw_param twice */
+			return 0;
+		}
 	}
 
-	/* nothing should be done when it isn't capturing stream. */
-	if (substream->stream != SNDRV_PCM_STREAM_CAPTURE) {
-		// TODO:
+	if ((substream->stream == SNDRV_PCM_STREAM_CAPTURE && dai->playback_active)
+	 || (substream->stream == SNDRV_PCM_STREAM_PLAYBACK && dai->capture_active)) {
+		/* not configure hw_param twice */
+		/* return 0; */
 	}
 
 	channels = params_channels(params);
@@ -785,7 +792,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 */
 	ac108_multi_chips_slots(ac10x, channels);
 
-	dev_dbg(dai->dev, "%s() stream=%d ---\n", __func__, substream->stream);
+	dev_dbg(dai->dev, "%s() stream=%s ---\n", __func__,
+			snd_pcm_stream_str(substream));
 
 	return 0;
 }
@@ -1005,6 +1013,16 @@ static int ac108_set_clock(int y_start_n_stop) {
 	return 0;
 }
 
+static int ac108_prepare(struct snd_pcm_substream *substream,
+					struct snd_soc_dai *dai)
+{
+	dev_dbg(dai->dev, "%s() stream=%s\n",
+		__func__,
+		snd_pcm_stream_str(substream));
+	
+	return 0;
+}
+
 static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 			     struct snd_soc_dai *dai)
 {
@@ -1013,8 +1031,17 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 	int ret = 0;
 	u8 r;
 
-	dev_dbg(dai->dev, "%s() stream=%d  cmd=%d\n",
-		__FUNCTION__, substream->stream, cmd);
+	dev_dbg(dai->dev, "%s() stream=%s  cmd=%d\n",
+		__FUNCTION__,
+		snd_pcm_stream_str(substream),
+		cmd);
+
+	if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
+		ac101_trigger(substream, cmd, dai);
+		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		       return 0;
+		}
+	}
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -1088,6 +1115,7 @@ static const struct snd_soc_dai_ops ac108_dai_ops = {
 
 	/*ALSA PCM audio operations*/
 	.hw_params	= ac108_hw_params,
+	.prepare	= ac108_prepare,
 	.trigger	= ac108_trigger,
 	.digital_mute	= ac108_aif_mute,
 

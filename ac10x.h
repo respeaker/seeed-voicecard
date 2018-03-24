@@ -47,16 +47,15 @@ struct ac10x_priv {
 	struct delayed_work dlywork;
 	int tdm_chips_cnt;
 
-	/* memboer for ac101 .begin */
+	/* member for ac101 .begin */
 	struct snd_soc_codec *codec;
 	struct i2c_client *i2c101;
 	struct regmap* regmap101;
 
 	struct mutex dac_mutex;
 	u8 dac_enable;
-	struct mutex aifclk_mutex;
+	spinlock_t lock;
 	u8 aif1_clken;
-	u8 aif2_clken;
 
 	struct work_struct codec_resume;
 	struct delayed_work dlywork101;
@@ -71,6 +70,8 @@ int ac101_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt);
 int ac101_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params,
 	struct snd_soc_dai *codec_dai);
+int ac101_trigger(struct snd_pcm_substream *substream, int cmd,
+	 	  struct snd_soc_dai *dai);
 int ac101_aif_mute(struct snd_soc_dai *codec_dai, int mute);
 
 /* codec driver specific */

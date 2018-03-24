@@ -216,8 +216,8 @@ static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd
 	struct snd_soc_dai *dai = rtd->codec_dai;
 	int ret = 0;
 
-	dev_dbg(rtd->card->dev, "%s() stream=%d  cmd=%d play:%d, capt:%d\n",
-		__FUNCTION__, substream->stream, cmd,
+	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d\n",
+		__FUNCTION__, snd_pcm_stream_str(substream), cmd,
 		dai->playback_active, dai->capture_active);
 
 	switch (cmd) {
@@ -230,6 +230,10 @@ static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		/* capture channel resync, if overrun */
+		if (dai->capture_active && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+			break;
+		}
 		if (_set_clock) _set_clock(0);
 		break;
 	default:
