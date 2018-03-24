@@ -58,7 +58,6 @@ struct ac10x_priv {
 	u8 aif1_clken;
 
 	struct work_struct codec_resume;
-	struct delayed_work dlywork101;
 	struct gpio_desc* gpiod_spk_amp_gate;
 	/* member for ac101 .end */
 };

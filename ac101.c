@@ -243,21 +243,14 @@ static int late_enable_dac(struct snd_soc_codec* codec, int event) {
 		ac10x->dac_enable++;
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		#if 0
-		if (ac10x->dac_enable > 0){
-			ac10x->dac_enable--;
-		#else
-		{
-		#endif
-			if (ac10x->dac_enable != 0){
-				ac10x->dac_enable = 0;
+		if (ac10x->dac_enable != 0){
+			ac10x->dac_enable = 0;
 
-				ac101_update_bits(codec, DAC_DIG_CTRL, (0x1<<ENHPF),(0x0<<ENHPF));
-				ac101_update_bits(codec, DAC_DIG_CTRL, (0x1<<ENDA), (0x0<<ENDA));
-				/*disable dac module clk*/
-				ac101_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_DAC_DIG), (0x0<<MOD_CLK_DAC_DIG));
-				ac101_update_bits(codec, MOD_RST_CTRL, (0x1<<MOD_RESET_DAC_DIG), (0x0<<MOD_RESET_DAC_DIG));
-			}
+			ac101_update_bits(codec, DAC_DIG_CTRL, (0x1<<ENHPF),(0x0<<ENHPF));
+			ac101_update_bits(codec, DAC_DIG_CTRL, (0x1<<ENDA), (0x0<<ENDA));
+			/*disable dac module clk*/
+			ac101_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_DAC_DIG), (0x0<<MOD_CLK_DAC_DIG));
+			ac101_update_bits(codec, MOD_RST_CTRL, (0x1<<MOD_RESET_DAC_DIG), (0x0<<MOD_RESET_DAC_DIG));
 		}
 		break;
 	}
@@ -543,6 +536,30 @@ static const unsigned ac101_bclkdivs[] = {
 	128, 192,   0,   0,
 };
 
+static int ac101_aif_play(struct ac10x_priv* ac10x) {
+	struct snd_soc_codec * codec = ac10x->codec;
+
+	late_enable_dac(codec, SND_SOC_DAPM_PRE_PMU);
+	ac101_headphone_event(codec, SND_SOC_DAPM_POST_PMU);
+	if (drc_used) {
+		drc_enable(codec, 1);
+	}
+
+	/* Enable Left & Right Speaker */
+	ac101_update_bits(codec, SPKOUT_CTRL, (0x1 << LSPK_EN) | (0x1 << RSPK_EN), (0x1 << LSPK_EN) | (0x1 << RSPK_EN));
+	if (ac10x->gpiod_spk_amp_gate) {
+		gpiod_set_value(ac10x->gpiod_spk_amp_gate, 1);
+	}
+	return 0;
+}
+
+static void ac10x_work_aif_play(struct work_struct *work) {
+	struct ac10x_priv *ac10x = container_of(work, struct ac10x_priv, dlywork.work);
+
+	ac101_aif_play(ac10x);
+	return;
+}
+
 int ac101_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
@@ -555,22 +572,17 @@ int ac101_aif_mute(struct snd_soc_dai *codec_dai, int mute)
 	if (!mute) {
 		#if _MASTER_MULTI_CODEC != _MASTER_AC101
 		/* enable global clock */
-		ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_PRE_PMU);
+		ac10x->aif1_clken = 0;
+		ac101_aif1clk(codec, SND_SOC_DAPM_PRE_PMU);
+		ac101_aif_play(ac10x);
+		#else
+		schedule_delayed_work(&ac10x->dlywork, msecs_to_jiffies(50));
+		#endif
+	} else {
+		#if _MASTER_MULTI_CODEC == _MASTER_AC101
+		cancel_delayed_work_sync(&ac10x->dlywork);
 		#endif
 
-		late_enable_dac(codec, SND_SOC_DAPM_PRE_PMU);
-		ac101_headphone_event(codec, SND_SOC_DAPM_POST_PMU);
-		if (drc_used) {
-			drc_enable(codec, 1);
-		}
-
-		/* Enable Left & Right Speaker */
-		ac101_update_bits(codec, SPKOUT_CTRL, (0x1 << LSPK_EN) | (0x1 << RSPK_EN), (0x1 << LSPK_EN) | (0x1 << RSPK_EN));
-		if (ac10x->gpiod_spk_amp_gate) {
-			gpiod_set_value(ac10x->gpiod_spk_amp_gate, 1);
-		}
-
-	} else {
 		if (ac10x->gpiod_spk_amp_gate) {
 			gpiod_set_value(ac10x->gpiod_spk_amp_gate, 1);
 		}
@@ -603,6 +615,8 @@ void ac101_aif_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai 
 	if (!codec_dai->active) {
 		ac10x->aif1_clken = 1;
 		ac101_aif1clk(codec, SND_SOC_DAPM_POST_PMD);
+	} else {
+		ac101_aif1clk(codec, SND_SOC_DAPM_PRE_PMU);
 	}
 }
 
@@ -1013,6 +1027,7 @@ int ac101_codec_probe(struct snd_soc_codec *codec)
 	}
 	ac10x->codec = codec;
 
+	INIT_DELAYED_WORK(&ac10x->dlywork, ac10x_work_aif_play);
 	INIT_WORK(&ac10x->codec_resume, codec_resume_work);
 	ac10x->dac_enable = 0;
 	ac10x->aif1_clken = 0;
