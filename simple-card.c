@@ -8,7 +8,7 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#undef DEBUG
+/* #undef DEBUG */
 #include <linux/clk.h>
 #include <linux/device.h>
 #include <linux/gpio.h>
@@ -240,7 +240,7 @@ static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd
 		ret = -EINVAL;
 	}
 
-	return 0;
+	return ret;
 }
 
 static struct snd_soc_ops asoc_simple_card_ops = {

@@ -7,6 +7,12 @@ obj-m += snd-soc-wm8960.o
 obj-m += snd-soc-ac108.o
 obj-m += snd-soc-simple-card.o
 
+ifdef DEBUG
+ifneq ($(DEBUG),0)
+	ccflags-y += -DDEBUG -DAC101_DEBG
+endif
+endif
+
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules

@@ -8,7 +8,10 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#undef DEBUG
+
+/* #undef DEBUG
+ * use 'make DEBUG=1' to enable debugging
+ */
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -547,10 +550,6 @@ static int ac108_config_pll(struct ac10x_priv *ac10x, unsigned rate, unsigned lr
 		/*0x18: PLL clk lock enable*/
 		ac108_multi_update_bits(PLL_LOCK_CTRL, 0x1 << PLL_LOCK_EN, 0x1 << PLL_LOCK_EN, ac10x);
 
-		/*0x10: PLL Common voltage Enable, PLL Enable,PLL loop divider factor detection enable*/
-		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN | 0x01 << PLL_NDET,
-						   0x01 << PLL_EN | 0x01 << PLL_COM_EN | 0x01 << PLL_NDET, ac10x);
-
 		/**
 		 * 0x20: enable pll, pll source from mclk/bclk, sysclk source from pll, enable sysclk
 		 */
@@ -670,8 +669,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 
 	/* Master mode, to clear cpu_dai fifos, output bclk without lrck */
 	ac10x_read(I2S_CTRL, &v, ac10x->i2cmap[_MASTER_INDEX]);
-	if (v & (0x02 << LRCK_IOEN)) {
-		ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x02 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
+	if (v & (0x01 << BCLK_IOEN)) {
+		ac10x_update_bits(I2S_CTRL, 0x1 << LRCK_IOEN, 0x0 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
 	}
 
 	switch (params_format(params)) {
@@ -792,6 +791,11 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	 */
 	ac108_multi_chips_slots(ac10x, channels);
 
+	/*0x21: Module clock enable<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
+	ac108_multi_write(MOD_CLK_EN, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
+	/*0x22: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
+	ac108_multi_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
+
 	dev_dbg(dai->dev, "%s() stream=%s ---\n", __func__,
 			snd_pcm_stream_str(substream));
 
@@ -851,7 +855,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 			ac108_multi_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
 							  0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac10x);
 			/* multi_chips: only one chip set as Master, and the others also need to set as Slave */
-			ac10x_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x2 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
+			ac10x_update_bits(I2S_CTRL, 0x3 << LRCK_IOEN, 0x01 << BCLK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
 			break;
 		} else {
 			/* TODO: Both cpu_dai and codec_dai(AC108) be set as slave in DTS */
@@ -863,8 +867,8 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		 * 0x30:chip is slave mode, BCLK & LRCK input,enable SDO1_EN and 
 		 *  SDO2_EN, Transmitter Block Enable, Globe Enable
 		 */
-		ac108_multi_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
-						  0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN, ac10x);
+		ac108_multi_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x0 << TXEN | 0x0 << GEN,
+						  0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x0 << TXEN | 0x0 << GEN, ac10x);
 		break;
 	default:
 		pr_err("AC108 Master/Slave mode config error:%u\n\n", (fmt & SND_SOC_DAIFMT_MASTER_MASK) >> 12);
@@ -930,13 +934,6 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		return -EINVAL;
 	}
 
-	#if 0
-	/* revert LRCK polarity if it's single chip (master mode) */
-	if (ac10x->tdm_chips_cnt < 2) {
-		lrck_polarity = (lrck_polarity == LRCK_LEFT_HIGH_RIGHT_LOW)? 
-				LRCK_LEFT_LOW_RIGHT_HIGH: LRCK_LEFT_HIGH_RIGHT_LOW;
-	}
-	#endif
 	ac108_configure_power(ac10x);
 
 	/**
@@ -987,14 +984,16 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
  * due to miss channels order in cpu_dai, we meed defer the clock starting.
  */
 static int ac108_set_clock(int y_start_n_stop) {
+	unsigned long flags;
 	u8 r;
 
 	dev_dbg(ac10x->codec->dev, "%s() L%d start:%d\n", __func__, __LINE__, y_start_n_stop);
 
+	spin_lock_irqsave(&ac10x->lock, flags);
 	if (y_start_n_stop) {
 		/* enable lrck clock */
 		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
-		if (r & (0x02 << LRCK_IOEN)) {
+		if (r & (0x01 << BCLK_IOEN)) {
 			ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x03 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
 		}
 
@@ -1005,10 +1004,11 @@ static int ac108_set_clock(int y_start_n_stop) {
 		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
 		if (r & (0x01 << LRCK_IOEN)) {
 			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac10x);
-			ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x02 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
+			ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x01 << BCLK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
 			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
 		}
 	}
+	spin_unlock_irqrestore(&ac10x->lock, flags);
 
 	return 0;
 }
@@ -1028,6 +1028,7 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
+	unsigned long flags;
 	int ret = 0;
 	u8 r;
 
@@ -1036,10 +1037,12 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 		snd_pcm_stream_str(substream),
 		cmd);
 
+	spin_lock_irqsave(&ac10x->lock, flags);
+
 	if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
 		ac101_trigger(substream, cmd, dai);
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		       return 0;
+		       goto __ret;
 		}
 	}
 
@@ -1049,26 +1052,38 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		/* disable global clock if lrck disabled */
 		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
-		if ((r & (0x02 << LRCK_IOEN)) && (r & (0x01 << LRCK_IOEN)) == 0) {
+		if ((r & (0x01 << BCLK_IOEN)) && (r & (0x01 << LRCK_IOEN)) == 0) {
 			/* disable global clock */
 			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac10x);
 		}
 
-		/*0x21: Module clock enable<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
-		ac108_multi_write(MOD_CLK_EN, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
+		/*0x10: PLL Common voltage enable, PLL enable */
+		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN,
+						   0x01 << PLL_EN | 0x01 << PLL_COM_EN, ac10x);
 
-		/*0x22: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
-		ac108_multi_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
-
+		if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
+			/* enable global clock */
+			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
+		}
 		/* delayed clock starting, move to simple_card_trigger() */
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		/*0x10: PLL Common voltage disable, PLL disable */
+		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN,
+						   0x00 << PLL_EN | 0x00 << PLL_COM_EN, ac10x);
+		if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
+			/* disable global clock */
+			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x0 << TXEN | 0x0 << GEN, ac10x);
+		}
 		break;
 	default:
 		ret = -EINVAL;
 	}
+
+__ret:
+	spin_unlock_irqrestore(&ac10x->lock, flags);
 
 	return ret;
 }
@@ -1378,6 +1393,9 @@ static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i
 		ac10x->i2c101 = i2c;
 		i2c_set_clientdata(i2c, ac10x);
 		ret = ac101_probe(i2c, i2c_id);
+		if (ret) {
+			return ret;
+		}
 		goto __ret;
 	}
 

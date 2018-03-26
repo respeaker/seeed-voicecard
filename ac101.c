@@ -20,7 +20,10 @@
  * the License, or (at your option) any later version.
  *
  */
-#undef AC101_DEBG
+
+/* #undef AC101_DEBG
+ * use 'make DEBUG=1' to enable debugging
+ */
 #include <linux/module.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -292,22 +295,17 @@ static int ac101_aif1clk(struct snd_soc_codec* codec, int event) {
 	unsigned long flags;
 	int ret;
 
-	AC101_DBG("%s() L%d event=%d pre_up/%d post_down/%d\n", __func__, __LINE__,
-		event, SND_SOC_DAPM_PRE_PMU, SND_SOC_DAPM_POST_PMD);
-
-
+	/* I know it will degrades performance, but I have no choice */
+	spin_lock_irqsave(&ac10x->lock, flags);
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (ac10x->aif1_clken == 0){
-			/* I know it will degrades performance, but I have no choice */
-			spin_lock_irqsave(&ac10x->lock, flags);
 
 			/* enable aif1clk & sysclk */
 			ret = ac101_update_bits(codec, SYSCLK_CTRL, (0x1<<AIF1CLK_ENA), (0x1<<AIF1CLK_ENA));
 			ret = ret || ac101_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_AIF1), (0x1<<MOD_CLK_AIF1));
 			ret = ret || ac101_update_bits(codec, MOD_RST_CTRL, (0x1<<MOD_RESET_AIF1), (0x1<<MOD_RESET_AIF1));
 			ret = ret || ac101_update_bits(codec, SYSCLK_CTRL, (0x1<<SYSCLK_ENA), (0x1<<SYSCLK_ENA));
-			spin_unlock_irqrestore(&ac10x->lock, flags);
 
 			if (ret) {
 				AC101_DBG("%s() L%d start sysclk failed\n", __func__, __LINE__);
@@ -319,15 +317,11 @@ static int ac101_aif1clk(struct snd_soc_codec* codec, int event) {
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		if (ac10x->aif1_clken != 0) {
-			/* I know it will degrades performance, but I have no choice */
-			spin_lock_irqsave(&ac10x->lock, flags);
-
 			/* disable aif1clk & sysclk */
 			ret = ac101_update_bits(codec, SYSCLK_CTRL, (0x1<<AIF1CLK_ENA),(0x0<<AIF1CLK_ENA));
 			ret = ret || ac101_update_bits(codec, MOD_CLK_ENA, (0x1<<MOD_CLK_AIF1), (0x0<<MOD_CLK_AIF1));
 			ret = ret || ac101_update_bits(codec, MOD_RST_CTRL, (0x1<<MOD_RESET_AIF1), (0x0<<MOD_RESET_AIF1));
 			ret = ret || ac101_update_bits(codec, SYSCLK_CTRL, (0x1<<SYSCLK_ENA), (0x0<<SYSCLK_ENA));
-			spin_unlock_irqrestore(&ac10x->lock, flags);
 
 			if (ret) {
 				AC101_DBG("%s() L%d stop sysclk failed\n", __func__, __LINE__);
@@ -338,6 +332,10 @@ static int ac101_aif1clk(struct snd_soc_codec* codec, int event) {
 			break;
 		}
 	}
+	spin_unlock_irqrestore(&ac10x->lock, flags);
+
+	AC101_DBG("%s() L%d event=%d pre_up/%d post_down/%d\n", __func__, __LINE__,
+		event, SND_SOC_DAPM_PRE_PMU, SND_SOC_DAPM_POST_PMD);
 
 	return 0;
 }
@@ -478,8 +476,8 @@ static const struct pll_div codec_pll_div[] = {
 	{5644800,  _FREQ_22_579K,  1,  12, 0}, /* accurate, 22050 * 256 */
 	{6000000,  _FREQ_22_579K, 38, 429, 0}, /*((429+0*0.2)*6000000)/(38*(2*1+1))*/
 	{11289600, _FREQ_22_579K,  1,   6, 0}, /* accurate, 44100 * 256 */
-	{13000000, _FREQ_22_579K, 19, 99, 0},
-	{19200000, _FREQ_22_579K, 25, 88, 1},
+	{13000000, _FREQ_22_579K, 19,  99, 0},
+	{19200000, _FREQ_22_579K, 25,  88, 1},
 	{24000000, _FREQ_22_579K, 63, 177, 4}, /* 22577778 Hz */
 
 	{128000,   _FREQ_24_576K,  1, 576, 0},
@@ -1177,6 +1175,12 @@ int ac101_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		dev_err(&i2c->dev, "Fail to initialize I/O: %d\n", ret);
 		return ret;
 	}
+
+	/* Chip reset */
+	/*
+	ret = regmap_write(ac10x->regmap101, CHIP_AUDIO_RST, 0);
+	msleep(50);
+	*/
 
 	ret = regmap_read(ac10x->regmap101, CHIP_AUDIO_RST, &v);
 	if (ret < 0) {
