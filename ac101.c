@@ -626,6 +626,9 @@ static int ac101_set_pll(struct snd_soc_dai *codec_dai, int pll_id, int source,
 
 	AC101_DBG("%s, line:%d, pll_id:%d\n", __func__, __LINE__, pll_id);
 
+	/* clear volatile reserved bits*/
+	ac101_update_bits(codec, SYSCLK_CTRL, 0xFF & ~(0x1 << SYSCLK_ENA), 0x0);
+
 	/* select aif1 clk srouce from mclk1 */
 	ac101_update_bits(codec, SYSCLK_CTRL, (0x3<<AIF1CLK_SRC), (0x0<<AIF1CLK_SRC));
 	/* disable pll */

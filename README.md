@@ -193,7 +193,7 @@ plughw:CARD=seeed8micvoicec,DEV=0
 [![](https://user-images.githubusercontent.com/3901856/37194106-a0ccebce-23a7-11e8-88c5-ec611e44ec49.png)]()
 
 In contrast to 6-Mics Circular Array Kit for Raspberry Pi,
-the difference is only first 4 input channels are valid capturing data.
+the difference is only first 4 input channels are valid capture data.
 
 ### Usage:
 ```bash
@@ -217,9 +217,15 @@ arecord -Dac108 -f S32_LE -r 16000 -c 8 a.wav
 #It will play sound file a.wav on AC101
 aplay -D ac101 a.wav
 #Do not use -D plughw:1,0 directly except your wave file is single channel only.
+
+#Doing capture && playback the same time
+arecord -D hw:1,0 -f S32_LE -r 16000 -c 8 toberecord.wav &
+#mono_toplay.wav is a mono channel wave file to play
+aplay -D plughw:1,0 -r 16000 mono_toplay.wav
 ```
-**Note: for developer using 6-Mics Circular Array Kit(or 4-Mics Linear Array Kit) doing capturing & playback the same time,
-capturing must be start first, or else the capturing channels will miss order.**
+**Note: Limit for developer using 6-Mics Circular Array Kit(or 4-Mics Linear Array Kit) doing capture & playback the same time:  
+1. capture must be start first, or else the capture channels will miss order randomly.  
+2. playback output channels must fill with 8 same channels data or 4 same stero channels dat, or else the speaker or headphone will output nothing randomly.**
 
 ### Coherence
 

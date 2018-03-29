@@ -191,7 +191,7 @@ int ac10x_update_bits(u8 reg, u8 mask, u8 val, struct regmap* i2cm) {
 	int r;
 
 	if ((r = regmap_update_bits(i2cm, reg, mask, val)) < 0) {
-		pr_err("ac10x_update error->[REG-0x%02x,val-0x%02x]\n", reg, val);
+		pr_err("%s() error->[REG-0x%02x,val-0x%02x]\n", __func__, reg, val);
 	}
 	return r;
 }
@@ -693,8 +693,6 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 		pr_err("AC108 don't supported the sample resolution: %u\n", params_format(params));
 		return -EINVAL;
 	}
-
-	dev_dbg(dai->dev, "params rate: %d\n", params_rate(params));
 
 	for (i = 0; i < ARRAY_SIZE(ac108_sample_rate); i++) {
 		if (ac108_sample_rate[i].real_val == params_rate(params) / (ac10x->data_protocol + 1UL)) {
