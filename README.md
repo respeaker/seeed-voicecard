@@ -219,13 +219,13 @@ aplay -D ac101 a.wav
 #Do not use -D plughw:1,0 directly except your wave file is single channel only.
 
 #Doing capture && playback the same time
-arecord -D hw:1,0 -f S32_LE -r 16000 -c 8 toberecord.wav &
-#mono_toplay.wav is a mono channel wave file to play
-aplay -D plughw:1,0 -r 16000 mono_toplay.wav
+arecord -D hw:1,0 -f S32_LE -r 16000 -c 8 to_be_record.wav &
+#mono_to_play.wav is a mono channel wave file to play
+aplay -D plughw:1,0 -r 16000 mono_to_play.wav
 ```
 **Note: Limit for developer using 6-Mics Circular Array Kit(or 4-Mics Linear Array Kit) doing capture & playback the same time:  
-1. capture must be start first, or else the capture channels will miss order randomly.  
-2. playback output channels must fill with 8 same channels data or 4 same stero channels dat, or else the speaker or headphone will output nothing randomly.**
+1. capture must be start first, or else the capture channels will possibly be disorder.  
+2. playback output channels must fill with 8 same channels data or 4 same stereo channels data, or else the speaker or headphone will output nothing possily.**
 
 ### Coherence
 
