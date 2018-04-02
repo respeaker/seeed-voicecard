@@ -22,6 +22,7 @@
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 #include <linux/regmap.h>
+#include <linux/gpio/consumer.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -37,9 +38,8 @@
 /**
  * TODO: 
  * 1, add PM API:  ac108_suspend,ac108_resume 
- * 2, add set_pll ,set_clkdiv 
- * 3,0x65-0x6a 
- * 4,0x76-0x79 high 4bit 
+ * 2,0x65-0x6a 
+ * 3,0x76-0x79 high 4bit 
  */
 struct pll_div {
 	unsigned int freq_in;
@@ -794,6 +794,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	/*0x22: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
 	ac108_multi_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
 
+
 	dev_dbg(dai->dev, "%s() stream=%s ---\n", __func__,
 			snd_pcm_stream_str(substream));
 
@@ -865,7 +866,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 		 * 0x30:chip is slave mode, BCLK & LRCK input,enable SDO1_EN and 
 		 *  SDO2_EN, Transmitter Block Enable, Globe Enable
 		 */
-		ac108_multi_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x0 << TXEN | 0x0 << GEN,
+		ac108_multi_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN | 0x03 << SDO1_EN | 0x1 << TXEN | 0x1 << GEN,
 						  0x00 << LRCK_IOEN | 0x03 << SDO1_EN | 0x0 << TXEN | 0x0 << GEN, ac10x);
 		break;
 	default:
@@ -982,31 +983,44 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
  * due to miss channels order in cpu_dai, we meed defer the clock starting.
  */
 static int ac108_set_clock(int y_start_n_stop) {
-	unsigned long flags;
 	u8 r;
 
-	dev_dbg(ac10x->codec->dev, "%s() L%d start:%d\n", __func__, __LINE__, y_start_n_stop);
+	dev_dbg(ac10x->codec->dev, "%s() L%d cmd:%d\n", __func__, __LINE__, y_start_n_stop);
 
-	spin_lock_irqsave(&ac10x->lock, flags);
-	if (y_start_n_stop) {
+	/* spin_lock move to simple_card_trigger */
+
+	if (y_start_n_stop)  {
+		if (ac10x->sysclk_en == 0) {
+
 		/* enable lrck clock */
 		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
 		if (r & (0x01 << BCLK_IOEN)) {
 			ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x03 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
 		}
 
+		/*0x10: PLL Common voltage enable, PLL enable */
+		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN,
+						   0x01 << PLL_EN | 0x01 << PLL_COM_EN, ac10x);
 		/* enable global clock */
 		ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
-	} else {
+
+		ac10x->sysclk_en = 1UL;
+		}
+	} else if (ac10x->sysclk_en != 0) {
+		/* disable global clock */
+		ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x0 << TXEN | 0x0 << GEN, ac10x);
+
+		/*0x10: PLL Common voltage disable, PLL disable */
+		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN,
+						   0x00 << PLL_EN | 0x00 << PLL_COM_EN, ac10x);
+
 		/* disable lrck clock if it's enabled */
 		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
 		if (r & (0x01 << LRCK_IOEN)) {
-			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac10x);
 			ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x01 << BCLK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
-			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
 		}
+		ac10x->sysclk_en = 0UL;
 	}
-	spin_unlock_irqrestore(&ac10x->lock, flags);
 
 	return 0;
 }
@@ -1052,29 +1066,14 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
 		if ((r & (0x01 << BCLK_IOEN)) && (r & (0x01 << LRCK_IOEN)) == 0) {
 			/* disable global clock */
-			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x0 << GEN, ac10x);
+			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x0 << TXEN | 0x0 << GEN, ac10x);
 		}
 
-		/*0x10: PLL Common voltage enable, PLL enable */
-		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN,
-						   0x01 << PLL_EN | 0x01 << PLL_COM_EN, ac10x);
-
-		if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
-			/* enable global clock */
-			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
-		}
 		/* delayed clock starting, move to simple_card_trigger() */
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-		/*0x10: PLL Common voltage disable, PLL disable */
-		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN,
-						   0x00 << PLL_EN | 0x00 << PLL_COM_EN, ac10x);
-		if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
-			/* disable global clock */
-			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x0 << TXEN | 0x0 << GEN, ac10x);
-		}
 		break;
 	default:
 		ret = -EINVAL;
@@ -1103,6 +1102,13 @@ void ac108_aif_shutdown(struct snd_pcm_substream *substream,
 ) {
 	struct snd_soc_codec *codec = dai->codec;
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
+
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		/*0x21: Module clock disable <I2S, ADC digital, MIC offset Calibration, ADC analog>*/
+		ac108_multi_write(MOD_CLK_EN, 0x0, ac10x);
+		/*0x22: Module reset asserted <I2S, ADC digital, MIC offset Calibration, ADC analog>*/
+		ac108_multi_write(MOD_RST_CTRL, 0x0, ac10x);
+	}
 
 	if (ac10x->i2c101) {
 		ac101_aif_shutdown(substream, dai);
@@ -1204,7 +1210,10 @@ static int ac108_add_widgets(struct snd_soc_codec *codec) {
 	return 0;
 }
 
-static int ac108_probe(struct snd_soc_codec *codec) {
+static int ac108_codec_probe(struct snd_soc_codec *codec) {
+
+	spin_lock_init(&ac10x->lock);
+
 	ac10x->codec = codec;
 	dev_set_drvdata(codec->dev, ac10x);
 	ac108_add_widgets(codec);
@@ -1212,6 +1221,7 @@ static int ac108_probe(struct snd_soc_codec *codec) {
 	if (ac10x->i2c101) {
 		ac101_codec_probe(codec);
 	}
+
 	return 0;
 }
 
@@ -1293,7 +1303,7 @@ int ac108_codec_resume(struct snd_soc_codec *codec) {
 }
 
 static struct snd_soc_codec_driver ac10x_soc_codec_driver = {
-	.probe 		= ac108_probe,
+	.probe 		= ac108_codec_probe,
 	.remove 	= ac108_codec_remove,
 	.suspend 	= ac108_codec_suspend,
 	.resume 	= ac108_codec_resume,
@@ -1371,7 +1381,7 @@ static const struct regmap_config ac108_regmap = {
 	.val_bits = 8,
 	.reg_stride = 1,
 	.max_register = 0xDF,
-	.cache_type = REGCACHE_RBTREE,
+	.cache_type = REGCACHE_FLAT,
 };
 static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i2c_id) {
 	struct device_node *np = i2c->dev.of_node;
@@ -1392,6 +1402,7 @@ static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i
 		i2c_set_clientdata(i2c, ac10x);
 		ret = ac101_probe(i2c, i2c_id);
 		if (ret) {
+			ac10x->i2c101 = NULL;
 			return ret;
 		}
 		goto __ret;
@@ -1418,6 +1429,8 @@ static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i
 		return ret;
 	}
 
+	ac10x_fill_regcache(&i2c->dev, ac10x->i2cmap[index]);
+
 	/*
 	 * Writing this register with 0x12 
 	 * will resets all register to their default state.
@@ -1437,9 +1450,7 @@ __ret:
 	/* It's time to bind codec to i2c[_MASTER_INDEX] when all i2c are ready */
 	if ((ac10x->codec_cnt != 0 && ac10x->tdm_chips_cnt < 2)
 	|| (ac10x->i2c[0] && ac10x->i2c[1] && ac10x->i2c101)) {
-		if (! ac10x->i2c101 || _MASTER_MULTI_CODEC == _MASTER_AC108) {
-			asoc_simple_card_register_set_clock(ac108_set_clock);
-		}
+		asoc_simple_card_register_set_clock(SNDRV_PCM_STREAM_CAPTURE, ac108_set_clock);
 		/* no playback stream */
 		if (! ac10x->i2c101) {
 			memset(&ac108_dai[_MASTER_INDEX]->playback, '\0', sizeof ac108_dai[_MASTER_INDEX]->playback);

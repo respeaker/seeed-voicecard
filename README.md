@@ -225,7 +225,7 @@ aplay -D plughw:1,0 -r 16000 mono_to_play.wav
 ```
 **Note: Limit for developer using 6-Mics Circular Array Kit(or 4-Mics Linear Array Kit) doing capture & playback the same time:  
 1. capture must be start first, or else the capture channels will possibly be disorder.  
-2. playback output channels must fill with 8 same channels data or 4 same stereo channels data, or else the speaker or headphone will output nothing possily.**
+2. playback output channels must fill with 8 same channels data or 4 same stereo channels data, or else the speaker or headphone will output nothing possibly.**
 
 ### Coherence
 

@@ -46,6 +46,7 @@ struct ac10x_priv {
 	unsigned char data_protocol;
 	struct delayed_work dlywork;
 	int tdm_chips_cnt;
+	int sysclk_en;
 
 	/* member for ac101 .begin */
 	struct snd_soc_codec *codec;
@@ -86,6 +87,8 @@ void ac101_shutdown(struct i2c_client *i2c);
 int ac101_remove(struct i2c_client *i2c);
 
 /* simple card export */
-int asoc_simple_card_register_set_clock(int (*set_clock)(int));
+int asoc_simple_card_register_set_clock(int stream, int (*set_clock)(int));
+
+int ac10x_fill_regcache(struct device* dev, struct regmap* map);
 
 #endif//__AC10X_H__

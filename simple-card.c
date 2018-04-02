@@ -51,6 +51,7 @@ struct simple_card_data {
 	struct asoc_simple_jack hp_jack;
 	struct asoc_simple_jack mic_jack;
 	struct snd_soc_dai_link *dai_link;
+	spinlock_t lock;
 };
 
 #define simple_priv_to_dev(priv) ((priv)->snd_card.dev)
@@ -203,10 +204,13 @@ err:
 	return ret;
 }
 
-static int (* _set_clock)(int y_start_n_stop);
+#define _SET_CLOCK_CNT		2
+static int (* _set_clock[_SET_CLOCK_CNT])(int y_start_n_stop);
 
-int asoc_simple_card_register_set_clock(int (*set_clock)(int)) {
-	_set_clock = set_clock;
+int asoc_simple_card_register_set_clock(int stream, int (*set_clock)(int)) {
+	if (! _set_clock[stream]) {
+		_set_clock[stream] = set_clock;
+	}
 	return 0;
 }
 EXPORT_SYMBOL(asoc_simple_card_register_set_clock);
@@ -215,17 +219,23 @@ static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *dai = rtd->codec_dai;
+	struct simple_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
+	unsigned long flags;
 	int ret = 0;
 
 	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d\n",
 		__FUNCTION__, snd_pcm_stream_str(substream), cmd,
 		dai->playback_active, dai->capture_active);
 
+	/* I know it will degrades performance, but I have no choice */
+	spin_lock_irqsave(&priv->lock, flags);
+
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		if (_set_clock) _set_clock(1);
+		if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](1);
+		if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](1);
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -235,11 +245,14 @@ static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd
 		if (dai->capture_active && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			break;
 		}
-		if (_set_clock) _set_clock(0);
+		if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](0);
+		if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](0);
 		break;
 	default:
 		ret = -EINVAL;
 	}
+
+	spin_unlock_irqrestore(&priv->lock, flags);
 
 	return ret;
 }
@@ -605,9 +618,12 @@ static int asoc_simple_card_probe(struct platform_device *pdev)
 
 	snd_soc_card_set_drvdata(&priv->snd_card, priv);
 
+	spin_lock_init(&priv->lock);
+
 	ret = devm_snd_soc_register_card(&pdev->dev, &priv->snd_card);
 	if (ret >= 0)
 		return ret;
+
 err:
 	asoc_simple_card_clean_reference(&priv->snd_card);
 
