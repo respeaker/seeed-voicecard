@@ -26,12 +26,24 @@
 #define _MASTER_AC101		1
 #define _MASTER_MULTI_CODEC	_MASTER_AC101
 
+/* enable headset detecting & headset button pressing */
+#define CONFIG_AC101_SWITCH_DETECT
+
+
 #ifdef AC101_DEBG
     #define AC101_DBG(format,args...)  printk("[AC101] "format,##args)
 #else
     #define AC101_DBG(...)
 #endif
 
+
+#ifdef CONFIG_AC101_SWITCH_DETECT
+enum headphone_mode_u {
+	HEADPHONE_IDLE,
+	FOUR_HEADPHONE_PLUGIN,
+	THREE_HEADPHONE_PLUGIN,
+};
+#endif
 
 struct ac10x_priv {
 	struct i2c_client *i2c[4];
@@ -60,8 +72,23 @@ struct ac10x_priv {
 
 	struct work_struct codec_resume;
 	struct gpio_desc* gpiod_spk_amp_gate;
+
+	#ifdef CONFIG_AC101_SWITCH_DETECT
+	struct gpio_desc* gpiod_irq;
+	int irq;
+	volatile int irq_cntr;
+	volatile int pullout_cntr;
+	volatile int state;
+
+	enum headphone_mode_u mode;
+	struct work_struct work_switch;
+	struct work_struct work_clear_irq;
+
+	struct input_dev* inpdev;
+	#endif
 	/* member for ac101 .end */
 };
+
 
 /* AC101 DAI operations */
 int ac101_audio_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *codec_dai);

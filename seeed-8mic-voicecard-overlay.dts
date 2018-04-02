@@ -26,9 +26,9 @@
 	fragment@2 {
 		target = <&gpio>;
 		__overlay__ {
-			spk_amp_switch_pins: speaker_amp_switch_pins {
-				brcm,pins = <17>;
-				brcm,function = <1>; /* out */
+			spk_amp_and_irq_pins: speaker_amp_and_irq_pins {
+				brcm,pins = <17 22>;
+				brcm,function = <1 0>; /* out in */
 			};
 			gpclk0_pins: gpclk0_pins {
 				brcm,pins = <4>;
@@ -47,8 +47,9 @@
 			ac101: ac101@1a{
 				compatible = "x-power,ac101";
 				pinctrl-names = "default";
-				pinctrl-0 = <&spk_amp_switch_pins>,<&gpclk0_pins>;
+				pinctrl-0 = <&spk_amp_and_irq_pins>,<&gpclk0_pins>;
 				spk-amp-switch-gpios = <&gpio 17 0>;
+				switch-irq-gpios = <&gpio 22 0>;
 				reg = <0x1a>;
 				#sound-dai-cells = <0>;
 			};

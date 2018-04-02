@@ -247,11 +247,13 @@
 
 /*HMIC_STS*/
 #define HMIC_DATA			8
+#define GET_HMIC_DATA(r)		(((r) >> HMIC_DATA) & 0x1F)
 #define HMIC_PULLOUT_PEND	4
 #define HMIC_PLUGIN_PEND	3
 #define HMIC_KEYUP_PEND		2
 #define HMKC_KEYDOWN_PEND	1
 #define HMIC_DATA_PEND		0
+#define HMIC_PEND_ALL		(0x1F)
 
 /*DAC_DIG_CTRL*/
 #define ENDA				15
