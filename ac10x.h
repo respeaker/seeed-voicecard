@@ -113,8 +113,8 @@ int ac101_probe(struct i2c_client *i2c, const struct i2c_device_id *id);
 void ac101_shutdown(struct i2c_client *i2c);
 int ac101_remove(struct i2c_client *i2c);
 
-/* simple card export */
-int asoc_simple_card_register_set_clock(int stream, int (*set_clock)(int));
+/* seeed voice card export */
+int seeed_voice_card_register_set_clock(int stream, int (*set_clock)(int));
 
 int ac10x_fill_regcache(struct device* dev, struct regmap* map);
 

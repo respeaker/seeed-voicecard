@@ -987,7 +987,7 @@ static int ac108_set_clock(int y_start_n_stop) {
 
 	dev_dbg(ac10x->codec->dev, "%s() L%d cmd:%d\n", __func__, __LINE__, y_start_n_stop);
 
-	/* spin_lock move to simple_card_trigger */
+	/* spin_lock move to machine trigger */
 
 	if (y_start_n_stop)  {
 		if (ac10x->sysclk_en == 0) {
@@ -1069,7 +1069,7 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x0 << TXEN | 0x0 << GEN, ac10x);
 		}
 
-		/* delayed clock starting, move to simple_card_trigger() */
+		/* delayed clock starting, move to machine trigger() */
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
@@ -1389,7 +1389,7 @@ static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i
 	int ret = 0, index;
 
 	if (ac10x == NULL) {
-		ac10x = devm_kzalloc(&i2c->dev, sizeof(struct ac10x_priv), GFP_KERNEL);
+		ac10x = kzalloc(sizeof(struct ac10x_priv), GFP_KERNEL);
 		if (ac10x == NULL) {
 			dev_err(&i2c->dev, "Unable to allocate ac10x private data\n");
 			return -ENOMEM;
@@ -1450,7 +1450,7 @@ __ret:
 	/* It's time to bind codec to i2c[_MASTER_INDEX] when all i2c are ready */
 	if ((ac10x->codec_cnt != 0 && ac10x->tdm_chips_cnt < 2)
 	|| (ac10x->i2c[0] && ac10x->i2c[1] && ac10x->i2c101)) {
-		asoc_simple_card_register_set_clock(SNDRV_PCM_STREAM_CAPTURE, ac108_set_clock);
+		seeed_voice_card_register_set_clock(SNDRV_PCM_STREAM_CAPTURE, ac108_set_clock);
 		/* no playback stream */
 		if (! ac10x->i2c101) {
 			memset(&ac108_dai[_MASTER_INDEX]->playback, '\0', sizeof ac108_dai[_MASTER_INDEX]->playback);
@@ -1465,12 +1465,29 @@ __ret:
 }
 
 static int ac108_i2c_remove(struct i2c_client *i2c) {
-	if (ac10x->i2c101) {
-		ac101_remove(ac10x->i2c101);
-	}
 	if (ac10x->codec != NULL) {
 		snd_soc_unregister_codec(&ac10x->i2c[_MASTER_INDEX]->dev);
 		ac10x->codec = NULL;
+	}
+	if (i2c == ac10x->i2c101) {
+		ac101_remove(ac10x->i2c101);
+		ac10x->i2c101 = NULL;
+		goto __ret;
+	}
+
+	if (i2c == ac10x->i2c[0]) {
+		ac10x->i2c[0] = NULL;
+	}
+	if (i2c == ac10x->i2c[1]) {
+		ac10x->i2c[1] = NULL;
+	}
+
+	sysfs_remove_group(&i2c->dev.kobj, &ac108_debug_attr_group);
+
+__ret:
+	if (!ac10x->i2c[0] && !ac10x->i2c[1] && !ac10x->i2c101) {
+		kfree(ac10x);
+		ac10x = NULL;
 	}
 	return 0;
 }

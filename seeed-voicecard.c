@@ -1,5 +1,10 @@
 /*
- * ASoC simple sound card support
+ * SEEED voice card
+ *
+ * (C) Copyright 2017-2018
+ * Seeed Technology Co., Ltd. <www.seeedstudio.com>
+ *
+ * base on ASoC simple sound card support
  *
  * Copyright (C) 2012 Renesas Solutions Corp.
  * Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
@@ -18,10 +23,9 @@
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/string.h>
-#include <sound/jack.h>
-#include <sound/simple_card.h>
-#include <sound/soc-dai.h>
 #include <sound/soc.h>
+#include <sound/soc-dai.h>
+#include <sound/simple_card_utils.h>
 
 /*
  * single codec:
@@ -30,15 +34,9 @@
  */
 #define _SINGLE_CODEC		1
 
-struct asoc_simple_jack {
-	struct snd_soc_jack jack;
-	struct snd_soc_jack_pin pin;
-	struct snd_soc_jack_gpio gpio;
-};
-
-struct simple_card_data {
+struct seeed_card_data {
 	struct snd_soc_card snd_card;
-	struct simple_dai_props {
+	struct seeed_dai_props {
 		struct asoc_simple_dai cpu_dai;
 		struct asoc_simple_dai codec_dai;
 		unsigned int mclk_fs;
@@ -48,87 +46,35 @@ struct simple_card_data {
 	unsigned channels_playback_override;
 	unsigned channels_capture_default;
 	unsigned channels_capture_override;
-	struct asoc_simple_jack hp_jack;
-	struct asoc_simple_jack mic_jack;
 	struct snd_soc_dai_link *dai_link;
 	spinlock_t lock;
 };
 
-#define simple_priv_to_dev(priv) ((priv)->snd_card.dev)
-#define simple_priv_to_link(priv, i) ((priv)->snd_card.dai_link + (i))
-#define simple_priv_to_props(priv, i) ((priv)->dai_props + (i))
+struct seeed_card_info {
+	const char *name;
+	const char *card;
+	const char *codec;
+	const char *platform;
+
+	unsigned int daifmt;
+	struct asoc_simple_dai cpu_dai;
+	struct asoc_simple_dai codec_dai;
+};
+
+#define seeed_priv_to_dev(priv) ((priv)->snd_card.dev)
+#define seeed_priv_to_link(priv, i) ((priv)->snd_card.dai_link + (i))
+#define seeed_priv_to_props(priv, i) ((priv)->dai_props + (i))
 
 #define DAI	"sound-dai"
 #define CELL	"#sound-dai-cells"
-#define PREFIX	"simple-audio-card,"
+#define PREFIX	"seeed-voice-card,"
 
-#define asoc_simple_card_init_hp(card, sjack, prefix)\
-	asoc_simple_card_init_jack(card, sjack, 1, prefix)
-#define asoc_simple_card_init_mic(card, sjack, prefix)\
-	asoc_simple_card_init_jack(card, sjack, 0, prefix)
-static int asoc_simple_card_init_jack(struct snd_soc_card *card,
-				      struct asoc_simple_jack *sjack,
-				      int is_hp, char *prefix)
-{
-	struct device *dev = card->dev;
-	enum of_gpio_flags flags;
-	char prop[128];
-	char *pin_name;
-	char *gpio_name;
-	int mask;
-	int det;
-
-	sjack->gpio.gpio = -ENOENT;
-
-	if (is_hp) {
-		snprintf(prop, sizeof(prop), "%shp-det-gpio", prefix);
-		pin_name	= "Headphones";
-		gpio_name	= "Headphone detection";
-		mask		= SND_JACK_HEADPHONE;
-	} else {
-		snprintf(prop, sizeof(prop), "%smic-det-gpio", prefix);
-		pin_name	= "Mic Jack";
-		gpio_name	= "Mic detection";
-		mask		= SND_JACK_MICROPHONE;
-	}
-
-	det = of_get_named_gpio_flags(dev->of_node, prop, 0, &flags);
-	if (det == -EPROBE_DEFER)
-		return -EPROBE_DEFER;
-
-	if (gpio_is_valid(det)) {
-		sjack->pin.pin		= pin_name;
-		sjack->pin.mask		= mask;
-
-		sjack->gpio.name	= gpio_name;
-		sjack->gpio.report	= mask;
-		sjack->gpio.gpio	= det;
-		sjack->gpio.invert	= !!(flags & OF_GPIO_ACTIVE_LOW);
-		sjack->gpio.debounce_time = 150;
-
-		snd_soc_card_jack_new(card, pin_name, mask,
-				      &sjack->jack,
-				      &sjack->pin, 1);
-
-		snd_soc_jack_add_gpios(&sjack->jack, 1,
-				       &sjack->gpio);
-	}
-
-	return 0;
-}
-
-static void asoc_simple_card_remove_jack(struct asoc_simple_jack *sjack)
-{
-	if (gpio_is_valid(sjack->gpio.gpio))
-		snd_soc_jack_free_gpios(&sjack->jack, 1, &sjack->gpio);
-}
-
-static int asoc_simple_card_startup(struct snd_pcm_substream *substream)
+static int seeed_voice_card_startup(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct simple_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
-	struct simple_dai_props *dai_props =
-		simple_priv_to_props(priv, rtd->num);
+	struct seeed_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
+	struct seeed_dai_props *dai_props =
+		seeed_priv_to_props(priv, rtd->num);
 	int ret;
 
 	ret = clk_prepare_enable(dai_props->cpu_dai.clk);
@@ -153,12 +99,12 @@ static int asoc_simple_card_startup(struct snd_pcm_substream *substream)
 	return ret;
 }
 
-static void asoc_simple_card_shutdown(struct snd_pcm_substream *substream)
+static void seeed_voice_card_shutdown(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct simple_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
-	struct simple_dai_props *dai_props =
-		simple_priv_to_props(priv, rtd->num);
+	struct seeed_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
+	struct seeed_dai_props *dai_props =
+		seeed_priv_to_props(priv, rtd->num);
 
 	rtd->cpu_dai->driver->playback.channels_min = priv->channels_playback_default;
 	rtd->cpu_dai->driver->playback.channels_max = priv->channels_playback_default;
@@ -170,15 +116,15 @@ static void asoc_simple_card_shutdown(struct snd_pcm_substream *substream)
 	clk_disable_unprepare(dai_props->codec_dai.clk);
 }
 
-static int asoc_simple_card_hw_params(struct snd_pcm_substream *substream,
+static int seeed_voice_card_hw_params(struct snd_pcm_substream *substream,
 				      struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	struct simple_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
-	struct simple_dai_props *dai_props =
-		simple_priv_to_props(priv, rtd->num);
+	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
+	struct seeed_dai_props *dai_props =
+		seeed_priv_to_props(priv, rtd->num);
 	unsigned int mclk, mclk_fs = 0;
 	int ret = 0;
 
@@ -207,19 +153,19 @@ err:
 #define _SET_CLOCK_CNT		2
 static int (* _set_clock[_SET_CLOCK_CNT])(int y_start_n_stop);
 
-int asoc_simple_card_register_set_clock(int stream, int (*set_clock)(int)) {
+int seeed_voice_card_register_set_clock(int stream, int (*set_clock)(int)) {
 	if (! _set_clock[stream]) {
 		_set_clock[stream] = set_clock;
 	}
 	return 0;
 }
-EXPORT_SYMBOL(asoc_simple_card_register_set_clock);
+EXPORT_SYMBOL(seeed_voice_card_register_set_clock);
 
-static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd)
+static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *dai = rtd->codec_dai;
-	struct simple_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
+	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
 	unsigned long flags;
 	int ret = 0;
 
@@ -257,20 +203,20 @@ static int asoc_simple_card_trigger(struct snd_pcm_substream *substream, int cmd
 	return ret;
 }
 
-static struct snd_soc_ops asoc_simple_card_ops = {
-	.startup = asoc_simple_card_startup,
-	.shutdown = asoc_simple_card_shutdown,
-	.hw_params = asoc_simple_card_hw_params,
-	.trigger = asoc_simple_card_trigger,
+static struct snd_soc_ops seeed_voice_card_ops = {
+	.startup = seeed_voice_card_startup,
+	.shutdown = seeed_voice_card_shutdown,
+	.hw_params = seeed_voice_card_hw_params,
+	.trigger = seeed_voice_card_trigger,
 };
 
-static int asoc_simple_card_dai_init(struct snd_soc_pcm_runtime *rtd)
+static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
-	struct simple_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
+	struct seeed_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
 	struct snd_soc_dai *codec = rtd->codec_dai;
 	struct snd_soc_dai *cpu = rtd->cpu_dai;
-	struct simple_dai_props *dai_props =
-		simple_priv_to_props(priv, rtd->num);
+	struct seeed_dai_props *dai_props =
+		seeed_priv_to_props(priv, rtd->num);
 	int ret;
 
 	ret = asoc_simple_card_init_dai(codec, &dai_props->codec_dai);
@@ -281,25 +227,17 @@ static int asoc_simple_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret < 0)
 		return ret;
 
-	ret = asoc_simple_card_init_hp(rtd->card, &priv->hp_jack, PREFIX);
-	if (ret < 0)
-		return ret;
-
-	ret = asoc_simple_card_init_mic(rtd->card, &priv->hp_jack, PREFIX);
-	if (ret < 0)
-		return ret;
-
 	return 0;
 }
 
-static int asoc_simple_card_dai_link_of(struct device_node *node,
-					struct simple_card_data *priv,
+static int seeed_voice_card_dai_link_of(struct device_node *node,
+					struct seeed_card_data *priv,
 					int idx,
 					bool is_top_level_node)
 {
-	struct device *dev = simple_priv_to_dev(priv);
-	struct snd_soc_dai_link *dai_link = simple_priv_to_link(priv, idx);
-	struct simple_dai_props *dai_props = simple_priv_to_props(priv, idx);
+	struct device *dev = seeed_priv_to_dev(priv);
+	struct snd_soc_dai_link *dai_link = seeed_priv_to_link(priv, idx);
+	struct seeed_dai_props *dai_props = seeed_priv_to_props(priv, idx);
 	struct asoc_simple_dai *cpu_dai = &dai_props->cpu_dai;
 	struct asoc_simple_dai *codec_dai = &dai_props->codec_dai;
 	struct device_node *cpu = NULL;
@@ -409,8 +347,8 @@ static int asoc_simple_card_dai_link_of(struct device_node *node,
 	if (ret < 0)
 		goto dai_link_of_err;
 
-	dai_link->ops = &asoc_simple_card_ops;
-	dai_link->init = asoc_simple_card_dai_init;
+	dai_link->ops = &seeed_voice_card_ops;
+	dai_link->init = seeed_voice_card_dai_init;
 
 	dev_dbg(dev, "\tname : %s\n", dai_link->stream_name);
 	dev_dbg(dev, "\tformat : %04x\n", dai_link->dai_fmt);
@@ -434,10 +372,10 @@ dai_link_of_err:
 	return ret;
 }
 
-static int asoc_simple_card_parse_aux_devs(struct device_node *node,
-					   struct simple_card_data *priv)
+static int seeed_voice_card_parse_aux_devs(struct device_node *node,
+					   struct seeed_card_data *priv)
 {
-	struct device *dev = simple_priv_to_dev(priv);
+	struct device *dev = seeed_priv_to_dev(priv);
 	struct device_node *aux_node;
 	int i, n, len;
 
@@ -464,10 +402,10 @@ static int asoc_simple_card_parse_aux_devs(struct device_node *node,
 	return 0;
 }
 
-static int asoc_simple_card_parse_of(struct device_node *node,
-				     struct simple_card_data *priv)
+static int seeed_voice_card_parse_of(struct device_node *node,
+				     struct seeed_card_data *priv)
 {
-	struct device *dev = simple_priv_to_dev(priv);
+	struct device *dev = seeed_priv_to_dev(priv);
 	struct device_node *dai_link;
 	int ret;
 
@@ -502,7 +440,7 @@ static int asoc_simple_card_parse_of(struct device_node *node,
 
 		for_each_child_of_node(node, np) {
 			dev_dbg(dev, "\tlink %d:\n", i);
-			ret = asoc_simple_card_dai_link_of(np, priv,
+			ret = seeed_voice_card_dai_link_of(np, priv,
 							   i, false);
 			if (ret < 0) {
 				of_node_put(np);
@@ -512,7 +450,7 @@ static int asoc_simple_card_parse_of(struct device_node *node,
 		}
 	} else {
 		/* For single DAI link & old style of DT node */
-		ret = asoc_simple_card_dai_link_of(node, priv, 0, true);
+		ret = seeed_voice_card_dai_link_of(node, priv, 0, true);
 		if (ret < 0)
 			goto card_parse_end;
 	}
@@ -521,7 +459,7 @@ static int asoc_simple_card_parse_of(struct device_node *node,
 	if (ret < 0)
 		goto card_parse_end;
 
-	ret = asoc_simple_card_parse_aux_devs(node, priv);
+	ret = seeed_voice_card_parse_aux_devs(node, priv);
 
 	priv->channels_playback_default  = 0;
 	priv->channels_playback_override = 2;
@@ -542,11 +480,11 @@ card_parse_end:
 	return ret;
 }
 
-static int asoc_simple_card_probe(struct platform_device *pdev)
+static int seeed_voice_card_probe(struct platform_device *pdev)
 {
-	struct simple_card_data *priv;
+	struct seeed_card_data *priv;
 	struct snd_soc_dai_link *dai_link;
-	struct simple_dai_props *dai_props;
+	struct seeed_dai_props *dai_props;
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
 	int num, ret;
@@ -577,18 +515,18 @@ static int asoc_simple_card_probe(struct platform_device *pdev)
 	priv->snd_card.num_links	= num;
 
 	if (np && of_device_is_available(np)) {
-		ret = asoc_simple_card_parse_of(np, priv);
+		ret = seeed_voice_card_parse_of(np, priv);
 		if (ret < 0) {
 			if (ret != -EPROBE_DEFER)
 				dev_err(dev, "parse error %d\n", ret);
 			goto err;
 		}
 	} else {
-		struct asoc_simple_card_info *cinfo;
+		struct seeed_card_info *cinfo;
 
 		cinfo = dev->platform_data;
 		if (!cinfo) {
-			dev_err(dev, "no info for asoc-simple-card\n");
+			dev_err(dev, "no info for seeed-voice-card\n");
 			return -EINVAL;
 		}
 
@@ -597,7 +535,7 @@ static int asoc_simple_card_probe(struct platform_device *pdev)
 		    !cinfo->codec ||
 		    !cinfo->platform ||
 		    !cinfo->cpu_dai.name) {
-			dev_err(dev, "insufficient asoc_simple_card_info settings\n");
+			dev_err(dev, "insufficient seeed_voice_card_info settings\n");
 			return -EINVAL;
 		}
 
@@ -609,7 +547,7 @@ static int asoc_simple_card_probe(struct platform_device *pdev)
 		dai_link->cpu_dai_name	= cinfo->cpu_dai.name;
 		dai_link->codec_dai_name = cinfo->codec_dai.name;
 		dai_link->dai_fmt	= cinfo->daifmt;
-		dai_link->init		= asoc_simple_card_dai_init;
+		dai_link->init		= seeed_voice_card_dai_init;
 		memcpy(&priv->dai_props->cpu_dai, &cinfo->cpu_dai,
 					sizeof(priv->dai_props->cpu_dai));
 		memcpy(&priv->dai_props->codec_dai, &cinfo->codec_dai,
@@ -630,36 +568,32 @@ err:
 	return ret;
 }
 
-static int asoc_simple_card_remove(struct platform_device *pdev)
+static int seeed_voice_card_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	struct simple_card_data *priv = snd_soc_card_get_drvdata(card);
-
-	asoc_simple_card_remove_jack(&priv->hp_jack);
-	asoc_simple_card_remove_jack(&priv->mic_jack);
 
 	return asoc_simple_card_clean_reference(card);
 }
 
-static const struct of_device_id asoc_simple_of_match[] = {
-	{ .compatible = "simple-audio-card", },
+static const struct of_device_id seeed_voice_of_match[] = {
+	{ .compatible = "seeed-voicecard", },
 	{},
 };
-MODULE_DEVICE_TABLE(of, asoc_simple_of_match);
+MODULE_DEVICE_TABLE(of, seeed_voice_of_match);
 
-static struct platform_driver asoc_simple_card = {
+static struct platform_driver seeed_voice_card = {
 	.driver = {
-		.name = "asoc-simple-card",
+		.name = "seeed-voicecard",
 		.pm = &snd_soc_pm_ops,
-		.of_match_table = asoc_simple_of_match,
+		.of_match_table = seeed_voice_of_match,
 	},
-	.probe = asoc_simple_card_probe,
-	.remove = asoc_simple_card_remove,
+	.probe = seeed_voice_card_probe,
+	.remove = seeed_voice_card_remove,
 };
 
-module_platform_driver(asoc_simple_card);
+module_platform_driver(seeed_voice_card);
 
-MODULE_ALIAS("platform:asoc-simple-card");
+MODULE_ALIAS("platform:seeed-voice-card");
 MODULE_LICENSE("GPL v2");
-MODULE_DESCRIPTION("ASoC Simple Sound Card");
-MODULE_AUTHOR("Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>");
+MODULE_DESCRIPTION("ASoC SEEED Voice Card");
+MODULE_AUTHOR("PeterYang<linsheng.yang@seeed.cc>");

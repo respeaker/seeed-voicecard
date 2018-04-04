@@ -675,7 +675,7 @@ static int ac101_aif1clk(struct snd_soc_codec* codec, int event, int quick) {
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 	int ret;
 
-	/* spin_lock move to simple_card_trigger */
+	/* spin_lock move to machine trigger */
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -1437,7 +1437,7 @@ int ac101_codec_probe(struct snd_soc_codec *codec)
 	mutex_init(&ac10x->dac_mutex);
 
 	#if _MASTER_MULTI_CODEC == _MASTER_AC101
-	asoc_simple_card_register_set_clock(SNDRV_PCM_STREAM_PLAYBACK, ac101_set_clock);
+	seeed_voice_card_register_set_clock(SNDRV_PCM_STREAM_PLAYBACK, ac101_set_clock);
 	#endif
 
 	set_configuration(ac10x->codec);
@@ -1476,11 +1476,10 @@ int ac101_codec_remove(struct snd_soc_codec *codec)
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 
 	if (ac10x->irq) {
-		devm_free_irq(codec->dev, ac10x->irq, NULL);
+		/* devm_free_irq(codec->dev, ac10x->irq, NULL); */
 		ac10x->irq = 0;
 	}
 	#endif
-
 
 	return 0;
 }
