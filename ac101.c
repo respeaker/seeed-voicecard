@@ -105,13 +105,6 @@ int ac101_update_bits(struct snd_soc_codec *codec, unsigned reg,
 #define KEY_HEADSETHOOK         226		/* key define */
 #define HEADSET_FILTER_CNT	(10)
 
-#define _AC101_CREATE_QUEUE	0
-
-#if _AC101_CREATE_QUEUE
-static struct workqueue_struct *queue_switch_detect;
-static struct workqueue_struct *queue_codec_irq;
-#endif
-
 /*
  * switch_hw_config:config the 53 codec register
  */
@@ -199,11 +192,7 @@ static void work_cb_clear_irq(struct work_struct *work)
 		ac10x->irq_cntr--;
 	}
 
-	#if _AC101_CREATE_QUEUE
-	if (0 == queue_work(queue_switch_detect, &ac10x->work_switch)) {
-	#else
 	if (0 == schedule_work(&ac10x->work_switch)) {
-	#endif
 		ac10x->irq_cntr--;
 		AC101_DBG("[work_cb_clear_irq] add work struct failed!\n");
 	}
@@ -218,7 +207,9 @@ enum {
 };
 
 static int __ac101_get_hmic_data(struct snd_soc_codec *codec) {
+	#ifdef AC101_DEBG
 	static long counter;
+	#endif
 	int r;
 	int d;
 
@@ -315,7 +306,7 @@ static void work_cb_earphone_switch(struct work_struct *work)
 			}
 		}
 	} else {
-		while (ac10x->irq_cntr == 0) {
+		while (ac10x->irq_cntr == 0 && ac10x->irq != 0) {
 			msleep(20);
 
 			t = __ac101_get_hmic_data(codec);
@@ -357,17 +348,7 @@ static irqreturn_t audio_hmic_irq(int irq, void *para)
 		return -EINVAL;
 	}
 
-	#if _AC101_CREATE_QUEUE
-	if (queue_codec_irq == NULL) {
-		AC101_DBG("------------queue_codec_irq is null  !!----------");
-		return IRQ_NONE;
-	}
-	if (0 == queue_work(queue_codec_irq, &ac10x->work_clear_irq)){
-
-	#else
 	if (0 == schedule_work(&ac10x->work_clear_irq)){
-	#endif
-
 		AC101_DBG("[audio_hmic_irq] work already in queue_codec_irq, adding failed!\n");
 	}
 	return IRQ_HANDLED;
@@ -437,27 +418,10 @@ static int ac101_switch_probe(struct ac10x_priv *ac10x) {
 	/* the first headset state checking */
 	switch_hw_config(ac10x->codec);
 	ac10x->irq_cntr = 1;
-	#if _AC101_CREATE_QUEUE
-	queue_codec_irq = create_singlethread_workqueue("codec_irq");
-	queue_switch_detect = create_singlethread_workqueue("codec_switch");
-	if (queue_switch_detect == NULL || queue_codec_irq == NULL) {
-		AC101_DBG("try to create workqueue for codec failed!\n");
-		ret = -ENOMEM;
-		goto _err_switch_work_queue;
-	}
-
-	queue_work(queue_switch_detect, &ac10x->work_switch);
-	#else
 	schedule_work(&ac10x->work_switch);
-	#endif
 
 	return 0;
 
-#if _AC101_CREATE_QUEUE
-_err_switch_work_queue:
-
-	input_unregister_device(ac10x->inpdev);
-#endif
 _err_input_register_device:
 _err_input_allocate_device:
 
@@ -1478,6 +1442,9 @@ int ac101_codec_remove(struct snd_soc_codec *codec)
 	if (ac10x->irq) {
 		/* devm_free_irq(codec->dev, ac10x->irq, NULL); */
 		ac10x->irq = 0;
+	}
+
+	if (cancel_work_sync(&ac10x->work_switch) != 0) {
 	}
 	#endif
 
