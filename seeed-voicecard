@@ -51,10 +51,10 @@ if [ "x${is_1a}" == "x1a" ] && [ "x${is_35}" == "x" ] ; then
         echo "replace new hw:${hw},0"
         sed -i -e "s/${old}/hw:${hw},0/g" /etc/asound.conf
 
-        cp /etc/voicecard/wm8960_asound.state /var/lib/alsa/asound.state
     else
         echo "preserve existing /etc/asound.conf"
     fi
+    cp /etc/voicecard/wm8960_asound.state /var/lib/alsa/asound.state
 fi
 
 if [ "x${is_3b}" == "x3b" ] && [ "x${is_35}" == "x" ] ; then
@@ -76,10 +76,10 @@ if [ "x${is_3b}" == "x3b" ] && [ "x${is_35}" == "x" ] ; then
         echo "insert slavepcm hw:${hw},0"
         sed -i "${line}i slave.pcm \"hw:${hw},0\""  /etc/asound.conf
 
-        cp /etc/voicecard/ac108_asound.state /var/lib/alsa/asound.state
     else
         echo "preserve existing /etc/asound.conf"
     fi
+    cp /etc/voicecard/ac108_asound.state /var/lib/alsa/asound.state
 fi
 
 if [ "x${is_3b}" == "x3b" ] && [ "x${is_35}" == "x35" ] ; then
@@ -96,10 +96,10 @@ if [ "x${is_3b}" == "x3b" ] && [ "x${is_35}" == "x35" ] ; then
 
         sed -i -e "s/${old}/hw:${hw},0/g" /etc/asound.conf  
 
-        cp /etc/voicecard/ac108_6mic.state /var/lib/alsa/asound.state
     else
         echo "preserve existing /etc/asound.conf"
     fi
+    cp /etc/voicecard/ac108_6mic.state /var/lib/alsa/asound.state
 fi
 
 alsactl restore
