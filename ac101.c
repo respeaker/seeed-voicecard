@@ -1490,32 +1490,32 @@ int ac101_codec_resume(struct snd_soc_codec *codec)
 static ssize_t ac101_debug_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
-	static int val = 0, flag = 0;
-	u8 reg,num,i=0;
-	u16 value_w,value_r[128];
 	struct ac10x_priv *ac10x = dev_get_drvdata(dev);
+	int val = 0, flag = 0;
+	u16 value_w, value_r;
+	u8 reg, num, i=0;
+
 	val = simple_strtol(buf, NULL, 16);
 	flag = (val >> 24) & 0xF;
-	if(flag) {
+	if (flag) {
 		reg = (val >> 16) & 0xFF;
 		value_w =  val & 0xFFFF;
 		ac101_write(ac10x->codec, reg, value_w);
-		printk("write 0x%x to reg:0x%x\n",value_w,reg);
+		printk("write 0x%x to reg:0x%x\n", value_w, reg);
 	} else {
-		reg =(val>>8)& 0xFF;
-		num=val&0xff;
+		reg = (val >> 8) & 0xFF;
+		num = val & 0xff;
 		printk("\n");
-		printk("read:start add:0x%x,count:0x%x\n",reg,num);
+		printk("read:start add:0x%x,count:0x%x\n", reg, num);
+
+		regcache_cache_bypass(ac10x->regmap101, true);
 		do {
-			value_r[i] = ac101_read(ac10x->codec, reg);
-			printk("0x%x: 0x%04x ",reg,value_r[i]);
-			reg+=1;
-			i++;
-			if(i == num)
+			value_r = ac101_read(ac10x->codec, reg);
+			printk("0x%x: 0x%04x ", reg++, value_r);
+			if (++i % 4 == 0 || i == num)
 				printk("\n");
-			if(i%4==0)
-				printk("\n");
-		} while(i<num);
+		} while (i < num);
+		regcache_cache_bypass(ac10x->regmap101, false);
 	}
 	return count;
 }
@@ -1602,13 +1602,13 @@ int ac101_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 		return ret;
 	}
 
-	ac10x_fill_regcache(&i2c->dev, ac10x->regmap101);
-
 	/* Chip reset */
-	/*
+	regcache_cache_only(ac10x->regmap101, false);
 	ret = regmap_write(ac10x->regmap101, CHIP_AUDIO_RST, 0);
 	msleep(50);
-	*/
+
+	/* sync regcache for FLAT type */
+	ac10x_fill_regcache(&i2c->dev, ac10x->regmap101);
 
 	ret = regmap_read(ac10x->regmap101, CHIP_AUDIO_RST, &v);
 	if (ret < 0) {

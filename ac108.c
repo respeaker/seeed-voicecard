@@ -173,8 +173,11 @@ static const DECLARE_TLV_DB_SCALE(tlv_ch_digital_vol, -11925,75,0);
 int ac10x_read(u8 reg, u8* rt_val, struct regmap* i2cm) {
 	int r, v = 0;
 
-	r = regmap_read(i2cm, reg, &v);
-	*rt_val = v;
+	if ((r = regmap_read(i2cm, reg, &v)) < 0) {
+		pr_err("ac10x_read error->[REG-0x%02x]\n", reg);
+	} else {
+		*rt_val = v;
+	}
 	return r;
 }
 
@@ -1325,12 +1328,16 @@ static ssize_t ac108_store(struct device *dev, struct device_attribute *attr, co
 		ac108_multi_write(reg, value_w, ac10x);
 		printk("Write 0x%02x to REG:0x%02x\n", value_w, reg);
 	} else {
+		int k;
+
 		reg = (val >> 8) & 0xFF;
 		num = val & 0xff;
 		printk("\nRead: start REG:0x%02x,count:0x%02x\n", reg, num);
 
+		for (k = 0; k < ac10x->codec_cnt; k++) {
+			regcache_cache_bypass(ac10x->i2cmap[k], true);
+		}
 		do {
-			int k;
 
 			memset(value_r, 0, sizeof value_r);
 
@@ -1348,6 +1355,9 @@ static ssize_t ac108_store(struct device *dev, struct device_attribute *attr, co
 				printk("\n");
 			}
 		} while (i < num);
+		for (k = 0; k < ac10x->codec_cnt; k++) {
+			regcache_cache_bypass(ac10x->i2cmap[k], false);
+		}
 	}
 
 	return count;
@@ -1429,14 +1439,16 @@ static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i
 		return ret;
 	}
 
-	ac10x_fill_regcache(&i2c->dev, ac10x->i2cmap[index]);
-
 	/*
 	 * Writing this register with 0x12 
 	 * will resets all register to their default state.
 	 */
+	regcache_cache_only(ac10x->i2cmap[index], false);
 	ret = regmap_write(ac10x->i2cmap[index], CHIP_RST, CHIP_RST_VAL);
 	msleep(1);
+
+	/* sync regcache for FLAT type */
+	ac10x_fill_regcache(&i2c->dev, ac10x->i2cmap[index]);
 
 	ac10x->codec_cnt++;
 	pr_err(" ac10x codec count  : %d\n", ac10x->codec_cnt);

@@ -57,7 +57,8 @@ cp seeed-8mic-voicecard.dtbo /boot/overlays
 
 #install alsa plugins
 # no need this plugin now
-# install -D ac108_plugin/libasound_module_pcm_ac108.so   /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
+# install -D ac108_plugin/libasound_module_pcm_ac108.so /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
+rm -f /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
 
 #set kernel moduels
 grep -q "snd-soc-seeed-voicecard" /etc/modules || \
