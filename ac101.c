@@ -37,6 +37,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/regmap.h>
 #include <linux/input.h>
+#include <linux/delay.h>
 #include "ac101_regs.h"
 #include "ac10x.h"
 
@@ -77,6 +78,8 @@ int ac101_read(struct snd_soc_codec *codec, unsigned reg) {
 	int r, v = 0;
 
 	if ((r = regmap_read(ac10x->regmap101, reg, &v)) < 0) {
+		dev_err(codec->dev, "%s() L%d read reg %02X fail\n",
+			__func__, __LINE__, reg);
 		return r;
 	}
 	return v;
@@ -84,16 +87,20 @@ int ac101_read(struct snd_soc_codec *codec, unsigned reg) {
 
 int ac101_write(struct snd_soc_codec *codec, unsigned reg, unsigned val) {
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
+	int v;
 
-	return regmap_write(ac10x->regmap101, reg, val);
+	v = regmap_write(ac10x->regmap101, reg, val);
+	return v;
 }
 
 int ac101_update_bits(struct snd_soc_codec *codec, unsigned reg,
 			unsigned mask, unsigned value
 ) {
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
+	int v;
 
-	return regmap_update_bits(ac10x->regmap101, reg, mask, value);
+	v = regmap_update_bits(ac10x->regmap101, reg, mask, value);
+	return v;
 }
 
 
@@ -210,13 +217,15 @@ static int __ac101_get_hmic_data(struct snd_soc_codec *codec) {
 	#ifdef AC101_DEBG
 	static long counter;
 	#endif
-	int r;
-	int d;
+	int r, d;
 
 	d = GET_HMIC_DATA(ac101_read(codec, HMIC_STS));
 
 	r = 0x1 << HMIC_DATA_PEND;
 	ac101_write(codec, HMIC_STS, r);
+
+	/* prevent i2c accessing too frequently */
+	usleep_range(1500, 3000);
 
 	AC101_DBG("%s,line:%d HMIC_DATA(%3ld): %02X\n", __func__, __LINE__,
 			counter++, d
@@ -426,7 +435,7 @@ _err_input_register_device:
 _err_input_allocate_device:
 
 	if (ac10x->irq) {
-		devm_free_irq(&i2c->dev, ac10x->irq, NULL);
+		devm_free_irq(&i2c->dev, ac10x->irq, ac10x);
 		ac10x->irq = 0;
 	}
 _err_irq:
@@ -1440,11 +1449,19 @@ int ac101_codec_remove(struct snd_soc_codec *codec)
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 
 	if (ac10x->irq) {
-		/* devm_free_irq(codec->dev, ac10x->irq, NULL); */
+		devm_free_irq(codec->dev, ac10x->irq, ac10x);
 		ac10x->irq = 0;
 	}
 
 	if (cancel_work_sync(&ac10x->work_switch) != 0) {
+	}
+
+	if (cancel_work_sync(&ac10x->work_clear_irq) != 0) {
+	}
+
+	if (ac10x->inpdev) {
+		input_unregister_device(ac10x->inpdev);
+		ac10x->inpdev = NULL;
 	}
 	#endif
 
