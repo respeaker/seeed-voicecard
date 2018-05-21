@@ -214,9 +214,9 @@ arecord -Dac108 -f S32_LE -r 16000 -c 4 a.wav
 arecord -Dac108 -f S32_LE -r 16000 -c 8 a.wav
 #Take care of that the captured mic audio is on the first 6 channels
 
-#It will play sound file a.wav on AC101
-aplay -D ac101 a.wav
-#Do not use -D plughw:1,0 directly except your wave file is single channel only.
+#It will play a mono channel sound file mono_to_play.wav
+#The file to play must be mono channel or else the speaker output nothing.
+aplay -D plughw:1,0 mono_to_play.wav
 
 #Doing capture && playback the same time
 arecord -D hw:1,0 -f S32_LE -r 16000 -c 8 to_be_record.wav &
