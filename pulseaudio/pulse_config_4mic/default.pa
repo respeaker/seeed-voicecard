@@ -140,3 +140,5 @@ load-module module-filter-apply
 #set-default-sink output
 #set-default-source input
 set-default-source alsa_input.platform-soc_sound.seeed-source
+set-default-sink alsa_output.platform-soc_sound.seeed-sink
+

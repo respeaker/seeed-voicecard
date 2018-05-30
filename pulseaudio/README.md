@@ -8,7 +8,6 @@ Following this guide if you want to use your seeed-voicecard as a default source
 1. Download pulseaudio
 ```
 sudo apt install pulseaudio
-pulseaudio --k
 ```
 
 2. First, you need to write [a profile for pulse](https://www.freedesktop.org/wiki/Software/PulseAudio/Backends/ALSA/Profiles/)
@@ -97,7 +96,7 @@ User Name: pi
 Host Name: raspberrypi
 Server Name: pulseaudio
 Server Version: 10.0
-Default Sample Specification: s16le 4ch 16000Hz
+Default Sample Specification: s16le 4ch 96000Hz
 Default Channel Map: front-left,front-center,front-right,rear-center
 Default Sink: alsa_output.platform-soc_audio.analog-stereo
 Default Source: alsa_input.platform-soc_sound.seeed-source
@@ -110,7 +109,6 @@ Cookie: 3b12:70b3
 1. Download pulseaudio
 ```
 sudo apt install pulseaudio
-pulseaudio --k
 ```
 
 2. First, you need to write [a profile for pulse](https://www.freedesktop.org/wiki/Software/PulseAudio/Backends/ALSA/Profiles/)
@@ -202,7 +200,7 @@ User Name: pi
 Host Name: raspberrypi
 Server Name: pulseaudio
 Server Version: 10.0
-Default Sample Specification: s32le 8ch 48000Hz
+Default Sample Specification: s32le 8ch 96000Hz
 Default Channel Map: front-left,front-left-of-center,front-center,front-right,front-right-of-center,rear-center,aux0,aux1
 Default Sink: alsa_output.platform-soc_sound.seeed-2ch
 Default Source: alsa_input.platform-soc_sound.seeed-8ch
@@ -220,4 +218,12 @@ Cookie: 3523:e5af
 2. Can't start PulseAudio
 
     Check `default.pa` and `daemon.conf`
-    
+
+3. How to get PulseAudio started automatically
+
+    Normally the PulseAudio server is started automatically. If you want to disable it, you can set `autospawn = no` in `~/.config/pulse/client.conf` or `/etc/pulse/client.conf`. 
+    [Click this for more details](https://www.freedesktop.org/wiki/Software/PulseAudio/Documentation/User/Running/).
+
+4. Why the default sample rate is 96000? What if my audio's sample rate is not the same as the default?
+
+    For the other sample rate audio, PulseAudio will resample it into 96K, which means that if your audio's sample rate is lower than 96K, it will get smoothing.
