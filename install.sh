@@ -20,7 +20,7 @@ marker="0.0.0"
 
 apt update
 apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel 
-apt-get -y install  dkms git i2c-tools
+apt-get -y install  dkms git i2c-tools libasound2-plugins
 
 # locate currently installed kernels (may be different to running kernel if
 # it's just been updated)
@@ -82,6 +82,20 @@ mkdir /etc/voicecard || true
 cp *.conf /etc/voicecard
 cp *.state /etc/voicecard
 
+#create git repo
+git_email=$(git config --global --get user.email)
+git_name=$(git config --global --get user.name)
+if [ "x${git_email}" == "x" ] || [ "x${git_name}" == "x" ] ; then
+    echo "setup git config"
+    git config --global user.email "respeaker@seeed.cc"
+    git config --global user.name "respeaker"
+fi
+echo "git init"
+git --git-dir=/etc/voicecard/.git init
+echo "git add --all"
+git --git-dir=/etc/voicecard/.git --work-tree=/etc/voicecard/ add --all
+echo "git commit -m \"origin configures\""
+git --git-dir=/etc/voicecard/.git --work-tree=/etc/voicecard/ commit  -m "origin configures"
 
 cp seeed-voicecard /usr/bin/
 cp seeed-voicecard.service /lib/systemd/system/
