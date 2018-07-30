@@ -259,3 +259,9 @@ Thank you!
 
 
 Enjoy !
+
+### FAQ
+
+When you encounter any installation and use problems when you start your ReSpeaker Pi hat, please use the following image for testing. We have installed seeed-voicecard based on the latest PI image, which can be used by burning it directly on SD.
+
+<p style="text-align:center"><a href="https://v2.fangcloud.com/share/7395fd138a1cab496fd4792fe5" target="_blank"><img src="https://github.com/SeeedDocument/Respeaker_V2/raw/master/img/efangyun.png" width="200" height="40"  border=0 /></a></p>
