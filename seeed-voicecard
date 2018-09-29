@@ -43,7 +43,8 @@ if [ "x${is_1a}" == "x1a" ] && [ "x${is_35}" == "x" ] ; then
     echo "install 2mic"
     dtoverlay seeed-2mic-voicecard
     sleep 1
-
+    rm /etc/asound.conf
+    rm /var/lib/alsa/asound.state
     echo "create 2mic asound configure file"
     ln -s /etc/voicecard/asound_2mic.conf /etc/asound.conf
 
@@ -55,7 +56,8 @@ if [ "x${is_3b}" == "x3b" ] && [ "x${is_35}" == "x" ] ; then
     echo "install 4mic"
     dtoverlay seeed-4mic-voicecard
     sleep 1
-
+    rm /etc/asound.conf
+    rm /var/lib/alsa/asound.state
     echo "create 4mic asound configure file"
     ln -s /etc/voicecard/asound_4mic.conf /etc/asound.conf
 
@@ -67,7 +69,8 @@ if [ "x${is_3b}" == "x3b" ] && [ "x${is_35}" == "x35" ] ; then
     echo "install 6mic"
     dtoverlay seeed-8mic-voicecard
     sleep 1
-
+    rm /etc/asound.conf
+    rm /var/lib/alsa/asound.state
     echo "create 6mic asound configure file"
     ln -s /etc/voicecard/asound_6mic.conf /etc/asound.conf
 
