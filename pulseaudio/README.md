@@ -1,10 +1,32 @@
 # PulseAudio Configuration for seeed-voicecard
 
-Following this guide if you want to use your seeed-voicecard as a default source/sink of pulseaudio.
+Follow this guide if you want to use your seeed-voicecard as a default source/sink of pulseaudio.
+
+### Prerequisites
+
+1. Download PulseAudio
+```
+sudo apt install -y pulseaudio
+```
+
+2. PulseAudio Profiles
+```
+cd seeed-voicecard/pulseaudio
+sudo cp pulse_config_4mic/seeed-voicecard.conf /usr/share/pulseaudio/alsa-mixer/profile-sets/seeed-voicecard-4mic.conf
+sudo cp pulse_config_6mic/seeed-voicecard.conf /usr/share/pulseaudio/alsa-mixer/profile-sets/seeed-voicecard-8mic.conf
+```
+
+3. Add `udev` Rules
+
+During the system start, when the card "seeed4micvoicec" is detected, the PULSE_PROFILE_SET variable will be set in the udev database, and PulseAudio will be forced to use `seeed-voicecard-4mic.conf`. Similarly, if the card "seeed8micvoicec" is detected, PulseAudio will be forced to use `seeed-voicecard-8mic.conf`.
+
+```
+sudo cp 91-seeedvoicecard.rules /etc/udev/rules.d/91-seeedvoicecard.rules
+```
 
 ### ReSpeaker 4 Mic Array
 
-
+<!--
 1. Download pulseaudio
 ```
 sudo apt install pulseaudio
@@ -20,7 +42,7 @@ sudo cp seeed-voicecard.conf /usr/share/pulseaudio/alsa-mixer/profile-sets/
 
 3. Edit `udev rules`
 
-    During the system start, when the card "seeed4micvoicec" is detected, the PULSE_PROFILE_SET variable will be set in the udev database, and PulseAudio will be forced to use `seeed-voicecard.conf`. 
+    During the system start, when the card "seeed4micvoicec" is detected, the PULSE_PROFILE_SET variable will be set in the udev database, and PulseAudio will be forced to use `seeed-voicecard.conf`.
 
     ```
     # have a look at /lib/udev/rules.d/90-pulseaudio.rules
@@ -72,15 +94,15 @@ sudo cp seeed-voicecard.conf /usr/share/pulseaudio/alsa-mixer/profile-sets/
         KERNELS=="platform"
         SUBSYSTEMS==""
         DRIVERS==""
-    ```
+    ``` -->
 
-4. config `default.pa` and `daemon.conf`
+1. config `default.pa` and `daemon.conf`
 ```
-sudo cp default.pa /etc/pulse/
-sudo cp daemon.conf /etc/pulse/
+sudo cp pulse_config_4mic/default.pa /etc/pulse/
+sudo cp pulse_config_4mic/daemon.conf /etc/pulse/
 ```
 
-5. reboot raspberry pi and check 
+2. reboot raspberry pi and check
 ```
 sudo reboot
 pulseaudio --start  # start pulse at first
@@ -105,7 +127,7 @@ Cookie: 3b12:70b3
 
 ### 6-Mics Circular Array Kit and 4-Mics Linear Array
 
-
+<!--
 1. Download pulseaudio
 ```
 sudo apt install pulseaudio
@@ -121,7 +143,7 @@ sudo cp seeed-voicecard.conf /usr/share/pulseaudio/alsa-mixer/profile-sets/
 
 3. Edit `udev rules`
 
-    During the system start, when the card "seeed8micvoicec" is detected, the PULSE_PROFILE_SET variable will be set in the udev database, and PulseAudio will be forced to use `seeed-voicecard.conf`. 
+    During the system start, when the card "seeed8micvoicec" is detected, the PULSE_PROFILE_SET variable will be set in the udev database, and PulseAudio will be forced to use `seeed-voicecard.conf`.
 
     ```
     # have a look at /lib/udev/rules.d/90-pulseaudio.rules
@@ -173,15 +195,15 @@ sudo cp seeed-voicecard.conf /usr/share/pulseaudio/alsa-mixer/profile-sets/
         KERNELS=="platform"
         SUBSYSTEMS==""
         DRIVERS==""
-    ```
+    ``` -->
 
-4. config `default.pa` and `daemon.conf`
+1. config `default.pa` and `daemon.conf`
 ```
-sudo cp default.pa /etc/pulse/
-sudo cp daemon.conf /etc/pulse/
+sudo cp pulse_config_6mic/default.pa /etc/pulse/
+sudo cp pulse_config_6mic/daemon.conf /etc/pulse/
 ```
 
-5. reboot raspberry pi and check 
+2. reboot raspberry pi and check
 ```
 sudo reboot
 pulseaudio --start  # start pulse at first
@@ -221,7 +243,7 @@ Cookie: 3523:e5af
 
 3. How to get PulseAudio started automatically
 
-    Normally the PulseAudio server is started automatically. If you want to disable it, you can set `autospawn = no` in `~/.config/pulse/client.conf` or `/etc/pulse/client.conf`. 
+    Normally the PulseAudio server is started automatically. If you want to disable it, you can set `autospawn = no` in `~/.config/pulse/client.conf` or `/etc/pulse/client.conf`.
     [Click this for more details](https://www.freedesktop.org/wiki/Software/PulseAudio/Documentation/User/Running/).
 
 4. Why the default sample rate is 96000? What if my audio's sample rate is not the same as the default?
