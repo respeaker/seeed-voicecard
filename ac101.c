@@ -644,7 +644,7 @@ static int ac101_sysclk_started(void) {
 
 static int ac101_aif1clk(struct snd_soc_codec* codec, int event, int quick) {
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
-	int ret;
+	int ret = 0;
 
 	/* spin_lock move to machine trigger */
 
@@ -687,7 +687,7 @@ static int ac101_aif1clk(struct snd_soc_codec* codec, int event, int quick) {
 
 	AC101_DBG("event=%d pre_up/%d post_down/%d\n", event, SND_SOC_DAPM_PRE_PMU, SND_SOC_DAPM_POST_PMD);
 
-	return 0;
+	return ret;
 }
 
 /**
@@ -1240,15 +1240,17 @@ int ac101_audio_startup(struct snd_pcm_substream *substream,
 
 #if _MASTER_MULTI_CODEC == _MASTER_AC101
 static int ac101_set_clock(int y_start_n_stop) {
+	int r;
+
 	if (y_start_n_stop) {
 		/* enable global clock */
-		ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_PRE_PMU, 1);
+		r = ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_PRE_PMU, 1);
 	} else {
 		/* disable global clock */
 		static_ac10x->aif1_clken = 1;
-		ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_POST_PMD, 0);
+		r = ac101_aif1clk(static_ac10x->codec, SND_SOC_DAPM_POST_PMD, 0);
 	}
-	return 0;
+	return r;
 }
 #endif
 
