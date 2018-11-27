@@ -1216,7 +1216,6 @@ static int ac108_add_widgets(struct snd_soc_codec *codec) {
 }
 
 static int ac108_codec_probe(struct snd_soc_codec *codec) {
-
 	spin_lock_init(&ac10x->lock);
 
 	ac10x->codec = codec;

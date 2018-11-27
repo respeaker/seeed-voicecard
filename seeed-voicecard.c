@@ -26,6 +26,7 @@
 #include <sound/soc.h>
 #include <sound/soc-dai.h>
 #include <sound/simple_card_utils.h>
+#include "ac10x.h"
 
 /*
  * single codec:
@@ -47,7 +48,9 @@ struct seeed_card_data {
 	unsigned channels_capture_default;
 	unsigned channels_capture_override;
 	struct snd_soc_dai_link *dai_link;
+	#if CONFIG_AC10X_TRIG_LOCK
 	spinlock_t lock;
+	#endif
 	struct work_struct work_codec_clk;
 	#define TRY_STOP_MAX	3
 	int try_stop;
@@ -190,7 +193,9 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *dai = rtd->codec_dai;
 	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
+	#if CONFIG_AC10X_TRIG_LOCK
 	unsigned long flags;
+	#endif
 	int ret = 0;
 
 	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d\n",
@@ -202,11 +207,15 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		if (cancel_work_sync(&priv->work_codec_clk) != 0) {}
+		#if CONFIG_AC10X_TRIG_LOCK
 		/* I know it will degrades performance, but I have no choice */
 		spin_lock_irqsave(&priv->lock, flags);
+		#endif
 		if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](1);
 		if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](1);
+		#if CONFIG_AC10X_TRIG_LOCK
 		spin_unlock_irqrestore(&priv->lock, flags);
+		#endif
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -587,7 +596,9 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 
 	snd_soc_card_set_drvdata(&priv->snd_card, priv);
 
+	#if CONFIG_AC10X_TRIG_LOCK
 	spin_lock_init(&priv->lock);
+	#endif
 
 	INIT_WORK(&priv->work_codec_clk, work_cb_codec_clk);
 

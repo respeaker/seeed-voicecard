@@ -646,8 +646,6 @@ static int ac101_aif1clk(struct snd_soc_codec* codec, int event, int quick) {
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 	int ret = 0;
 
-	/* spin_lock move to machine trigger */
-
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (ac10x->aif1_clken == 0){
