@@ -69,7 +69,7 @@ state.seeed4micvoicec {
 	control.1 {
 		iface MIXER
 		name 'CH1 digital volume'
-		value 172
+		value 222
 		comment {
 			access 'read write'
 			type INTEGER
@@ -77,13 +77,13 @@ state.seeed4micvoicec {
 			range '0 - 255'
 			dbmin -11925
 			dbmax 7200
-			dbvalue.0 975
+			dbvalue.0 4725
 		}
 	}
 	control.2 {
 		iface MIXER
 		name 'CH2 digital volume'
-		value 172
+		value 222
 		comment {
 			access 'read write'
 			type INTEGER
@@ -91,13 +91,13 @@ state.seeed4micvoicec {
 			range '0 - 255'
 			dbmin -11925
 			dbmax 7200
-			dbvalue.0 975
+			dbvalue.0 4725
 		}
 	}
 	control.3 {
 		iface MIXER
 		name 'CH3 digital volume'
-		value 172
+		value 222
 		comment {
 			access 'read write'
 			type INTEGER
@@ -105,13 +105,13 @@ state.seeed4micvoicec {
 			range '0 - 255'
 			dbmin -11925
 			dbmax 7200
-			dbvalue.0 975
+			dbvalue.0 4725
 		}
 	}
 	control.4 {
 		iface MIXER
 		name 'CH4 digital volume'
-		value 172
+		value 222
 		comment {
 			access 'read write'
 			type INTEGER
@@ -119,13 +119,13 @@ state.seeed4micvoicec {
 			range '0 - 255'
 			dbmin -11925
 			dbmax 7200
-			dbvalue.0 975
+			dbvalue.0 4725
 		}
 	}
 	control.5 {
 		iface MIXER
 		name 'ADC1 PGA gain'
-		value 31
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
@@ -133,13 +133,13 @@ state.seeed4micvoicec {
 			range '0 - 31'
 			dbmin 0
 			dbmax 3100
-			dbvalue.0 3100
+			dbvalue.0 0
 		}
 	}
 	control.6 {
 		iface MIXER
 		name 'ADC2 PGA gain'
-		value 31
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
@@ -147,13 +147,13 @@ state.seeed4micvoicec {
 			range '0 - 31'
 			dbmin 0
 			dbmax 3100
-			dbvalue.0 3100
+			dbvalue.0 0
 		}
 	}
 	control.7 {
 		iface MIXER
 		name 'ADC3 PGA gain'
-		value 31
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
@@ -161,13 +161,13 @@ state.seeed4micvoicec {
 			range '0 - 31'
 			dbmin 0
 			dbmax 3100
-			dbvalue.0 3100
+			dbvalue.0 0
 		}
 	}
 	control.8 {
 		iface MIXER
 		name 'ADC4 PGA gain'
-		value 31
+		value 0
 		comment {
 			access 'read write'
 			type INTEGER
@@ -175,7 +175,7 @@ state.seeed4micvoicec {
 			range '0 - 31'
 			dbmin 0
 			dbmax 3100
-			dbvalue.0 3100
+			dbvalue.0 0
 		}
 	}
 }

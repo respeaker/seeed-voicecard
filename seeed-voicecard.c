@@ -26,6 +26,7 @@
 #include <sound/soc.h>
 #include <sound/soc-dai.h>
 #include <sound/simple_card_utils.h>
+#include "ac10x.h"
 
 /*
  * single codec:
@@ -47,7 +48,12 @@ struct seeed_card_data {
 	unsigned channels_capture_default;
 	unsigned channels_capture_override;
 	struct snd_soc_dai_link *dai_link;
+	#if CONFIG_AC10X_TRIG_LOCK
 	spinlock_t lock;
+	#endif
+	struct work_struct work_codec_clk;
+	#define TRY_STOP_MAX	3
+	int try_stop;
 };
 
 struct seeed_card_info {
@@ -161,27 +167,55 @@ int seeed_voice_card_register_set_clock(int stream, int (*set_clock)(int)) {
 }
 EXPORT_SYMBOL(seeed_voice_card_register_set_clock);
 
+/*
+ * work_cb_codec_clk: clear audio codec inner clock.
+ */
+static void work_cb_codec_clk(struct work_struct *work)
+{
+	struct seeed_card_data *priv = container_of(work, struct seeed_card_data, work_codec_clk);
+	int r = 0;
+
+	if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) {
+		r = r || _set_clock[SNDRV_PCM_STREAM_CAPTURE](0);
+	}
+	if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) {
+		r = r || _set_clock[SNDRV_PCM_STREAM_PLAYBACK](0);
+	}
+
+	if (r && priv->try_stop++ < TRY_STOP_MAX) {
+		if (0 != schedule_work(&priv->work_codec_clk)) {}
+	}
+	return;
+}
+
 static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *dai = rtd->codec_dai;
 	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
+	#if CONFIG_AC10X_TRIG_LOCK
 	unsigned long flags;
+	#endif
 	int ret = 0;
 
 	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d\n",
 		__FUNCTION__, snd_pcm_stream_str(substream), cmd,
 		dai->playback_active, dai->capture_active);
 
-	/* I know it will degrades performance, but I have no choice */
-	spin_lock_irqsave(&priv->lock, flags);
-
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		if (cancel_work_sync(&priv->work_codec_clk) != 0) {}
+		#if CONFIG_AC10X_TRIG_LOCK
+		/* I know it will degrades performance, but I have no choice */
+		spin_lock_irqsave(&priv->lock, flags);
+		#endif
 		if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](1);
 		if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](1);
+		#if CONFIG_AC10X_TRIG_LOCK
+		spin_unlock_irqrestore(&priv->lock, flags);
+		#endif
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
@@ -191,14 +225,20 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
 		if (dai->capture_active && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			break;
 		}
-		if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](0);
-		if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](0);
+
+		/* interrupt environment */
+		if (in_irq() || in_nmi() || in_serving_softirq()) {
+			priv->try_stop = 0;
+			if (0 != schedule_work(&priv->work_codec_clk)) {
+			}
+		} else {
+			if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](0);
+			if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](0);
+		}
 		break;
 	default:
 		ret = -EINVAL;
 	}
-
-	spin_unlock_irqrestore(&priv->lock, flags);
 
 	return ret;
 }
@@ -556,7 +596,11 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 
 	snd_soc_card_set_drvdata(&priv->snd_card, priv);
 
+	#if CONFIG_AC10X_TRIG_LOCK
 	spin_lock_init(&priv->lock);
+	#endif
+
+	INIT_WORK(&priv->work_codec_clk, work_cb_codec_clk);
 
 	ret = devm_snd_soc_register_card(&pdev->dev, &priv->snd_card);
 	if (ret >= 0)
@@ -571,7 +615,10 @@ err:
 static int seeed_voice_card_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
+	struct seeed_card_data *priv = snd_soc_card_get_drvdata(card);
 
+	if (cancel_work_sync(&priv->work_codec_clk) != 0) {
+	}
 	return asoc_simple_card_clean_reference(card);
 }
 

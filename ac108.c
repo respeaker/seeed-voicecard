@@ -453,11 +453,13 @@ static int ac108_multi_write(u8 reg, u8 val, struct ac10x_priv *ac10x) {
 }
 
 static int ac108_multi_update_bits(u8 reg, u8 mask, u8 val, struct ac10x_priv *ac10x) {
+	int r = 0;
 	u8 i;
+
 	for (i = 0; i < ac10x->codec_cnt; i++) {
-		ac10x_update_bits(reg, mask, val, ac10x->i2cmap[i]);
+		r |= ac10x_update_bits(reg, mask, val, ac10x->i2cmap[i]);
 	}
-	return 0;
+	return r;
 }
 
 static unsigned int ac108_codec_read(struct snd_soc_codec *codec, unsigned int reg) {
@@ -986,46 +988,46 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
  * due to miss channels order in cpu_dai, we meed defer the clock starting.
  */
 static int ac108_set_clock(int y_start_n_stop) {
-	u8 r;
+	u8 reg;
+	int ret = 0;
 
 	dev_dbg(ac10x->codec->dev, "%s() L%d cmd:%d\n", __func__, __LINE__, y_start_n_stop);
 
 	/* spin_lock move to machine trigger */
 
-	if (y_start_n_stop)  {
-		if (ac10x->sysclk_en == 0) {
-
+	if (y_start_n_stop && ac10x->sysclk_en == 0) {
 		/* enable lrck clock */
-		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
-		if (r & (0x01 << BCLK_IOEN)) {
-			ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x03 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
+		ac10x_read(I2S_CTRL, &reg, ac10x->i2cmap[_MASTER_INDEX]);
+		if (reg & (0x01 << BCLK_IOEN)) {
+			ret = ret || ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x03 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
 		}
 
 		/*0x10: PLL Common voltage enable, PLL enable */
-		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN,
+		ret = ret || ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN,
 						   0x01 << PLL_EN | 0x01 << PLL_COM_EN, ac10x);
 		/* enable global clock */
-		ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
+		ret = ret || ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x1 << TXEN | 0x1 << GEN, ac10x);
 
 		ac10x->sysclk_en = 1UL;
-		}
-	} else if (ac10x->sysclk_en != 0) {
+	} else if (!y_start_n_stop && ac10x->sysclk_en != 0) {
 		/* disable global clock */
-		ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x0 << TXEN | 0x0 << GEN, ac10x);
+		ret = ret || ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x0 << TXEN | 0x0 << GEN, ac10x);
 
 		/*0x10: PLL Common voltage disable, PLL disable */
-		ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN,
+		ret = ret || ac108_multi_update_bits(PLL_CTRL1, 0x01 << PLL_EN | 0x01 << PLL_COM_EN,
 						   0x00 << PLL_EN | 0x00 << PLL_COM_EN, ac10x);
 
 		/* disable lrck clock if it's enabled */
-		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
-		if (r & (0x01 << LRCK_IOEN)) {
-			ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x01 << BCLK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
+		ac10x_read(I2S_CTRL, &reg, ac10x->i2cmap[_MASTER_INDEX]);
+		if (reg & (0x01 << LRCK_IOEN)) {
+			ret = ret || ac10x_update_bits(I2S_CTRL, 0x03 << LRCK_IOEN, 0x01 << BCLK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
 		}
-		ac10x->sysclk_en = 0UL;
+		if (!ret) {
+			ac10x->sysclk_en = 0UL;
+		}
 	}
 
-	return 0;
+	return ret;
 }
 
 static int ac108_prepare(struct snd_pcm_substream *substream,
@@ -1214,7 +1216,6 @@ static int ac108_add_widgets(struct snd_soc_codec *codec) {
 }
 
 static int ac108_codec_probe(struct snd_soc_codec *codec) {
-
 	spin_lock_init(&ac10x->lock);
 
 	ac10x->codec = codec;

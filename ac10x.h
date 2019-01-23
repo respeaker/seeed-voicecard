@@ -29,9 +29,12 @@
 /* enable headset detecting & headset button pressing */
 #define CONFIG_AC101_SWITCH_DETECT
 
+/* obsolete */
+#define CONFIG_AC10X_TRIG_LOCK	0
+
 
 #ifdef AC101_DEBG
-    #define AC101_DBG(format,args...)  printk("[AC101] "format,##args)
+    #define AC101_DBG(format,args...)  printk("[AC101] %s() L%d " format, __func__, __LINE__, ##args)
 #else
     #define AC101_DBG(...)
 #endif
