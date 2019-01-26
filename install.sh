@@ -61,20 +61,20 @@ cp seeed-8mic-voicecard.dtbo /boot/overlays
 rm -f /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
 
 #set kernel moduels
-grep -q "snd-soc-seeed-voicecard" /etc/modules || \
+grep -q "^snd-soc-seeed-voicecard$" /etc/modules || \
   echo "snd-soc-seeed-voicecard" >> /etc/modules
-grep -q "snd-soc-ac108" /etc/modules || \
+grep -q "^snd-soc-ac108$" /etc/modules || \
   echo "snd-soc-ac108" >> /etc/modules
-grep -q "snd-soc-wm8960" /etc/modules || \
+grep -q "^snd-soc-wm8960$" /etc/modules || \
   echo "snd-soc-wm8960" >> /etc/modules  
 
 #set dtoverlays
 sed -i -e 's:#dtparam=i2c_arm=on:dtparam=i2c_arm=on:g'  /boot/config.txt || true
-grep -q "dtoverlay=i2s-mmap" /boot/config.txt || \
+grep -q "^dtoverlay=i2s-mmap$" /boot/config.txt || \
   echo "dtoverlay=i2s-mmap" >> /boot/config.txt
 
 
-grep -q "dtparam=i2s=on" /boot/config.txt || \
+grep -q "^dtparam=i2s=on$" /boot/config.txt || \
   echo "dtparam=i2s=on" >> /boot/config.txt
 
 #install config files
