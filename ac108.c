@@ -1271,6 +1271,12 @@ int ac108_codec_remove(struct snd_soc_codec *codec) {
 	}
 	return ac101_codec_remove(codec);
 }
+#if __NO_SND_SOC_CODEC_DRV
+void ac108_codec_remove_void(struct snd_soc_codec *codec) {
+	ac108_codec_remove(codec);
+}
+#define ac108_codec_remove ac108_codec_remove_void
+#endif
 
 int ac108_codec_suspend(struct snd_soc_codec *codec) {
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);

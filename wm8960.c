@@ -25,6 +25,7 @@
 #include <sound/initval.h>
 #include <sound/tlv.h>
 #include <sound/wm8960.h>
+#include "sound-compatible-4.18.h"
 
 #include "wm8960.h"
 
@@ -507,7 +508,11 @@ static int wm8960_add_widgets(struct snd_soc_codec *codec)
 	 * list each time to find the desired power state do so now
 	 * and save the result.
 	 */
+	#if __NO_SND_SOC_CODEC_DRV
+	list_for_each_entry(w, &codec->card->widgets, list) {
+	#else
 	list_for_each_entry(w, &codec->component.card->widgets, list) {
+	#endif
 		if (w->dapm != dapm)
 			continue;
 		if (strcmp(w->name, "LOUT1 PGA") == 0)
@@ -1275,7 +1280,13 @@ static int wm8960_probe(struct snd_soc_codec *codec)
 static const struct snd_soc_codec_driver soc_codec_dev_wm8960 = {
 	.probe =	wm8960_probe,
 	.set_bias_level = wm8960_set_bias_level,
-	.suspend_bias_off = true,
+	.suspend_bias_off	= true,
+	#if __NO_SND_SOC_CODEC_DRV
+	.idle_bias_on		= 1,
+	.use_pmdown_time	= 1,
+	.endianness		= 1,
+	.non_legacy_dai_naming	= 1,
+	#endif
 };
 
 static const struct regmap_config wm8960_regmap = {

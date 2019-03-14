@@ -40,6 +40,8 @@
 #endif
 
 
+#include "sound-compatible-4.18.h"
+
 #ifdef CONFIG_AC101_SWITCH_DETECT
 enum headphone_mode_u {
 	HEADPHONE_IDLE,
@@ -78,7 +80,7 @@ struct ac10x_priv {
 
 	#ifdef CONFIG_AC101_SWITCH_DETECT
 	struct gpio_desc* gpiod_irq;
-	int irq;
+	long irq;
 	volatile int irq_cntr;
 	volatile int pullout_cntr;
 	volatile int state;

@@ -12,7 +12,7 @@ if [ "x${is_Raspberry}" != "xRaspberry" ] ; then
 fi
 
 ver="0.3"
-
+uname_r=$(uname -r)
 
 # we create a dir with this version to ensure that 'dkms remove' won't delete
 # the sources during kernel updates
@@ -35,7 +35,6 @@ fi
 # locate currently installed kernels (may be different to running kernel if
 # it's just been updated)
 kernels=$(ls /lib/modules | sed "s/^/-k /")
-uname_r=$(uname -r)
 
 function install_module {
   src=$1
@@ -67,7 +66,7 @@ cp seeed-8mic-voicecard.dtbo /boot/overlays
 
 #install alsa plugins
 # no need this plugin now
-# install -D ac108_plugin/libasound_module_pcm_ac108.so /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
+# install -D ac108_plugin/libasound_module_pcm_ac108.so /usr/lib/arm-linux-gnueabihf/alsa-lib/
 rm -f /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
 
 #set kernel moduels
