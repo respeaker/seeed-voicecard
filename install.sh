@@ -5,9 +5,26 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-is_Raspberry=$(cat /proc/device-tree/model | awk  '{print $1}')
-if [ "x${is_Raspberry}" != "xRaspberry" ] ; then
-  echo "Sorry, this drivers only works on raspberry pi"
+#
+# make sure that we are on something ARM/Raspberry related
+# either a bare metal Raspberry or a qemu session with 
+# Raspberry stuff available
+# - check for /boot/overlays
+# - dtparam and dtoverlay is available
+errorFound=0
+if [ ! -d /boot/overlays ] ; then
+  echo "/boot/overlays not found or not a directory" 1>&2
+  errorFound=1
+fi
+# should we also check for alsactl and amixer used in seeed-voicecard?
+for cmd in dtparam dtoverlay ; do
+  if ! which $cmd &>/dev/null ; then
+    echo "$cmd not found" 1>&2
+    errorFound=1
+  fi
+done
+if [ $errorFound = 1 ] ; then
+  echo "Errors found, exiting." 1>&2
   exit 1
 fi
 
