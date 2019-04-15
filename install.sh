@@ -35,12 +35,49 @@ uname_r=$(uname -r)
 # the sources during kernel updates
 marker="0.0.0"
 
+_VER_RUN=
+function get_kernel_version() {
+  local ZIMAGE IMG_OFFSET
+
+  [ -z "$_VER_RUN" ] && {
+    ZIMAGE=/boot/kernel.img
+    IMG_OFFSET=$(LC_ALL=C grep -abo $'\x1f\x8b\x08\x00' $ZIMAGE | head -n 1 | cut -d ':' -f 1)
+    _VER_RUN=$(dd if=$ZIMAGE obs=64K ibs=4 skip=$(( IMG_OFFSET / 4)) | zcat | grep -a -m1 "Linux version" | strings | awk '{ print $3; }')
+  }
+  echo "$_VER_RUN"
+  return 0
+}
+
+function check_kernel_headers() {
+  VER_RUN=$(get_kernel_version)
+  VER_HDR=$(dpkg -L raspberrypi-kernel-headers | egrep -m1 "/lib/modules/[^-]+/build" | awk -F'/' '{ print $4; }')
+  [ "X$VER_RUN" == "X$VER_HDR" ] && {
+    return 0
+  }
+
+  # echo RUN=$VER_RUN HDR=$VER_HDR
+  echo " !!! Your kernel version is $VER_RUN"
+  echo "     Not found *** coressponding *** kernel headers with apt-get."
+  echo "     This may occur if you have ran 'rpi-update'."
+  echo " Choose  *** y *** will revert the kernel to version $VER_HDR then continue."
+  echo " Choose  *** N *** will exit without this driver support, by default."
+  read -p "Would you like to proceed? (y/N)" -n 1 -r -s
+  echo
+  if ! [[ $REPLY =~ ^[Yy]$ ]]; then
+    exit 1;
+  fi
+
+  apt-get -y --reinstall install raspberrypi-kernel
+}
+
 # update and install required packages
 which apt &>/dev/null
 if [[ $? -eq 0 ]]; then
   apt update -y
   apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel 
   apt-get -y install dkms git i2c-tools libasound2-plugins
+  # rpi-update checker
+  check_kernel_headers
 fi
 
 # Arch Linux
@@ -51,9 +88,13 @@ fi
 
 # locate currently installed kernels (may be different to running kernel if
 # it's just been updated)
-kernels=$(ls /lib/modules | sed "s/^/-k /")
+base_ver=$(get_kernel_version)
+base_ver=${base_ver%%[-+]*}
+kernels="${base_ver}+ ${base_ver}-v7+"
 
 function install_module {
+  local _i
+
   src=$1
   mod=$2
 
@@ -65,10 +106,16 @@ function install_module {
     dkms remove --force -m $mod -v $ver --all
     rm -rf /usr/src/$mod-$ver
   fi
+
   mkdir -p /usr/src/$mod-$ver
   cp -a $src/* /usr/src/$mod-$ver/
+
   dkms add -m $mod -v $ver
-  dkms build $kernels -m $mod -v $ver && dkms install --force $kernels -m $mod -v $ver
+  for _i in $kernels; do
+    dkms build -k $_i -m $mod -v $ver && {
+      dkms install --force -k $_i -m $mod -v $ver
+    }
+  done
 
   mkdir -p /var/lib/dkms/$mod/$ver/$marker
 }
