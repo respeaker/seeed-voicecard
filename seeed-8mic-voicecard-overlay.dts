@@ -26,13 +26,15 @@
 	fragment@2 {
 		target = <&gpio>;
 		__overlay__ {
-			spk_amp_and_irq_pins: speaker_amp_and_irq_pins {
+			spk_amp_pins: spk_pins {
 				brcm,pins = <17 22>;
 				brcm,function = <1 0>; /* out in */
+				brcm,pull = <0 0>;     /* -   - */
 			};
 			gpclk0_pins: gpclk0_pins {
 				brcm,pins = <4>;
 				brcm,function = <4>; /* alt func 0 */
+				brcm,pull = <0>;     /* - */
 			};
 		};
 	};
@@ -47,7 +49,7 @@
 			ac101: ac101@1a{
 				compatible = "x-power,ac101";
 				pinctrl-names = "default";
-				pinctrl-0 = <&spk_amp_and_irq_pins>,<&gpclk0_pins>;
+				pinctrl-0 = <&spk_amp_pins &gpclk0_pins>;
 				spk-amp-switch-gpios = <&gpio 17 0>;
 				switch-irq-gpios = <&gpio 22 0>;
 				reg = <0x1a>;
@@ -80,6 +82,8 @@
 			seeed-voice-card,name = "seeed-8mic-voicecard"; 
 			seeed-voice-card,channels-playback-override = <8>;
 			seeed-voice-card,channels-capture-override  = <8>;
+			#address-cells = <1>;
+			#size-cells = <0>;
 			status = "okay";
 
 			seeed-voice-card,dai-link@0 {
@@ -88,6 +92,7 @@
 				frame-master = <&codec0_dai>;
 				/* bitclock-inversion; */
 				/* frame-inversion; */
+				reg = <0>;
 
 				cpu {
 					sound-dai = <&i2s>;

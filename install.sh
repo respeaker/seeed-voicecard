@@ -39,6 +39,7 @@ _VER_RUN=
 function get_kernel_version() {
   local ZIMAGE IMG_OFFSET
 
+  _VER_RUN=""
   [ -z "$_VER_RUN" ] && {
     ZIMAGE=/boot/kernel.img
     IMG_OFFSET=$(LC_ALL=C grep -abo $'\x1f\x8b\x08\x00' $ZIMAGE | head -n 1 | cut -d ':' -f 1)
@@ -173,6 +174,7 @@ git --git-dir=/etc/voicecard/.git --work-tree=/etc/voicecard/ commit  -m "origin
 cp seeed-voicecard /usr/bin/
 cp seeed-voicecard.service /lib/systemd/system/
 systemctl enable  seeed-voicecard.service 
+systemctl start   seeed-voicecard
 
 echo "------------------------------------------------------"
 echo "Please reboot your raspberry pi to apply all settings"
