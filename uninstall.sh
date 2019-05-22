@@ -49,8 +49,12 @@ do_overlay() {
     fi
 }
 
+RPI_HATS="seeed-2mic-voicecard seeed-4mic-voicecard seeed-8mic-voicecard"
 
 echo "remove dtbos"
+for i in $RPI_HATS; do
+    dtoverlay -r $i
+done
 rm  /boot/overlays/seeed-2mic-voicecard.dtbo || true
 rm  /boot/overlays/seeed-4mic-voicecard.dtbo || true
 rm  /boot/overlays/seeed-8mic-voicecard.dtbo || true
@@ -74,7 +78,6 @@ rm  /lib/modules/${uname_r}/kernel/sound/soc/codecs/snd-soc-ac108.ko || true
 rm  /lib/modules/${uname_r}/kernel/sound/soc/bcm/snd-soc-seeed-voicecard.ko || true
 
 echo "remove $CONFIG configuration"
-RPI_HATS="seeed-2mic-voicecard seeed-4mic-voicecard seeed-8mic-voicecard"
 for i in $RPI_HATS; do
     echo Uninstall $i ...
     do_overlay $i 1
