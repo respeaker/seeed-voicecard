@@ -129,9 +129,10 @@ if [ "$overlay" ]; then
                 do_overlay $i 1
             fi
         done
-    else
-        dtoverlay $overlay
     fi
+    #make sure the driver loads correctly
+    dtoverlay $overlay || true
+
 
     echo "create $overlay asound configure file"
     ln -s $asound_conf /etc/asound.conf
