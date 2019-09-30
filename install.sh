@@ -75,7 +75,7 @@ function check_kernel_headers() {
 which apt &>/dev/null
 if [[ $? -eq 0 ]]; then
   apt update -y
-  apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel 
+  apt-get -y --force-yes install raspberrypi-kernel-headers raspberrypi-kernel 
   apt-get -y install dkms git i2c-tools libasound2-plugins
   # rpi-update checker
   check_kernel_headers
