@@ -115,6 +115,7 @@ if [ "$overlay" ]; then
     rm /etc/asound.conf
     rm /var/lib/alsa/asound.state
 
+: <<\EOF
     kernel_ver=$(get_kernel_version)
     # echo kernel_ver=$kernel_ver
 
@@ -130,6 +131,7 @@ if [ "$overlay" ]; then
             fi
         done
     fi
+EOF
     #make sure the driver loads correctly
     dtoverlay $overlay || true
 
