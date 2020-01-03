@@ -86,6 +86,7 @@ is_3b=$(i2cdetect -y  1 0x3b 0x3b | egrep "(3b|UU)" | awk '{print $2}')
 
 RPI_HATS="seeed-2mic-voicecard seeed-4mic-voicecard seeed-8mic-voicecard"
 overlay=""
+audioconfig=/home/${USER}/audiosetup
 
 if [ "x${is_1a}" != "x" ] && [ "x${is_35}" == "x" ] ; then
     echo "install 2mic"
