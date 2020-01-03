@@ -89,6 +89,11 @@ overlay=""
 
 if [ "x${is_1a}" != "x" ] && [ "x${is_35}" == "x" ] ; then
     echo "install 2mic"
+    if [ -f $audioconfig ] ; then
+        sudo rm $audioconfig
+    fi
+    echo 'Respeaker-2-Mic' >> $audioconfig
+    echo "create 2mic asound configure file"
     overlay=seeed-2mic-voicecard
     asound_conf=/etc/voicecard/asound_2mic.conf
     asound_state=/etc/voicecard/wm8960_asound.state
@@ -96,6 +101,13 @@ fi
 
 if [ "x${is_3b}" != "x" ] && [ "x${is_35}" == "x" ] ; then
     echo "install 4mic"
+    if [ -f $audioconfig ] ; then
+        sudo rm $audioconfig
+    fi
+    echo 'Respeaker-4-Mic' >> $audioconfig
+    echo "create 4mic asound configure file"
+    #Force 3.5mm ('headphone') jack
+    amixer cset numid=3 1
     overlay=seeed-4mic-voicecard
     asound_conf=/etc/voicecard/asound_4mic.conf
     asound_state=/etc/voicecard/ac108_asound.state
@@ -103,6 +115,11 @@ fi
 
 if [ "x${is_3b}" != "x" ] && [ "x${is_35}" != "x" ] ; then
     echo "install 6mic"
+    if [ -f $audioconfig ] ; then
+        sudo rm $audioconfig
+    fi
+    echo 'Respeaker-6-Mic' >> $audioconfig
+    echo "create 6mic asound configure file"
     overlay=seeed-8mic-voicecard
     asound_conf=/etc/voicecard/asound_6mic.conf
     asound_state=/etc/voicecard/ac108_6mic.state
@@ -144,6 +161,5 @@ fi
 
 alsactl restore
 
-#Fore 3.5mm ('headphone') jack
-amixer cset numid=3 1 
-
+#Force 3.5mm ('headphone') jack
+amixer cset numid=3 1
