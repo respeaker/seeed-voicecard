@@ -7,6 +7,25 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+# Check for enough space on /boot volume
+boot_line=$(df -h | grep /boot | head -n 1)
+if [ "x${boot_line}" = "x" ]; then
+  echo "Warning: /boot volume not found .."
+else
+  boot_space=$(echo $boot_line | awk '{print $4;}')
+  free_space=$(echo "${boot_space%?}")
+  unit="${boot_space: -1}"
+  if [[ "$unit" = "K" ]]; then
+    echo "Error: Not enough space left ($boot_space) on /boot"
+    exit 1
+  elif [[ "$unit" = "M" ]]; then
+    if [ "$free_space" -lt "25" ]; then
+      echo "Error: Not enough space left ($boot_space) on /boot"
+      exit 1
+    fi
+  fi
+fi
+
 #
 # make sure that we are on something ARM/Raspberry related
 # either a bare metal Raspberry or a qemu session with 
