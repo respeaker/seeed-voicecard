@@ -799,6 +799,11 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
 	/*0x22: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
 	ac108_multi_write(MOD_RST_CTRL, 1 << I2S | 1 << ADC_DIGITAL | 1 << MIC_OFFSET_CALIBRATION | 1 << ADC_ANALOG, ac10x);
 
+        /* Master mode, restore lrck settings */
+        ac10x_read(I2S_CTRL, &v, ac10x->i2cmap[_MASTER_INDEX]);
+        if (v & (0x01 << BCLK_IOEN)) {
+                ac10x_update_bits(I2S_CTRL, 0x1 << LRCK_IOEN, 0x1 << LRCK_IOEN, ac10x->i2cmap[_MASTER_INDEX]);
+        }
 
 	dev_dbg(dai->dev, "%s() stream=%s ---\n", __func__,
 			snd_pcm_stream_str(substream));
