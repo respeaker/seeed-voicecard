@@ -1,7 +1,5 @@
 #!/bin/bash
 
-FORCE_KERNEL="1.20190925+1-1"
-
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root (use sudo)" 1>&2
    exit 1
@@ -92,43 +90,12 @@ function check_kernel_headers() {
   apt-get -y --reinstall install raspberrypi-kernel
 }
 
-function download_install_debpkg() {
-  local prefix name r
-  prefix=$1
-  name=$2
-
-  for (( i = 0; i < 3; i++ )); do
-    wget $prefix$name -O /tmp/$name && break
-  done
-  dpkg -i /tmp/$name; r=$?
-  rm -f /tmp/$name
-  return $r
-}
-
-function install_kernel() {
-  local _url _prefix
-
-   # Instead of retriving the lastest kernel & headers
-  [ "X$FORCE_KERNEL" == "X" ] && {
-    apt-get -y --force-yes install raspberrypi-kernel-headers raspberrypi-kernel
-  } || {
-    # We would like to a fixed version
-    KERN_NAME=raspberrypi-kernel_${FORCE_KERNEL}_armhf.deb
-    HDR_NAME=raspberrypi-kernel-headers_${FORCE_KERNEL}_armhf.deb
-    _url=$(apt-get download --print-uris raspberrypi-kernel | sed -nre "s/'([^']+)'.*$/\1/g;p")
-    _prefix=$(echo $_url | sed -nre 's/^(.*)raspberrypi-kernel_.*$/\1/g;p')
-
-    download_install_debpkg "$_prefix" "$KERN_NAME"
-    download_install_debpkg "$_prefix" "$HDR_NAME"
-  }
-}
-
 # update and install required packages
 which apt &>/dev/null
 if [[ $? -eq 0 ]]; then
   apt update -y
+  apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel 
   apt-get -y install dkms git i2c-tools libasound2-plugins
-  install_kernel
   # rpi-update checker
   check_kernel_headers
 fi
