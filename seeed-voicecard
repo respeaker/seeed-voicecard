@@ -134,6 +134,7 @@ if [ "$overlay" ]; then
 
     # Remove old configuration
     rm /etc/asound.conf
+    rm /home/pi/.asoundrc
     rm /var/lib/alsa/asound.state
 
 : <<\EOF
@@ -159,7 +160,7 @@ EOF
 
     echo "create $overlay asound configure file"
     ln -s $asound_conf /etc/asound.conf
-    ln -s $asound_rc /home/pi/.asoundrc
+    sudo cp /etc/asound.conf /home/pi/.asoundrc
     echo "create $overlay asound status file"
     ln -s $asound_state /var/lib/alsa/asound.state
 fi
