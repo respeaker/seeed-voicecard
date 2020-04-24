@@ -420,7 +420,7 @@ static int seeed_voice_card_parse_aux_devs(struct device_node *node,
 		aux_node = of_parse_phandle(node, PREFIX "aux-devs", i);
 		if (!aux_node)
 			return -EINVAL;
-		priv->snd_card.aux_dev[i].codec_of_node = aux_node;
+		priv->snd_card.aux_dev[i].dlc.of_node = aux_node;
 	}
 
 	priv->snd_card.num_aux_devs = n;
