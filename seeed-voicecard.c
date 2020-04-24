@@ -378,9 +378,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		goto dai_link_of_err;
 
 	#if _SINGLE_CODEC
-	ret = asoc_simple_canonicalize_platform(dai_link);
-	if (ret < 0)
-		goto dai_link_of_err;
+	asoc_simple_canonicalize_platform(dai_link);
 	#endif
 
 	ret = asoc_simple_set_dailink_name(dev, dai_link,
