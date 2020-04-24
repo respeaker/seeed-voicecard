@@ -252,26 +252,6 @@ static struct snd_soc_ops seeed_voice_card_ops = {
 	.trigger = seeed_voice_card_trigger,
 };
 
-static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
-{
-	struct seeed_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
-	struct snd_soc_dai *codec = rtd->codec_dai;
-	struct snd_soc_dai *cpu = rtd->cpu_dai;
-	struct seeed_dai_props *dai_props =
-		seeed_priv_to_props(priv, rtd->num);
-	int ret;
-
-	ret = asoc_simple_init_dai(codec, &dai_props->codec_dai);
-	if (ret < 0)
-		return ret;
-
-	ret = asoc_simple_init_dai(cpu, &dai_props->cpu_dai);
-	if (ret < 0)
-		return ret;
-
-	return 0;
-}
-
 static int seeed_voice_card_dai_link_of(struct device_node *node,
 					struct seeed_card_data *priv,
 					int idx,
@@ -393,7 +373,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		goto dai_link_of_err;
 
 	dai_link->ops = &seeed_voice_card_ops;
-	dai_link->init = seeed_voice_card_dai_init;
+	dai_link->init = asoc_simple_dai_init;
 
 	dev_dbg(dev, "\tname : %s\n", dai_link->stream_name);
 	dev_dbg(dev, "\tformat : %04x\n", dai_link->dai_fmt);
@@ -592,7 +572,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 		dai_link->cpu_dai_name	= cinfo->cpu_dai.name;
 		dai_link->codec_dai_name = cinfo->codec_dai.name;
 		dai_link->dai_fmt	= cinfo->daifmt;
-		dai_link->init		= seeed_voice_card_dai_init;
+		dai_link->init		= asoc_simple_dai_init;
 		memcpy(&priv->dai_props->cpu_dai, &cinfo->cpu_dai,
 					sizeof(priv->dai_props->cpu_dai));
 		memcpy(&priv->dai_props->codec_dai, &cinfo->codec_dai,
