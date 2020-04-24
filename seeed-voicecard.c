@@ -321,13 +321,12 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 
 	of_property_read_u32(node, "mclk-fs", &dai_props->mclk_fs);
 
-	ret = asoc_simple_parse_cpu(cpu, dai_link,
-					 DAI, CELL, &single_cpu);
+	ret = asoc_simple_parse_cpu(cpu, dai_link, &single_cpu);
 	if (ret < 0)
 		goto dai_link_of_err;
 
 	#if _SINGLE_CODEC
-	ret = asoc_simple_parse_codec(codec, dai_link, DAI, CELL);
+	ret = asoc_simple_parse_codec(codec, dai_link);
 	if (ret < 0)
 		goto dai_link_of_err;
 	#else
@@ -339,7 +338,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 	dev_dbg(dev, "dai_link num_codecs = %d\n", dai_link->num_codecs);
 	#endif
 
-	ret = asoc_simple_parse_platform(plat, dai_link, DAI, CELL);
+	ret = asoc_simple_parse_platform(plat, dai_link);
 	if (ret < 0)
 		goto dai_link_of_err;
 
