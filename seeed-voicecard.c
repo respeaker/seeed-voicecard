@@ -261,11 +261,11 @@ static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 		seeed_priv_to_props(priv, rtd->num);
 	int ret;
 
-	ret = asoc_simple_card_init_dai(codec, &dai_props->codec_dai);
+	ret = asoc_simple_init_dai(codec, &dai_props->codec_dai);
 	if (ret < 0)
 		return ret;
 
-	ret = asoc_simple_card_init_dai(cpu, &dai_props->cpu_dai);
+	ret = asoc_simple_init_dai(cpu, &dai_props->cpu_dai);
 	if (ret < 0)
 		return ret;
 
@@ -314,20 +314,20 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		goto dai_link_of_err;
 	}
 
-	ret = asoc_simple_card_parse_daifmt(dev, node, codec,
+	ret = asoc_simple_parse_daifmt(dev, node, codec,
 					    prefix, &dai_link->dai_fmt);
 	if (ret < 0)
 		goto dai_link_of_err;
 
 	of_property_read_u32(node, "mclk-fs", &dai_props->mclk_fs);
 
-	ret = asoc_simple_card_parse_cpu(cpu, dai_link,
+	ret = asoc_simple_parse_cpu(cpu, dai_link,
 					 DAI, CELL, &single_cpu);
 	if (ret < 0)
 		goto dai_link_of_err;
 
 	#if _SINGLE_CODEC
-	ret = asoc_simple_card_parse_codec(codec, dai_link, DAI, CELL);
+	ret = asoc_simple_parse_codec(codec, dai_link, DAI, CELL);
 	if (ret < 0)
 		goto dai_link_of_err;
 	#else
@@ -339,7 +339,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 	dev_dbg(dev, "dai_link num_codecs = %d\n", dai_link->num_codecs);
 	#endif
 
-	ret = asoc_simple_card_parse_platform(plat, dai_link, DAI, CELL);
+	ret = asoc_simple_parse_platform(plat, dai_link, DAI, CELL);
 	if (ret < 0)
 		goto dai_link_of_err;
 
@@ -362,28 +362,28 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		goto dai_link_of_err;
 
 	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
-	ret = asoc_simple_card_parse_clk_cpu(cpu, dai_link, cpu_dai);
+	ret = asoc_simple_parse_clk_cpu(cpu, dai_link, cpu_dai);
 	#else
-	ret = asoc_simple_card_parse_clk_cpu(dev, cpu, dai_link, cpu_dai);
+	ret = asoc_simple_parse_clk_cpu(dev, cpu, dai_link, cpu_dai);
 	#endif
 	if (ret < 0)
 		goto dai_link_of_err;
 
 	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
-	ret = asoc_simple_card_parse_clk_codec(codec, dai_link, codec_dai);
+	ret = asoc_simple_parse_clk_codec(codec, dai_link, codec_dai);
 	#else
-	ret = asoc_simple_card_parse_clk_codec(dev, codec, dai_link, codec_dai);
+	ret = asoc_simple_parse_clk_codec(dev, codec, dai_link, codec_dai);
 	#endif
 	if (ret < 0)
 		goto dai_link_of_err;
 
 	#if _SINGLE_CODEC
-	ret = asoc_simple_card_canonicalize_dailink(dai_link);
+	ret = asoc_simple_canonicalize_dailink(dai_link);
 	if (ret < 0)
 		goto dai_link_of_err;
 	#endif
 
-	ret = asoc_simple_card_set_dailink_name(dev, dai_link,
+	ret = asoc_simple_set_dailink_name(dev, dai_link,
 						"%s-%s",
 						dai_link->cpu_dai_name,
 						#if _SINGLE_CODEC
@@ -411,7 +411,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		#endif
 		dai_props->codec_dai.sysclk);
 
-	asoc_simple_card_canonicalize_cpu(dai_link, single_cpu);
+	asoc_simple_canonicalize_cpu(dai_link, single_cpu);
 
 dai_link_of_err:
 	of_node_put(cpu);
@@ -503,7 +503,7 @@ static int seeed_voice_card_parse_of(struct device_node *node,
 			goto card_parse_end;
 	}
 
-	ret = asoc_simple_card_parse_card_name(&priv->snd_card, PREFIX);
+	ret = asoc_simple_parse_card_name(&priv->snd_card, PREFIX);
 	if (ret < 0)
 		goto card_parse_end;
 
@@ -615,7 +615,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 		return ret;
 
 err:
-	asoc_simple_card_clean_reference(&priv->snd_card);
+	asoc_simple_clean_reference(&priv->snd_card);
 
 	return ret;
 }
@@ -627,7 +627,7 @@ static int seeed_voice_card_remove(struct platform_device *pdev)
 
 	if (cancel_work_sync(&priv->work_codec_clk) != 0) {
 	}
-	return asoc_simple_card_clean_reference(card);
+	return asoc_simple_clean_reference(card);
 }
 
 static const struct of_device_id seeed_voice_of_match[] = {
