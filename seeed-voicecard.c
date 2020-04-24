@@ -28,6 +28,8 @@
 #include <sound/simple_card_utils.h>
 #include "ac10x.h"
 
+#define LINUX_VERSION_IS_GEQ(x1,x2,x3)	(LINUX_VERSION_CODE >= KERNEL_VERSION(x1,x2,x3))
+
 /*
  * single codec:
  *	0 - allow multi codec
