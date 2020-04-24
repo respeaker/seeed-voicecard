@@ -362,9 +362,9 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 
 	ret = asoc_simple_set_dailink_name(dev, dai_link,
 						"%s-%s",
-						dai_link->cpu_dai_name,
+						dai_link->cpus->dai_name,
 						#if _SINGLE_CODEC
-						dai_link->codec_dai_name
+						dai_link->codecs->dai_name
 						#else
 						dai_link->codecs[0].dai_name
 						#endif
@@ -378,11 +378,11 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 	dev_dbg(dev, "\tname : %s\n", dai_link->stream_name);
 	dev_dbg(dev, "\tformat : %04x\n", dai_link->dai_fmt);
 	dev_dbg(dev, "\tcpu : %s / %d\n",
-		dai_link->cpu_dai_name,
+		dai_link->cpus->dai_name,
 		dai_props->cpu_dai.sysclk);
 	dev_dbg(dev, "\tcodec : %s / %d\n",
 		#if _SINGLE_CODEC
-		dai_link->codec_dai_name,
+		dai_link->codecs->dai_name,
 		#else
 		dai_link->codecs[0].dai_name,
 		#endif
@@ -567,10 +567,10 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 		priv->snd_card.name	= (cinfo->card) ? cinfo->card : cinfo->name;
 		dai_link->name		= cinfo->name;
 		dai_link->stream_name	= cinfo->name;
-		dai_link->platform_name	= cinfo->platform;
-		dai_link->codec_name	= cinfo->codec;
-		dai_link->cpu_dai_name	= cinfo->cpu_dai.name;
-		dai_link->codec_dai_name = cinfo->codec_dai.name;
+		dai_link->platforms->name	= cinfo->platform;
+		dai_link->codecs->name	= cinfo->codec;
+		dai_link->cpus->dai_name	= cinfo->cpu_dai.name;
+		dai_link->codecs->dai_name = cinfo->codec_dai.name;
 		dai_link->dai_fmt	= cinfo->daifmt;
 		dai_link->init		= asoc_simple_dai_init;
 		memcpy(&priv->dai_props->cpu_dai, &cinfo->cpu_dai,
