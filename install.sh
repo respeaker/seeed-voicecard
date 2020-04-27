@@ -1,6 +1,7 @@
 #!/bin/bash
 
-FORCE_KERNEL="1.20190925+1-1"
+#FORCE_KERNEL="1.20190925+1-1"
+FORCE_KERNEL="1.20200212-1"
 
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root (use sudo)" 1>&2
@@ -105,10 +106,18 @@ function download_install_debpkg() {
   return $r
 }
 
+option_pattern="compat-kernel"
+if [[ $1 =~ ${option_pattern} ]]; then
+  echo "will compile with a compatible kernel..."
+else
+  FORCE_KERNEL=""
+  echo "will compile with the latest kernel..."
+fi
+
 function install_kernel() {
   local _url _prefix
 
-   # Instead of retriving the lastest kernel & headers
+  # Instead of retriving the lastest kernel & headers
   [ "X$FORCE_KERNEL" == "X" ] && {
     apt-get -y --force-yes install raspberrypi-kernel-headers raspberrypi-kernel
   } || {
@@ -167,6 +176,10 @@ function install_module {
   for _i in $kernels; do
     dkms build -k $_i -m $mod -v $ver && {
       dkms install --force -k $_i -m $mod -v $ver
+    } || {
+      echo "can not compile with this kernel, abourt"
+      echo "please try compile with option --compat-kernel"
+      exit 1
     }
   done
 
