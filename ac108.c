@@ -865,7 +865,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 			/* TODO: Both cpu_dai and codec_dai(AC108) be set as slave in DTS */
 			dev_dbg(dai->dev, "used as slave when AC101 is master\n");
 		}
-		/* fall through */
+		fallthrough;
 	case SND_SOC_DAIFMT_CBS_CFS:    /*AC108 Slave*/
 		dev_dbg(dai->dev, "AC108 set to work as Slave\n");
 		/**
