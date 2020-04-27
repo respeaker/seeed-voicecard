@@ -177,8 +177,8 @@ function install_module {
     dkms build -k $_i -m $mod -v $ver && {
       dkms install --force -k $_i -m $mod -v $ver
     } || {
-      echo "can not compile with this kernel, abourt"
-      echo "please try compile with option --compat-kernel"
+      echo "can not compile with this kernel, abort"
+      echo "please try compile with the option --compat-kernel"
       exit 1
     }
   done
