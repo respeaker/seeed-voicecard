@@ -753,6 +753,7 @@ static int wm8960_hw_params(struct snd_pcm_substream *substream,
 			iface |= 0x000c;
 			break;
 		}
+		fallthrough;
 	default:
 		dev_err(codec->dev, "unsupported width %d\n",
 			params_width(params));

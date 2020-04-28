@@ -15,6 +15,14 @@
 #define __NO_SND_SOC_CODEC_DRV     0
 #endif
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)
+#if __has_attribute(__fallthrough__)
+# define fallthrough                    __attribute__((__fallthrough__))
+#else
+# define fallthrough                    do {} while (0)  /* fallthrough */
+#endif
+#endif
+
 #if __NO_SND_SOC_CODEC_DRV
 #define codec                      component
 #define snd_soc_codec              snd_soc_component
