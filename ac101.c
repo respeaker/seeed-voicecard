@@ -955,7 +955,7 @@ void ac101_aif_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai 
 
 	AC101_DBG("stream = %s, play: %d, capt: %d, active: %d\n", 
 		snd_pcm_stream_str(substream),
-		codec_dai->playback_active, codec_dai->capture_active,
+		codec_dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], codec_dai->stream_active[SNDRV_PCM_STREAM_CAPTURE],
 		codec_dai->active);
 
 	if (!codec_dai->active) {
@@ -1080,7 +1080,7 @@ int ac101_hw_params(struct snd_pcm_substream *substream,
 	freq_out = _FREQ_24_576K;
 	for (i = 0; i < ARRAY_SIZE(codec_aif1_fs); i++) {
 		if (codec_aif1_fs[i].samp_rate == params_rate(params)) {
-			if (codec_dai->capture_active && dmic_used && codec_aif1_fs[i].samp_rate == 44100) {
+			if (codec_dai->stream_active[SNDRV_PCM_STREAM_CAPTURE] && dmic_used && codec_aif1_fs[i].samp_rate == 44100) {
 				ac101_update_bits(codec, AIF_SR_CTRL, (0xf<<AIF1_FS), (0x4<<AIF1_FS));
 			} else {
 				ac101_update_bits(codec, AIF_SR_CTRL, (0xf<<AIF1_FS), ((codec_aif1_fs[i].srbit)<<AIF1_FS));
