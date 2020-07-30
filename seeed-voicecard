@@ -21,13 +21,18 @@
 # THE SOFTWARE.
 
 set -x
-exec 1>/var/log/$(basename $0).log 2>&1
+#exec 1>/var/log/$(basename $0).log 2>&1
+
+export PATH=$PATH:/opt/vc/bin
+OVERLAYS=/boot/overlays
+[ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
+
 #enable i2c interface
-dtparam i2c_arm=on
+dtparam -d $OVERLAYS i2c_arm=on
 modprobe i2c-dev
 
 #enable spi interface
-dtparam spi=on
+dtparam -d $OVERLAYS spi=on
 
 _VER_RUN=
 function get_kernel_version() {
@@ -44,6 +49,8 @@ function get_kernel_version() {
 }
 
 CONFIG=/boot/config.txt
+[ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
+
 get_overlay() {
     ov=$1
     if grep -q -E "^dtoverlay=$ov" $CONFIG; then
@@ -115,7 +122,7 @@ if [ "$overlay" ]; then
     rm /etc/asound.conf
     rm /var/lib/alsa/asound.state
 
-    kernel_ver=$(get_kernel_version)
+    kernel_ver=$(uname -r) # get_kernel_version)
     # echo kernel_ver=$kernel_ver
 
     # TODO: dynamic dtoverlay Bug of v4.19.x
@@ -131,7 +138,7 @@ if [ "$overlay" ]; then
         done
     fi
     #make sure the driver loads correctly
-    dtoverlay $overlay || true
+    dtoverlay -d $OVERLAYS $overlay || true
 
 
     echo "create $overlay asound configure file"
@@ -143,5 +150,5 @@ fi
 alsactl restore
 
 #Force 3.5mm ('headphone') jack
-amixer cset numid=3 1 
+amixer -c 1 cset numid=3 1 
 
