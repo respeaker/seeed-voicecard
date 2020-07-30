@@ -42,6 +42,9 @@ struct seeed_card_data {
 	struct seeed_dai_props {
 		struct asoc_simple_dai cpu_dai;
 		struct asoc_simple_dai codec_dai;
+		struct snd_soc_dai_link_component cpus;   /* single cpu */
+		struct snd_soc_dai_link_component codecs; /* single codec */
+		struct snd_soc_dai_link_component platforms;
 		unsigned int mclk_fs;
 	} *dai_props;
 	unsigned int mclk_fs;
@@ -561,7 +564,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 	struct seeed_dai_props *dai_props;
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
-	int num, ret;
+	int num, ret, i;
 
 	/* Get the number of DAI links */
 	if (np && of_get_child_by_name(np, PREFIX "dai-link"))
@@ -579,6 +582,25 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 	if (!dai_props || !dai_link)
 		return -ENOMEM;
 
+	/*
+	 * Use snd_soc_dai_link_component instead of legacy style
+	 * It is codec only. but cpu/platform will be supported in the future.
+	 * see
+	 *	soc-core.c :: snd_soc_init_multicodec()
+	 *
+	 * "platform" might be removed
+	 * see
+	 *	simple-card-utils.c :: asoc_simple_canonicalize_platform()
+	 */
+	for (i = 0; i < num; i++) {
+	  printk(KERN_INFO "linking cpus, codecs and platforms");
+		dai_link[i].cpus		= &dai_props[i].cpus;
+		dai_link[i].num_cpus		= 1;
+		dai_link[i].codecs		= &dai_props[i].codecs;
+		dai_link[i].num_codecs		= 1;
+		dai_link[i].platforms		= &dai_props[i].platforms;
+		dai_link[i].num_platforms	= 1;
+	}
 	priv->dai_props			= dai_props;
 	priv->dai_link			= dai_link;
 
