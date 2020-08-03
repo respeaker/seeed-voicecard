@@ -9,7 +9,8 @@ Get the seeed voice card source code. and install all linux kernel drivers
 ```bash
 git clone https://github.com/respeaker/seeed-voicecard
 cd seeed-voicecard
-sudo ./install.sh
+#sudo ./install.sh
+sudo ./install.sh  --compat-kernel
 sudo reboot
 ```
 It may probably happen that the driver won't compile with the latest kernel when raspbian rolls out new patches to the kernel. If so, please try `sudo ./install.sh --compat-kernel` which uses an older kernel but ensures that the driver can work. 
