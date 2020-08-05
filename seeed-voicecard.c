@@ -645,12 +645,12 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 	 *      simple-card-utils.c :: asoc_simple_canonicalize_platform()
 	 */
 	for (i = 0; i < num; i++) {
-		dai_link[i].cpus	= &dai_props[i].cpus;
-		dai_link[i].num_cpus	= 1;
-		dai_link[i].codecs	= &dai_props[i].codecs;
-		dai_link[i].num_codecs	= 1;
-		dai_link[i].platforms	= &dai_props[i].platforms;
-		dai_link[i].num_platforms = 1;
+		dai_link[i].cpus		= &dai_props[i].cpus;
+		dai_link[i].num_cpus		= 1;
+		dai_link[i].codecs		= &dai_props[i].codecs;
+		dai_link[i].num_codecs		= 1;
+		dai_link[i].platforms		= &dai_props[i].platforms;
+		dai_link[i].num_platforms	= 1;
 	}
 
 	priv->dai_props			= dai_props;
