@@ -304,6 +304,58 @@ static int asoc_simple_parse_dai(struct device_node *node,
 	return 0;
 }
 
+static int asoc_simple_init_dai(struct snd_soc_dai *dai,
+				     struct asoc_simple_dai *simple_dai)
+{
+	int ret;
+
+	if (!simple_dai)
+		return 0;
+
+	if (simple_dai->sysclk) {
+		ret = snd_soc_dai_set_sysclk(dai, 0, simple_dai->sysclk,
+					     simple_dai->clk_direction);
+		if (ret && ret != -ENOTSUPP) {
+			dev_err(dai->dev, "simple-card: set_sysclk error\n");
+			return ret;
+		}
+	}
+
+	if (simple_dai->slots) {
+		ret = snd_soc_dai_set_tdm_slot(dai,
+					       simple_dai->tx_slot_mask,
+					       simple_dai->rx_slot_mask,
+					       simple_dai->slots,
+					       simple_dai->slot_width);
+		if (ret && ret != -ENOTSUPP) {
+			dev_err(dai->dev, "simple-card: set_tdm_slot error\n");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
+{
+	struct seeed_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
+	struct snd_soc_dai *codec = rtd->codec_dai;
+	struct snd_soc_dai *cpu = rtd->cpu_dai;
+	struct seeed_dai_props *dai_props =
+		seeed_priv_to_props(priv, rtd->num);
+	int ret;
+
+	ret = asoc_simple_init_dai(codec, &dai_props->codec_dai);
+	if (ret < 0)
+		return ret;
+
+	ret = asoc_simple_init_dai(cpu, &dai_props->cpu_dai);
+	if (ret < 0)
+		return ret;
+
+	return 0;
+}
+
 static int seeed_voice_card_dai_link_of(struct device_node *node,
 					struct seeed_card_data *priv,
 					int idx,
@@ -393,7 +445,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		goto dai_link_of_err;
 
 	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
-	ret = asoc_simple_parse_clk_cpu(cpu, dai_link, cpu_dai);
+	ret = asoc_simple_card_parse_clk_cpu(cpu, dai_link, cpu_dai);
 	#else
 	ret = asoc_simple_parse_clk_cpu(dev, cpu, dai_link, cpu_dai);
 	#endif
@@ -401,7 +453,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		goto dai_link_of_err;
 
 	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
-	ret = asoc_simple_parse_clk_codec(codec, dai_link, codec_dai);
+	ret = asoc_simple_card_parse_clk_codec(codec, dai_link, codec_dai);
 	#else
 	ret = asoc_simple_parse_clk_codec(dev, codec, dai_link, codec_dai);
 	#endif
@@ -425,7 +477,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		goto dai_link_of_err;
 
 	dai_link->ops = &seeed_voice_card_ops;
-	dai_link->init = asoc_simple_dai_init;
+	dai_link->init = seeed_voice_card_dai_init;
 
 	dev_dbg(dev, "\tname : %s\n", dai_link->stream_name);
 	dev_dbg(dev, "\tformat : %04x\n", dai_link->dai_fmt);
@@ -593,7 +645,6 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 	 *	simple-card-utils.c :: asoc_simple_canonicalize_platform()
 	 */
 	for (i = 0; i < num; i++) {
-	  printk(KERN_INFO "linking cpus, codecs and platforms");
 		dai_link[i].cpus		= &dai_props[i].cpus;
 		dai_link[i].num_cpus		= 1;
 		dai_link[i].codecs		= &dai_props[i].codecs;
@@ -601,6 +652,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 		dai_link[i].platforms		= &dai_props[i].platforms;
 		dai_link[i].num_platforms	= 1;
 	}
+
 	priv->dai_props			= dai_props;
 	priv->dai_link			= dai_link;
 
@@ -619,6 +671,9 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 		}
 	} else {
 		struct seeed_card_info *cinfo;
+		struct snd_soc_dai_link_component *cpus;
+		struct snd_soc_dai_link_component *codecs;
+		struct snd_soc_dai_link_component *platform;
 
 		cinfo = dev->platform_data;
 		if (!cinfo) {
@@ -635,15 +690,21 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 
+		cpus			= dai_link->cpus;
+		cpus->dai_name		= cinfo->cpu_dai.name;
+
+		codecs			= dai_link->codecs;
+		codecs->name		= cinfo->codec;
+		codecs->dai_name	= cinfo->codec_dai.name;
+
+		platform		= dai_link->platforms;
+		platform->name		= cinfo->platform;
+
 		priv->snd_card.name	= (cinfo->card) ? cinfo->card : cinfo->name;
 		dai_link->name		= cinfo->name;
 		dai_link->stream_name	= cinfo->name;
-		dai_link->platforms->name	= cinfo->platform;
-		dai_link->codecs->name	= cinfo->codec;
-		dai_link->cpus->dai_name	= cinfo->cpu_dai.name;
-		dai_link->codecs->dai_name = cinfo->codec_dai.name;
 		dai_link->dai_fmt	= cinfo->daifmt;
-		dai_link->init		= asoc_simple_dai_init;
+		dai_link->init		= seeed_voice_card_dai_init;
 		memcpy(&priv->dai_props->cpu_dai, &cinfo->cpu_dai,
 					sizeof(priv->dai_props->cpu_dai));
 		memcpy(&priv->dai_props->codec_dai, &cinfo->codec_dai,
