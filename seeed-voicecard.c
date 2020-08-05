@@ -43,7 +43,7 @@ struct seeed_card_data {
 		struct asoc_simple_dai cpu_dai;
 		struct asoc_simple_dai codec_dai;
 		struct snd_soc_dai_link_component codecs; /* single codec */
-		struct snd_soc_dai_link_component platform;
+		struct snd_soc_dai_link_component platforms;
 		unsigned int mclk_fs;
 	} *dai_props;
 	unsigned int mclk_fs;
@@ -590,7 +590,8 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 	for (i = 0; i < num; i++) {
 		dai_link[i].codecs	= &dai_props[i].codecs;
 		dai_link[i].num_codecs	= 1;
-		dai_link[i].platforms	= &dai_props[i].platform;
+		dai_link[i].platforms	= &dai_props[i].platforms;
+		dai_link[i].num_platforms = 1;
 	}
 
 	priv->dai_props			= dai_props;
