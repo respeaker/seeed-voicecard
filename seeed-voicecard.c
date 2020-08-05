@@ -304,6 +304,38 @@ static int asoc_simple_parse_dai(struct device_node *node,
 	return 0;
 }
 
+static int asoc_simple_init_dai(struct snd_soc_dai *dai,
+				     struct asoc_simple_dai *simple_dai)
+{
+	int ret;
+
+	if (!simple_dai)
+		return 0;
+
+	if (simple_dai->sysclk) {
+		ret = snd_soc_dai_set_sysclk(dai, 0, simple_dai->sysclk,
+					     simple_dai->clk_direction);
+		if (ret && ret != -ENOTSUPP) {
+			dev_err(dai->dev, "simple-card: set_sysclk error\n");
+			return ret;
+		}
+	}
+
+	if (simple_dai->slots) {
+		ret = snd_soc_dai_set_tdm_slot(dai,
+					       simple_dai->tx_slot_mask,
+					       simple_dai->rx_slot_mask,
+					       simple_dai->slots,
+					       simple_dai->slot_width);
+		if (ret && ret != -ENOTSUPP) {
+			dev_err(dai->dev, "simple-card: set_tdm_slot error\n");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
 static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct seeed_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
