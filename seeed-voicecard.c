@@ -445,7 +445,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		goto dai_link_of_err;
 
 	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
-	ret = asoc_simple_parse_clk_cpu(cpu, dai_link, cpu_dai);
+	ret = asoc_simple_card_parse_clk_cpu(cpu, dai_link, cpu_dai);
 	#else
 	ret = asoc_simple_parse_clk_cpu(dev, cpu, dai_link, cpu_dai);
 	#endif
@@ -453,7 +453,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		goto dai_link_of_err;
 
 	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
-	ret = asoc_simple_parse_clk_codec(codec, dai_link, codec_dai);
+	ret = asoc_simple_card_parse_clk_codec(codec, dai_link, codec_dai);
 	#else
 	ret = asoc_simple_parse_clk_codec(dev, codec, dai_link, codec_dai);
 	#endif
