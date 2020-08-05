@@ -42,6 +42,7 @@ struct seeed_card_data {
 	struct seeed_dai_props {
 		struct asoc_simple_dai cpu_dai;
 		struct asoc_simple_dai codec_dai;
+		struct snd_soc_dai_link_component cpus;   /* single cpu */
 		struct snd_soc_dai_link_component codecs; /* single codec */
 		struct snd_soc_dai_link_component platforms;
 		unsigned int mclk_fs;
@@ -588,6 +589,8 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 	 *      soc-core.c :: snd_soc_init_multicodec()
 	 */
 	for (i = 0; i < num; i++) {
+		dai_link[i].cpus	= &dai_props[i].cpus;
+		dai_link[i].num_cpus	= 1;
 		dai_link[i].codecs	= &dai_props[i].codecs;
 		dai_link[i].num_codecs	= 1;
 		dai_link[i].platforms	= &dai_props[i].platforms;
@@ -612,6 +615,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 		}
 	} else {
 		struct seeed_card_info *cinfo;
+		struct snd_soc_dai_link_component *cpus;
 		struct snd_soc_dai_link_component *codecs;
 		struct snd_soc_dai_link_component *platform;
 
@@ -630,6 +634,9 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 
+		cpus			= dai_link->cpus;
+		cpus->dai_name		= cinfo->cpu_dai.name;
+
 		codecs			= dai_link->codecs;
 		codecs->name		= cinfo->codec;
 		codecs->dai_name	= cinfo->codec_dai.name;
@@ -640,7 +647,6 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 		priv->snd_card.name	= (cinfo->card) ? cinfo->card : cinfo->name;
 		dai_link->name		= cinfo->name;
 		dai_link->stream_name	= cinfo->name;
-		dai_link->cpus->dai_name	= cinfo->cpu_dai.name;
 		dai_link->dai_fmt	= cinfo->daifmt;
 		dai_link->init		= asoc_simple_dai_init;
 		memcpy(&priv->dai_props->cpu_dai, &cinfo->cpu_dai,
