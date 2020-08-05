@@ -587,6 +587,10 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 	 * It is codec only. but cpu/platform will be supported in the future.
 	 * see
 	 *      soc-core.c :: snd_soc_init_multicodec()
+	 *
+	 * "platform" might be removed
+	 * see
+	 *      simple-card-utils.c :: asoc_simple_canonicalize_platform()
 	 */
 	for (i = 0; i < num; i++) {
 		dai_link[i].cpus	= &dai_props[i].cpus;
