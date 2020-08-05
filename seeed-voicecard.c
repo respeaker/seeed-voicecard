@@ -42,6 +42,7 @@ struct seeed_card_data {
 	struct seeed_dai_props {
 		struct asoc_simple_dai cpu_dai;
 		struct asoc_simple_dai codec_dai;
+		struct snd_soc_dai_link_component codecs; /* single codec */
 		unsigned int mclk_fs;
 	} *dai_props;
 	unsigned int mclk_fs;
@@ -561,7 +562,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 	struct seeed_dai_props *dai_props;
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
-	int num, ret;
+	int num, ret, i;
 
 	/* Get the number of DAI links */
 	if (np && of_get_child_by_name(np, PREFIX "dai-link"))
@@ -578,6 +579,17 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 	dai_link  = devm_kzalloc(dev, sizeof(*dai_link)  * num, GFP_KERNEL);
 	if (!dai_props || !dai_link)
 		return -ENOMEM;
+
+	/*
+	 * Use snd_soc_dai_link_component instead of legacy style
+	 * It is codec only. but cpu/platform will be supported in the future.
+	 * see
+	 *      soc-core.c :: snd_soc_init_multicodec()
+	 */
+	for (i = 0; i < num; i++) {
+		dai_link[i].codecs	= &dai_props[i].codecs;
+		dai_link[i].num_codecs	= 1;
+	}
 
 	priv->dai_props			= dai_props;
 	priv->dai_link			= dai_link;
@@ -597,6 +609,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 		}
 	} else {
 		struct seeed_card_info *cinfo;
+		struct snd_soc_dai_link_component *codecs;
 
 		cinfo = dev->platform_data;
 		if (!cinfo) {
@@ -613,13 +626,15 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 			return -EINVAL;
 		}
 
+		codecs			= dai_link->codecs;
+		codecs->name		= cinfo->codec;
+		codecs->dai_name	= cinfo->codec_dai.name;
+
 		priv->snd_card.name	= (cinfo->card) ? cinfo->card : cinfo->name;
 		dai_link->name		= cinfo->name;
 		dai_link->stream_name	= cinfo->name;
 		dai_link->platforms->name	= cinfo->platform;
-		dai_link->codecs->name	= cinfo->codec;
 		dai_link->cpus->dai_name	= cinfo->cpu_dai.name;
-		dai_link->codecs->dai_name = cinfo->codec_dai.name;
 		dai_link->dai_fmt	= cinfo->daifmt;
 		dai_link->init		= asoc_simple_dai_init;
 		memcpy(&priv->dai_props->cpu_dai, &cinfo->cpu_dai,
