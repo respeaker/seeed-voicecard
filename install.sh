@@ -8,7 +8,7 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-# Check for enough space on /boot volume
+# Check if enough space on /boot volume
 boot_line=$(df -h | grep /boot | head -n 1)
 if [ "x${boot_line}" = "x" ]; then
   echo "Warning: /boot volume not found .."
@@ -80,10 +80,10 @@ function check_kernel_headers() {
 
   # echo RUN=$VER_RUN HDR=$VER_HDR
   echo " !!! Your kernel version is $VER_RUN"
-  echo "     Not found *** coressponding *** kernel headers with apt-get."
-  echo "     This may occur if you have ran 'rpi-update'."
-  echo " Choose  *** y *** will revert the kernel to version $VER_HDR then continue."
-  echo " Choose  *** N *** will exit without this driver support, by default."
+  echo "     Couldn't find *** corresponding *** kernel headers with apt-get."
+  echo "     This may happen if you ran 'rpi-update'."
+  echo " Choose  *** y *** to revert the kernel to version $VER_HDR and continue."
+  echo " Choose  *** N *** to exit without this driver support, by default."
   read -p "Would you like to proceed? (y/N)" -n 1 -r -s
   echo
   if ! [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -117,7 +117,7 @@ fi
 function install_kernel() {
   local _url _prefix
 
-  # Instead of retriving the lastest kernel & headers
+  # Instead of retrieving the lastest kernel & headers
   [ "X$FORCE_KERNEL" == "X" ] && {
     apt-get -y --force-yes install raspberrypi-kernel-headers raspberrypi-kernel
   } || {
@@ -177,8 +177,8 @@ function install_module {
     dkms build -k $_i -m $mod -v $ver && {
       dkms install --force -k $_i -m $mod -v $ver
     } || {
-      echo "can not compile with this kernel, abort"
-      echo "please try compile with the option --compat-kernel"
+      echo "Can't compile with this kernel, aborting"
+      echo "Please try to compile with the option --compat-kernel"
       exit 1
     }
   done
@@ -194,8 +194,8 @@ cp seeed-2mic-voicecard.dtbo /boot/overlays
 cp seeed-4mic-voicecard.dtbo /boot/overlays
 cp seeed-8mic-voicecard.dtbo /boot/overlays
 
-#install alsa plugins
-# no need this plugin now
+# install alsa plugins
+# we don't need this plugin now
 # install -D ac108_plugin/libasound_module_pcm_ac108.so /usr/lib/arm-linux-gnueabihf/alsa-lib/
 rm -f /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
 
@@ -242,6 +242,6 @@ systemctl enable  seeed-voicecard.service
 systemctl start   seeed-voicecard
 
 echo "------------------------------------------------------"
-echo "Please reboot your raspberry pi to apply all settings"
+echo "Please reboot your device to apply all settings"
 echo "Enjoy!"
 echo "------------------------------------------------------"
