@@ -77,7 +77,7 @@ function check_kernel_headers() {
 
   # echo RUN=$VER_RUN HDR=$VER_HDR
   echo " !!! Your kernel version is $VER_RUN"
-  echo "     Not found *** coressponding *** kernel headers with apt-get."
+  echo "     Not found *** corresponding *** kernel headers with apt-get."
   echo "     This may occur if you have ran 'rpi-update'."
   echo " Choose  *** y *** will revert the kernel to version $VER_HDR then continue."
   echo " Choose  *** N *** will exit without this driver support, by default."
