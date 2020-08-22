@@ -161,3 +161,5 @@ alsactl restore
 if aplay -l | grep -q "bcm2835 ALSA"; then
     amixer cset numid=3 1 || true
 fi
+
+exit 0
