@@ -147,3 +147,4 @@ alsactl restore
 #Force 3.5mm ('headphone') jack
 amixer cset numid=3 1 
 
+exit 0
