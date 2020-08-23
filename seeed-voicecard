@@ -127,7 +127,7 @@ if [ "$overlay" ]; then
 
     # TODO: dynamic dtoverlay Bug of v4.19.x
     #       no DT node phandle inserted.
-    if [[ "$kernel_ver" =~ ^4\.19.*$ ]]; then
+    if [[ "$kernel_ver" =~ ^4\.19.*$ || "$kernel_ver" =~ ^5\.*$ ]]; then
         for i in $RPI_HATS; do
             if [ "$i" == "$overlay" ]; then
                 do_overlay $overlay 0
@@ -150,5 +150,6 @@ fi
 alsactl restore
 
 #Force 3.5mm ('headphone') jack
-amixer -c 1 cset numid=3 1 || true
-
+if [[ "$kernel_ver" =~ ^4\.*$ ]]; then
+    amixer cset numid=3 1 || true
+fi

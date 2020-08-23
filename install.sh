@@ -31,14 +31,19 @@ fi
 # - check for /boot/overlays
 # - dtparam and dtoverlay is available
 errorFound=0
-if [ ! -d /boot/overlays ] ; then
-  echo "/boot/overlays not found or not a directory" 1>&2
+OVERLAYS=/boot/overlays
+[ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
+
+if [ ! -d $OVERLAYS ] ; then
+  echo "$OVERLAYS not found or not a directory" 1>&2
   errorFound=1
 fi
 # should we also check for alsactl and amixer used in seeed-voicecard?
+PATH=$PATH:/opt/vc/bin
 for cmd in dtparam dtoverlay ; do
   if ! which $cmd &>/dev/null ; then
     echo "$cmd not found" 1>&2
+    echo "You may need to run ./ubuntu-prerequisite.sh"
     errorFound=1
   fi
 done
@@ -77,7 +82,7 @@ function check_kernel_headers() {
 
   # echo RUN=$VER_RUN HDR=$VER_HDR
   echo " !!! Your kernel version is $VER_RUN"
-  echo "     Not found *** coressponding *** kernel headers with apt-get."
+  echo "     Not found *** corresponding *** kernel headers with apt-get."
   echo "     This may occur if you have ran 'rpi-update'."
   echo " Choose  *** y *** will revert the kernel to version $VER_HDR then continue."
   echo " Choose  *** N *** will exit without this driver support, by default."
@@ -110,7 +115,8 @@ fi
 # it's just been updated)
 base_ver=$(get_kernel_version)
 base_ver=${base_ver%%[-+]*}
-kernels="${base_ver}+ ${base_ver}-v7+ ${base_ver}-v7l+"
+#kernels="${base_ver}+ ${base_ver}-v7+ ${base_ver}-v7l+"
+kernels=$(uname -r)
 
 function install_module {
   local _i
@@ -144,9 +150,9 @@ install_module "./" "seeed-voicecard"
 
 
 # install dtbos
-cp seeed-2mic-voicecard.dtbo /boot/overlays
-cp seeed-4mic-voicecard.dtbo /boot/overlays
-cp seeed-8mic-voicecard.dtbo /boot/overlays
+cp seeed-2mic-voicecard.dtbo $OVERLAYS
+cp seeed-4mic-voicecard.dtbo $OVERLAYS
+cp seeed-8mic-voicecard.dtbo $OVERLAYS
 
 #install alsa plugins
 # no need this plugin now
@@ -162,13 +168,16 @@ grep -q "^snd-soc-wm8960$" /etc/modules || \
   echo "snd-soc-wm8960" >> /etc/modules  
 
 #set dtoverlays
-sed -i -e 's:#dtparam=i2c_arm=on:dtparam=i2c_arm=on:g'  /boot/config.txt || true
-grep -q "^dtoverlay=i2s-mmap$" /boot/config.txt || \
-  echo "dtoverlay=i2s-mmap" >> /boot/config.txt
+CONFIG=/boot/config.txt
+[ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
+
+sed -i -e 's:#dtparam=i2c_arm=on:dtparam=i2c_arm=on:g'  $CONFIG || true
+grep -q "^dtoverlay=i2s-mmap$" $CONFIG || \
+  echo "dtoverlay=i2s-mmap" >> $CONFIG
 
 
-grep -q "^dtparam=i2s=on$" /boot/config.txt || \
-  echo "dtparam=i2s=on" >> /boot/config.txt
+grep -q "^dtparam=i2s=on$" $CONFIG || \
+  echo "dtparam=i2s=on" >> $CONFIG
 
 #install config files
 mkdir /etc/voicecard || true
