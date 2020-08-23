@@ -31,8 +31,11 @@ fi
 # - check for /boot/overlays
 # - dtparam and dtoverlay is available
 errorFound=0
-if [ ! -d /boot/overlays ] ; then
-  echo "/boot/overlays not found or not a directory" 1>&2
+OVERLAYS=/boot/overlays
+[ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
+
+if [ ! -d $OVERLAYS ] ; then
+  echo "$OVERLAYS not found or not a directory" 1>&2
   errorFound=1
 fi
 # should we also check for alsactl and amixer used in seeed-voicecard?
@@ -144,9 +147,9 @@ install_module "./" "seeed-voicecard"
 
 
 # install dtbos
-cp seeed-2mic-voicecard.dtbo /boot/overlays
-cp seeed-4mic-voicecard.dtbo /boot/overlays
-cp seeed-8mic-voicecard.dtbo /boot/overlays
+cp seeed-2mic-voicecard.dtbo $OVERLAYS
+cp seeed-4mic-voicecard.dtbo $OVERLAYS
+cp seeed-8mic-voicecard.dtbo $OVERLAYS
 
 #install alsa plugins
 # no need this plugin now
