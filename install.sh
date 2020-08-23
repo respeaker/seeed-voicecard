@@ -42,6 +42,7 @@ fi
 for cmd in dtparam dtoverlay ; do
   if ! which $cmd &>/dev/null ; then
     echo "$cmd not found" 1>&2
+    echo "You may need to run ./ubuntu-prerequisite.sh"
     errorFound=1
   fi
 done
