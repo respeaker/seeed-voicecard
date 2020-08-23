@@ -165,13 +165,16 @@ grep -q "^snd-soc-wm8960$" /etc/modules || \
   echo "snd-soc-wm8960" >> /etc/modules  
 
 #set dtoverlays
-sed -i -e 's:#dtparam=i2c_arm=on:dtparam=i2c_arm=on:g'  /boot/config.txt || true
-grep -q "^dtoverlay=i2s-mmap$" /boot/config.txt || \
-  echo "dtoverlay=i2s-mmap" >> /boot/config.txt
+CONFIG=/boot/config.txt
+[ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
+
+sed -i -e 's:#dtparam=i2c_arm=on:dtparam=i2c_arm=on:g'  $CONFIG || true
+grep -q "^dtoverlay=i2s-mmap$" $CONFIG || \
+  echo "dtoverlay=i2s-mmap" >> $CONFIG
 
 
-grep -q "^dtparam=i2s=on$" /boot/config.txt || \
-  echo "dtparam=i2s=on" >> /boot/config.txt
+grep -q "^dtparam=i2s=on$" $CONFIG || \
+  echo "dtparam=i2s=on" >> $CONFIG
 
 #install config files
 mkdir /etc/voicecard || true
