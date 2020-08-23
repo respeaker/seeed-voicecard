@@ -39,6 +39,7 @@ if [ ! -d $OVERLAYS ] ; then
   errorFound=1
 fi
 # should we also check for alsactl and amixer used in seeed-voicecard?
+PATH=$PATH:/opt/vc/bin
 for cmd in dtparam dtoverlay ; do
   if ! which $cmd &>/dev/null ; then
     echo "$cmd not found" 1>&2
