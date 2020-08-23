@@ -113,7 +113,8 @@ fi
 # it's just been updated)
 base_ver=$(get_kernel_version)
 base_ver=${base_ver%%[-+]*}
-kernels="${base_ver}+ ${base_ver}-v7+ ${base_ver}-v7l+"
+#kernels="${base_ver}+ ${base_ver}-v7+ ${base_ver}-v7l+"
+kernels=$(uname -r)
 
 function install_module {
   local _i
