@@ -14,6 +14,8 @@ fi
 uname_r=$(uname -r)
 
 CONFIG=/boot/config.txt
+[ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
+
 get_overlay() {
     ov=$1
     if grep -q -E "^dtoverlay=$ov" $CONFIG; then
