@@ -55,9 +55,12 @@ echo "remove dtbos"
 for i in $RPI_HATS; do
     dtoverlay -r $i
 done
-rm  /boot/overlays/seeed-2mic-voicecard.dtbo || true
-rm  /boot/overlays/seeed-4mic-voicecard.dtbo || true
-rm  /boot/overlays/seeed-8mic-voicecard.dtbo || true
+OVERLAYS=/boot/overlays
+[ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
+
+rm  ${OVERLAYS}/seeed-2mic-voicecard.dtbo || true
+rm  ${OVERLAYS}/seeed-4mic-voicecard.dtbo || true
+rm  ${OVERLAYS}/seeed-8mic-voicecard.dtbo || true
 
 echo "remove alsa configs"
 rm -rf  /etc/voicecard/ || true
