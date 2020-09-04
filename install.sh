@@ -80,6 +80,10 @@ function check_kernel_headers() {
   [ "X$VER_RUN" == "X$VER_HDR" ] && {
     return 0
   }
+  VER_HDR=$(dpkg -L linux-headers-$VER_RUN | egrep -m1 "/lib/modules/[[:print:]]+/build" | awk -F'/' '{ print $4; }')
+  [ "X$VER_RUN" == "X$VER_HDR" ] && {
+    return 0
+  }
 
   # echo RUN=$VER_RUN HDR=$VER_HDR
   echo " !!! Your kernel version is $VER_RUN"
@@ -100,7 +104,10 @@ function check_kernel_headers() {
 which apt &>/dev/null
 if [[ $? -eq 0 ]]; then
   apt update -y
+  # Raspbian kernel packages
   apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel 
+  # Ubuntu kernel packages
+  apt-get -y install linux-raspi linux-headers-raspi linux-image-raspi
   apt-get -y install dkms git i2c-tools libasound2-plugins
   # rpi-update checker
   check_kernel_headers
