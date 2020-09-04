@@ -80,6 +80,10 @@ function check_kernel_headers() {
   [ "X$VER_RUN" == "X$VER_HDR" ] && {
     return 0
   }
+  VER_HDR=$(dpkg -L linux-headers-$VER_RUN | egrep -m1 "/lib/modules/[[:print:]]+/build" | awk -F'/' '{ print $4; }')
+  [ "X$VER_RUN" == "X$VER_HDR" ] && {
+    return 0
+  }
 
   # echo RUN=$VER_RUN HDR=$VER_HDR
   echo " !!! Your kernel version is $VER_RUN"
