@@ -100,7 +100,10 @@ function check_kernel_headers() {
 which apt &>/dev/null
 if [[ $? -eq 0 ]]; then
   apt update -y
+  # Raspbian kernel packages
   apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel 
+  # Ubuntu kernel packages
+  apt-get -y install linux-raspi linux-headers-raspi linux-image-raspi
   apt-get -y install dkms git i2c-tools libasound2-plugins
   # rpi-update checker
   check_kernel_headers
