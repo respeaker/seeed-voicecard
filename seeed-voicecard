@@ -150,6 +150,12 @@ fi
 alsactl restore
 
 #Force 3.5mm ('headphone') jack
+#   The Raspberry Pi 4, released on 24th Jun 2019, has two HDMI ports,
+#   and can drive two displays with audios for two users simultaneously,
+#   in a "multiseat" configuration. The earlier single virtual ALSA
+#   option for re-directing audio playback between headphone jack and HDMI
+#   via a 'Routing' mixer setting was turned off eventually to allow
+#   simultaneous usage of all 3 playback devices.
 if aplay -l | grep -q "bcm2835 ALSA"; then
     amixer cset numid=3 1 || true
 fi
