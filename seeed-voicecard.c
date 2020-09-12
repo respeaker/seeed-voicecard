@@ -322,10 +322,8 @@ static int asoc_simple_init_dai(struct snd_soc_dai *dai,
 	}
 
 	if (simple_dai->slots) {
-		ret = snd_soc_dai_set_tdm_slot(dai,
-					       simple_dai->tx_slot_mask,
-					       simple_dai->rx_slot_mask,
-					       simple_dai->slots,
+		ret = snd_soc_dai_set_bclk_ratio(dai,
+					       simple_dai->slots *
 					       simple_dai->slot_width);
 		if (ret && ret != -ENOTSUPP) {
 			dev_err(dai->dev, "simple-card: set_tdm_slot error\n");
