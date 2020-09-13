@@ -376,7 +376,7 @@ static int ac101_switch_probe(struct ac10x_priv *ac10x) {
 
 	ac10x->irq = gpiod_to_irq(ac10x->gpiod_irq);
 	if (IS_ERR_VALUE(ac10x->irq)) {
-		pr_info("[ac101] map gpio to irq failed, errno = %ld\n", ac10x->irq);
+		pr_warn("[ac101] map gpio to irq failed, errno = %ld\n", ac10x->irq);
 		ac10x->irq = 0;
 		goto _err_irq;
 	}
@@ -384,7 +384,7 @@ static int ac101_switch_probe(struct ac10x_priv *ac10x) {
 	/* request irq, set irq type to falling edge trigger */
 	ret = devm_request_irq(ac10x->codec->dev, ac10x->irq, audio_hmic_irq, IRQF_TRIGGER_FALLING, "SWTICH_EINT", ac10x);
 	if (IS_ERR_VALUE(ret)) {
-		pr_info("[ac101] request virq %ld failed, errno = %ld\n", ac10x->irq, ret);
+		pr_warn("[ac101] request virq %ld failed, errno = %ld\n", ac10x->irq, ret);
 		goto _err_irq;
 	}
 
