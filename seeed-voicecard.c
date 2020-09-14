@@ -322,10 +322,8 @@ static int asoc_simple_init_dai(struct snd_soc_dai *dai,
 	}
 
 	if (simple_dai->slots) {
-		ret = snd_soc_dai_set_tdm_slot(dai,
-					       simple_dai->tx_slot_mask,
-					       simple_dai->rx_slot_mask,
-					       simple_dai->slots,
+		ret = snd_soc_dai_set_bclk_ratio(dai,
+					       simple_dai->slots *
 					       simple_dai->slot_width);
 		if (ret && ret != -ENOTSUPP) {
 			dev_err(dai->dev, "simple-card: set_tdm_slot error\n");
@@ -457,8 +455,6 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 	#else
 	ret = asoc_simple_parse_clk_codec(dev, codec, dai_link, codec_dai);
 	#endif
-	if (!strncmp(dai_link->codecs->dai_name, "ac10", 4))
-		codec_dai->sysclk = 24000000;
 	if (ret < 0)
 		goto dai_link_of_err;
 

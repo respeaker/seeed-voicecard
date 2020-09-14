@@ -810,6 +810,9 @@ static int ac108_set_sysclk(struct snd_soc_dai *dai, int clk_id, unsigned int fr
 
 	struct ac10x_priv *ac10x = snd_soc_dai_get_drvdata(dai);
 
+	if (freq != 24000000 || clk_id != SYSCLK_SRC_PLL)
+		dev_warn(dai->dev, "ac108_set_sysclk freq = %d clk = %d\n", freq, clk_id);
+
 	freq = 24000000;
 	clk_id = SYSCLK_SRC_PLL;
 

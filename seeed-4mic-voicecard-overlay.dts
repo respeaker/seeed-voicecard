@@ -13,7 +13,7 @@
 	};
 
 	fragment@1 {
-		target-path = "/clocks";
+		target-path = "/";
 		__overlay__ {
 			ac108_mclk: codec-mclk {
 				compatible = "fixed-clock";

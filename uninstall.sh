@@ -53,6 +53,7 @@ do_overlay() {
 
 RPI_HATS="seeed-2mic-voicecard seeed-4mic-voicecard seeed-8mic-voicecard"
 
+PATH=$PATH:/opt/vc/bin
 echo "remove dtbos"
 for i in $RPI_HATS; do
     dtoverlay -r $i
@@ -81,6 +82,9 @@ echo "remove kernel modules"
 rm  /lib/modules/*/kernel/sound/soc/codecs/snd-soc-wm8960.ko || true
 rm  /lib/modules/*/kernel/sound/soc/codecs/snd-soc-ac108.ko || true
 rm  /lib/modules/*/kernel/sound/soc/bcm/snd-soc-seeed-voicecard.ko || true
+rm  /lib/modules/*/updates/dkms/snd-soc-wm8960.ko || true
+rm  /lib/modules/*/updates/dkms/snd-soc-ac108.ko || true
+rm  /lib/modules/*/updates/dkms/snd-soc-seeed-voicecard.ko || true
 
 echo "remove $CONFIG configuration"
 for i in $RPI_HATS; do
