@@ -376,7 +376,7 @@ static int ac101_switch_probe(struct ac10x_priv *ac10x) {
 
 	ac10x->irq = gpiod_to_irq(ac10x->gpiod_irq);
 	if (IS_ERR_VALUE(ac10x->irq)) {
-		pr_info("[ac101] map gpio to irq failed, errno = %ld\n", ac10x->irq);
+		pr_warn("[ac101] map gpio to irq failed, errno = %ld\n", ac10x->irq);
 		ac10x->irq = 0;
 		goto _err_irq;
 	}
@@ -384,7 +384,7 @@ static int ac101_switch_probe(struct ac10x_priv *ac10x) {
 	/* request irq, set irq type to falling edge trigger */
 	ret = devm_request_irq(ac10x->codec->dev, ac10x->irq, audio_hmic_irq, IRQF_TRIGGER_FALLING, "SWTICH_EINT", ac10x);
 	if (IS_ERR_VALUE(ret)) {
-		pr_info("[ac101] request virq %ld failed, errno = %ld\n", ac10x->irq, ret);
+		pr_warn("[ac101] request virq %ld failed, errno = %ld\n", ac10x->irq, ret);
 		goto _err_irq;
 	}
 
@@ -1152,14 +1152,14 @@ int ac101_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt)
 	switch(fmt & SND_SOC_DAIFMT_MASTER_MASK) {
 	case SND_SOC_DAIFMT_CBM_CFM:   /* codec clk & frm master, ap is slave*/
 		#if _MASTER_MULTI_CODEC == _MASTER_AC101
-		pr_warn("AC101 as Master\n");
+		pr_info("AC101 as Master\n");
 		reg_val |= (0x0<<AIF1_MSTR_MOD);
 		break;
 		#else
-		pr_warn("AC108 as Master\n");
+		pr_info("AC108 as Master\n");
 		#endif
 	case SND_SOC_DAIFMT_CBS_CFS:   /* codec clk & frm slave, ap is master*/
-		pr_warn("AC101 as Slave\n");
+		pr_info("AC101 as Slave\n");
 		reg_val |= (0x1<<AIF1_MSTR_MOD);
 		break;
 	default:
