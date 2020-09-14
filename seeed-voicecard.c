@@ -457,8 +457,6 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 	#else
 	ret = asoc_simple_parse_clk_codec(dev, codec, dai_link, codec_dai);
 	#endif
-	if (!strncmp(dai_link->codecs->dai_name, "ac10", 4))
-		codec_dai->sysclk = 24000000;
 	if (ret < 0)
 		goto dai_link_of_err;
 
