@@ -53,6 +53,7 @@ do_overlay() {
 
 RPI_HATS="seeed-2mic-voicecard seeed-4mic-voicecard seeed-8mic-voicecard"
 
+PATH=$PATH:/opt/vc/bin
 echo "remove dtbos"
 for i in $RPI_HATS; do
     dtoverlay -r $i
