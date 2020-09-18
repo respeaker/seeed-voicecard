@@ -1,3 +1,4 @@
+#!/bin/sh
 #dtoverlay -r seeed-2mic-voicecard
 DTC_FLAGS="-b 0 -Wno-unit_address_vs_reg -I dts -O dtb"
 
