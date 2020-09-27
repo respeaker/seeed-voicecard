@@ -181,9 +181,10 @@ function install_kernel() {
   # Instead of retrieving the lastest kernel & headers
   [ "X$FORCE_KERNEL" == "X" ] && {
     # Raspbian kernel packages
-    apt-get -y --force-yes install raspberrypi-kernel-headers raspberrypi-kernel
-    # Ubuntu kernel packages
-    apt-get -y install linux-raspi linux-headers-raspi linux-image-raspi
+    apt-get -y --force-yes install raspberrypi-kernel-headers raspberrypi-kernel || {
+      # Ubuntu kernel packages
+      apt-get -y install linux-raspi linux-headers-raspi linux-image-raspi
+    }
   } || {
     # We would like to a fixed version
     KERN_NAME=raspberrypi-kernel_${FORCE_KERNEL}_${arch_r}.deb
