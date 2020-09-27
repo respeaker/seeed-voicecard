@@ -55,6 +55,7 @@ fi
 
 ver="0.3"
 uname_r=$(uname -r)
+arch_r=$(dpkg --print-architecture)
 
 # we create a dir with this version to ensure that 'dkms remove' won't delete
 # the sources during kernel updates
@@ -133,8 +134,8 @@ function install_kernel() {
     apt-get -y install linux-raspi linux-headers-raspi linux-image-raspi
   } || {
     # We would like to a fixed version
-    KERN_NAME=raspberrypi-kernel_${FORCE_KERNEL}_armhf.deb
-    HDR_NAME=raspberrypi-kernel-headers_${FORCE_KERNEL}_armhf.deb
+    KERN_NAME=raspberrypi-kernel_${FORCE_KERNEL}_${arch_r}.deb
+    HDR_NAME=raspberrypi-kernel-headers_${FORCE_KERNEL}_${arch_r}.deb
     _url=$(apt-get download --print-uris raspberrypi-kernel | sed -nre "s/'([^']+)'.*$/\1/g;p")
     _prefix=$(echo $_url | sed -nre 's/^(.*)raspberrypi-kernel_.*$/\1/g;p')
 
