@@ -8,21 +8,20 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # Check if enough space on /boot volume
-boot_line=$(df -h | grep /boot | head -n 1)
+boot_line=$(df -BM | grep /boot | head -n 1)
+MIN_BOOT_SPC=25 # MegaBytes
 if [ "x${boot_line}" = "x" ]; then
   echo "Warning: /boot volume not found .."
 else
   boot_space=$(echo $boot_line | awk '{print $4;}')
   free_space=$(echo "${boot_space%?}")
   unit="${boot_space: -1}"
-  if [[ "$unit" = "K" ]]; then
+  if [[ "$unit" != "M" ]]; then
+    echo "Warning: /boot volume not found .."
+  elif [ "$free_space" -lt "$MIN_BOOT_SPC" ]; then
     echo "Error: Not enough space left ($boot_space) on /boot"
+    echo "       at least $MIN_BOOT_SPC MB required"
     exit 1
-  elif [[ "$unit" = "M" ]]; then
-    if [ "$free_space" -lt "25" ]; then
-      echo "Error: Not enough space left ($boot_space) on /boot"
-      exit 1
-    fi
   fi
 fi
 
