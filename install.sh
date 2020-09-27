@@ -132,13 +132,48 @@ function download_install_debpkg() {
   return $r
 }
 
-option_pattern="compat-kernel"
-if [[ $1 =~ ${option_pattern} ]]; then
+function usage() {
+  cat <<-__EOF__
+    usage: sudo ./install [ --compat-kernel | --keep-kernel ] [ -h | --help ]
+             default action is update kernel & headers to latest version.
+             --compat-kernel uses an older kernel but ensures that the driver can work.
+             --keep-kernel   don't change/update the system kernel, maybe install
+                             coressponding kernel headers.
+             --help          show this help message
+__EOF__
+  exit 1
+}
+
+compat_kernel=
+keep_kernel=
+# parse commandline options
+while [ ! -z "$1" ] ; do
+  case $1 in
+  -h|--help)
+    usage
+    ;;
+  --compat-kernel)
+    compat_kernel=Y
+    ;;
+  --keep-kernel)
+    keep_kernel=Y
+    ;;
+  esac
+  shift
+done
+
+if [ "X$keep_kernel" != "X" ]; then
+  FORCE_KERNEL=$(dpkg -s raspberrypi-kernel | awk '/^Version:/{printf "%s\n",$2;}')
+  echo "Keep current system kernel not to change"
+elif [ "X$compat_kernel" != "X" ]; then
   echo "will compile with a compatible kernel..."
 else
   FORCE_KERNEL=""
   echo "will compile with the latest kernel..."
 fi
+[ "X$FORCE_KERNEL" != "X" ] && {
+  echo -e "The kernel & headers use package version: $FORCE_KERNEL\r\n\r\n"
+}
 
 function install_kernel() {
   local _url _prefix
