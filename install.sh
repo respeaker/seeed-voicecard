@@ -103,9 +103,19 @@ function check_kernel_headers() {
 }
 
 function download_install_debpkg() {
-  local prefix name r
+  local prefix name r pkg status _name
   prefix=$1
   name=$2
+  pkg=${name%%_*}
+
+  status=$(dpkg -l $pkg | tail -1)
+  _name=$(  echo "$status" | awk '{ printf "%s_%s_%s", $2, $3, $4; }')
+  status=$(echo "$status" | awk '{ printf "%s", $1; }')
+
+  if [ "X$status" == "Xii" -a "X${name%.deb}" == "X$_name" ]; then
+    echo "debian package $name already installed."
+    return 0
+  fi
 
   for (( i = 0; i < 3; i++ )); do
     wget $prefix$name -O /tmp/$name && break
