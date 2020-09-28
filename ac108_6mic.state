@@ -338,7 +338,7 @@ state.seeed8micvoicec {
 	}
 	control.20 {
 		iface MIXER
-		name 'speaker volume'
+		name 'Speaker Playback Volume'
 		value 25
 		comment {
 			access 'read write'
@@ -352,7 +352,7 @@ state.seeed8micvoicec {
 	}
 	control.21 {
 		iface MIXER
-		name 'headphone volume'
+		name 'Headphone Playback Volume'
 		value 52
 		comment {
 			access 'read write'
