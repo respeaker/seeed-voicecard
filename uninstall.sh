@@ -54,39 +54,40 @@ do_overlay() {
 RPI_HATS="seeed-2mic-voicecard seeed-4mic-voicecard seeed-8mic-voicecard"
 
 PATH=$PATH:/opt/vc/bin
-echo "remove dtbos"
+echo -e "\n### Remove dtbos"
 for i in $RPI_HATS; do
     dtoverlay -r $i
 done
 OVERLAYS=/boot/overlays
 [ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
 
-rm  ${OVERLAYS}/seeed-2mic-voicecard.dtbo || true
-rm  ${OVERLAYS}/seeed-4mic-voicecard.dtbo || true
-rm  ${OVERLAYS}/seeed-8mic-voicecard.dtbo || true
+rm -v ${OVERLAYS}/seeed-2mic-voicecard.dtbo || true
+rm -v ${OVERLAYS}/seeed-4mic-voicecard.dtbo || true
+rm -v ${OVERLAYS}/seeed-8mic-voicecard.dtbo || true
 
-echo "remove alsa configs"
-rm -rf  /etc/voicecard/ || true
+echo -e "\n### Remove alsa configs"
+rm -rfv  /etc/voicecard/ || true
 
-echo "disabled seeed-voicecard.service "
+echo -e "\n### Disable seeed-voicecard.service "
+systemctl stop seeed-voicecard.service
 systemctl disable seeed-voicecard.service 
 
-echo "remove seeed-voicecard"
-rm  /usr/bin/seeed-voicecard || true
-rm  /lib/systemd/system/seeed-voicecard.service || true
+echo -e "\n### Remove seeed-voicecard"
+rm -v /usr/bin/seeed-voicecard || true
+rm -v /lib/systemd/system/seeed-voicecard.service || true
 
-echo "remove dkms"
-rm  -rf /var/lib/dkms/seeed-voicecard || true
+echo -e "\n### Remove dkms"
+rm -rfv /var/lib/dkms/seeed-voicecard || true
 
-echo "remove kernel modules"
-rm  /lib/modules/*/kernel/sound/soc/codecs/snd-soc-wm8960.ko || true
-rm  /lib/modules/*/kernel/sound/soc/codecs/snd-soc-ac108.ko || true
-rm  /lib/modules/*/kernel/sound/soc/bcm/snd-soc-seeed-voicecard.ko || true
-rm  /lib/modules/*/updates/dkms/snd-soc-wm8960.ko || true
-rm  /lib/modules/*/updates/dkms/snd-soc-ac108.ko || true
-rm  /lib/modules/*/updates/dkms/snd-soc-seeed-voicecard.ko || true
+echo -e "\n### Remove kernel modules"
+rm -v /lib/modules/*/kernel/sound/soc/codecs/snd-soc-wm8960.ko || true
+rm -v /lib/modules/*/kernel/sound/soc/codecs/snd-soc-ac108.ko || true
+rm -v /lib/modules/*/kernel/sound/soc/bcm/snd-soc-seeed-voicecard.ko || true
+rm -v /lib/modules/*/updates/dkms/snd-soc-wm8960.ko || true
+rm -v /lib/modules/*/updates/dkms/snd-soc-ac108.ko || true
+rm -v /lib/modules/*/updates/dkms/snd-soc-seeed-voicecard.ko || true
 
-echo "remove $CONFIG configuration"
+echo -e "\n### Remove $CONFIG configuration"
 for i in $RPI_HATS; do
     echo Uninstall $i ...
     do_overlay $i 1

@@ -164,12 +164,12 @@ done
 
 if [ "X$keep_kernel" != "X" ]; then
   FORCE_KERNEL=$(dpkg -s raspberrypi-kernel | awk '/^Version:/{printf "%s\n",$2;}')
-  echo "Keep current system kernel not to change"
+  echo -e "\n### Keep current system kernel not to change"
 elif [ "X$compat_kernel" != "X" ]; then
-  echo "will compile with a compatible kernel..."
+  echo -e "\n### will compile with a compatible kernel..."
 else
   FORCE_KERNEL=""
-  echo "will compile with the latest kernel..."
+  echo -e "\n### will compile with the latest kernel..."
 fi
 [ "X$FORCE_KERNEL" != "X" ] && {
   echo -e "The kernel & headers use package version: $FORCE_KERNEL\r\n\r\n"
@@ -202,6 +202,7 @@ which apt &>/dev/null
 if [[ $? -eq 0 ]]; then
   apt update -y
   apt-get -y install dkms git i2c-tools libasound2-plugins
+  echo -e "\n### Install required kernel package"
   install_kernel
   # rpi-update checker
   check_kernel_headers
@@ -253,13 +254,15 @@ function install_module {
   mkdir -p /var/lib/dkms/$mod/$ver/$marker
 }
 
+echo -e "\n### Install sound card driver"
 install_module "./" "seeed-voicecard"
 
 
 # install dtbos
-cp seeed-2mic-voicecard.dtbo $OVERLAYS
-cp seeed-4mic-voicecard.dtbo $OVERLAYS
-cp seeed-8mic-voicecard.dtbo $OVERLAYS
+echo -e "\n### Install device tree overlays"
+cp -v seeed-2mic-voicecard.dtbo $OVERLAYS
+cp -v seeed-4mic-voicecard.dtbo $OVERLAYS
+cp -v seeed-8mic-voicecard.dtbo $OVERLAYS
 
 # install alsa plugins
 # we don't need this plugin now
@@ -267,6 +270,7 @@ cp seeed-8mic-voicecard.dtbo $OVERLAYS
 rm -f /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
 
 #set kernel modules
+echo -e "\n### Install startup modules in /etc/modules"
 grep -q "^snd-soc-seeed-voicecard$" /etc/modules || \
   echo "snd-soc-seeed-voicecard" >> /etc/modules
 grep -q "^snd-soc-ac108$" /etc/modules || \
@@ -277,6 +281,7 @@ grep -q "^snd-soc-wm8960$" /etc/modules || \
 #set dtoverlays
 CONFIG=/boot/config.txt
 [ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
+echo -e "\n### Found boot configuration file $CONFIG"
 
 sed -i -e 's:#dtparam=i2c_arm=on:dtparam=i2c_arm=on:g'  $CONFIG || true
 grep -q "^dtoverlay=i2s-mmap$" $CONFIG || \
@@ -287,11 +292,13 @@ grep -q "^dtparam=i2s=on$" $CONFIG || \
   echo "dtparam=i2s=on" >> $CONFIG
 
 #install config files
+echo -e "\n### Install alsa and widget configuration"
 mkdir /etc/voicecard || true
-cp *.conf /etc/voicecard
-cp *.state /etc/voicecard
+cp -v *.conf /etc/voicecard
+cp -v *.state /etc/voicecard
 
 #create git repo
+echo -e "\n### Manage alsa configuration by git"
 git_email=$(git config --global --get user.email)
 git_name=$(git config --global --get user.name)
 if [ "x${git_email}" == "x" ] || [ "x${git_name}" == "x" ] ; then
@@ -306,6 +313,8 @@ git --git-dir=/etc/voicecard/.git --work-tree=/etc/voicecard/ add --all
 echo "git commit -m \"origin configures\""
 git --git-dir=/etc/voicecard/.git --work-tree=/etc/voicecard/ commit  -m "origin configures"
 
+echo -e "\n### Start service seeed-voicecard"
+echo -e "    see /var/log/seeed-voicecard for more service information"
 cp seeed-voicecard /usr/bin/
 cp seeed-voicecard.service /lib/systemd/system/
 systemctl enable  seeed-voicecard.service 
