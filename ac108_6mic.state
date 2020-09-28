@@ -292,7 +292,7 @@ state.seeed8micvoicec {
 	}
 	control.17 {
 		iface MIXER
-		name 'DAC volume'
+		name 'DAC Playback Volume'
 		value.0 0
 		value.1 0
 		comment {
@@ -308,37 +308,7 @@ state.seeed8micvoicec {
 	}
 	control.18 {
 		iface MIXER
-		name 'DAC mixer gain'
-		value.0 0
-		value.1 0
-		comment {
-			access 'read write'
-			type INTEGER
-			count 2
-			range '0 - 15'
-			dbmin -600
-			dbmax 8400
-			dbvalue.0 -600
-			dbvalue.1 -600
-		}
-	}
-	control.19 {
-		iface MIXER
-		name 'digital volume'
-		value 51
-		comment {
-			access 'read write'
-			type INTEGER
-			count 1
-			range '0 - 63'
-			dbmin -7308
-			dbmax 0
-			dbvalue.0 -1392
-		}
-	}
-	control.20 {
-		iface MIXER
-		name 'speaker volume'
+		name 'Speaker Playback Volume'
 		value 25
 		comment {
 			access 'read write'
@@ -350,9 +320,9 @@ state.seeed8micvoicec {
 			dbvalue.0 -1050
 		}
 	}
-	control.21 {
+	control.19 {
 		iface MIXER
-		name 'headphone volume'
+		name 'Headphone Playback Volume'
 		value 52
 		comment {
 			access 'read write'
