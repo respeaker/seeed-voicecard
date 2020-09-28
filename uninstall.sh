@@ -69,6 +69,7 @@ echo "remove alsa configs"
 rm -rf  /etc/voicecard/ || true
 
 echo "disabled seeed-voicecard.service "
+systemctl stop seeed-voicecard.service
 systemctl disable seeed-voicecard.service 
 
 echo "remove seeed-voicecard"
