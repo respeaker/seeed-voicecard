@@ -772,16 +772,18 @@ static int snd_ac101_put_volsw(struct snd_kcontrol *kcontrol,
 
 
 static const DECLARE_TLV_DB_SCALE(dac_vol_tlv, -11925, 75, 0);
+/*
 static const DECLARE_TLV_DB_SCALE(dac_mix_vol_tlv, -600, 600, 0);
 static const DECLARE_TLV_DB_SCALE(dig_vol_tlv, -7308, 116, 0);
+*/
 static const DECLARE_TLV_DB_SCALE(speaker_vol_tlv, -4800, 150, 0);
 static const DECLARE_TLV_DB_SCALE(headphone_vol_tlv, -6300, 100, 0);
 
 static struct snd_kcontrol_new ac101_controls[] = {
 	/*DAC*/
 	SOC_DOUBLE_TLV("DAC volume", DAC_VOL_CTRL, DAC_VOL_L, DAC_VOL_R, 0xff, 0, dac_vol_tlv),
-	SOC_DOUBLE_TLV("DAC mixer gain", DAC_MXR_GAIN, DACL_MXR_GAIN, DACR_MXR_GAIN, 0xf, 0, dac_mix_vol_tlv),
-	SOC_SINGLE_TLV("digital volume", DAC_DBG_CTRL, DVC, 0x3f, 1, dig_vol_tlv),
+	/* SOC_DOUBLE_TLV("DAC Mix Gain", DAC_MXR_GAIN, DACL_MXR_GAIN, DACR_MXR_GAIN, 0xf, 0, dac_mix_vol_tlv), */
+	/* SOC_SINGLE_TLV("DAC Debug Volume", DAC_DBG_CTRL, DVC, 0x3f, 1, dig_vol_tlv), */
 	SOC_SINGLE_TLV("speaker volume", SPKOUT_CTRL, SPK_VOL, 0x1f, 0, speaker_vol_tlv),
 	SOC_SINGLE_TLV("headphone volume", HPOUT_CTRL, HP_VOL, 0x3f, 0, headphone_vol_tlv),
 };
