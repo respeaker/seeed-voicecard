@@ -21,7 +21,9 @@
 # THE SOFTWARE.
 
 set -x
-#exec 1>/var/log/$(basename $0).log 2>&1
+LOGF=/var/log/$(basename $0).log
+exec 1> >(tee $LOGF)
+exec 2>&1
 
 export PATH=$PATH:/opt/vc/bin
 OVERLAYS=/boot/overlays
