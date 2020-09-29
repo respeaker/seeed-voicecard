@@ -192,8 +192,12 @@ function install_kernel() {
     _url=$(apt-get download --print-uris raspberrypi-kernel | sed -nre "s/'([^']+)'.*$/\1/g;p")
     _prefix=$(echo $_url | sed -nre 's/^(.*)raspberrypi-kernel_.*$/\1/g;p')
 
-    download_install_debpkg "$_prefix" "$KERN_NAME"
-    download_install_debpkg "$_prefix" "$HDR_NAME"
+    download_install_debpkg "$_prefix" "$KERN_NAME" && {
+      download_install_debpkg "$_prefix" "$HDR_NAME"
+    } || {
+      echo "Error: Install kernel or header failed"
+      exit 2
+    }
   }
 }
 
@@ -270,7 +274,7 @@ cp -v seeed-8mic-voicecard.dtbo $OVERLAYS
 rm -f /usr/lib/arm-linux-gnueabihf/alsa-lib/libasound_module_pcm_ac108.so
 
 #set kernel modules
-echo -e "\n### Install startup modules in /etc/modules"
+echo -e "\n### Codec driver loading at startup (in /etc/modules)"
 grep -q "^snd-soc-seeed-voicecard$" /etc/modules || \
   echo "snd-soc-seeed-voicecard" >> /etc/modules
 grep -q "^snd-soc-ac108$" /etc/modules || \
