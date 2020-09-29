@@ -79,6 +79,11 @@ rm -v /lib/systemd/system/seeed-voicecard.service || true
 echo -e "\n### Remove dkms"
 rm -rfv /var/lib/dkms/seeed-voicecard || true
 
+echo -e "\n### Unload codec driver by modprobe -r"
+modprobe -r snd_soc_ac108
+modprobe -r snd_soc_wm8960
+modprobe -r snd_soc_seeed_voicecard
+
 echo -e "\n### Remove kernel modules"
 rm -v /lib/modules/*/kernel/sound/soc/codecs/snd-soc-wm8960.ko || true
 rm -v /lib/modules/*/kernel/sound/soc/codecs/snd-soc-ac108.ko || true
