@@ -201,11 +201,34 @@ function install_kernel() {
   }
 }
 
+function uninstall_module {
+  src=$1
+  mod=$2
+
+  if [[ -d /var/lib/dkms/$mod/$ver/$marker ]]; then
+    rmdir /var/lib/dkms/$mod/$ver/$marker
+  fi
+
+  if [[ -e /usr/src/$mod-$ver || -e /var/lib/dkms/$mod/$ver ]]; then
+    dkms remove --force -m $mod -v $ver --all
+    rm -rf /usr/src/$mod-$ver
+  fi
+
+  return 0
+}
+
 # update and install required packages
-which apt &>/dev/null
-if [[ $? -eq 0 ]]; then
+which apt &>/dev/null; r=$?
+if [[ $r -eq 0 ]]; then
+  echo -e "\n### Install required tool packages"
   apt update -y
   apt-get -y install dkms git i2c-tools libasound2-plugins
+fi
+
+echo -e "\n### Uninstall previous dkms module"
+uninstall_module "./" "seeed-voicecard"
+
+if [[ $r -eq 0 ]]; then
   echo -e "\n### Install required kernel package"
   install_kernel
   # rpi-update checker
@@ -232,15 +255,6 @@ function install_module {
   src=$1
   mod=$2
 
-  if [[ -d /var/lib/dkms/$mod/$ver/$marker ]]; then
-    rmdir /var/lib/dkms/$mod/$ver/$marker
-  fi
-
-  if [[ -e /usr/src/$mod-$ver || -e /var/lib/dkms/$mod/$ver ]]; then
-    dkms remove --force -m $mod -v $ver --all
-    rm -rf /usr/src/$mod-$ver
-  fi
-
   mkdir -p /usr/src/$mod-$ver
   cp -a $src/* /usr/src/$mod-$ver/
 
@@ -260,7 +274,6 @@ function install_module {
 
 echo -e "\n### Install sound card driver"
 install_module "./" "seeed-voicecard"
-
 
 # install dtbos
 echo -e "\n### Install device tree overlays"
