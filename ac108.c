@@ -1124,7 +1124,7 @@ void ac108_aif_shutdown(struct snd_pcm_substream *substream,
 	}
 }
 
-int ac108_aif_mute(struct snd_soc_dai *dai, int mute) {
+int ac108_aif_mute(struct snd_soc_dai *dai, int mute, int direction) {
 	struct snd_soc_codec *codec = dai->codec;
 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
 
@@ -1145,12 +1145,13 @@ static const struct snd_soc_dai_ops ac108_dai_ops = {
 	.hw_params	= ac108_hw_params,
 	.prepare	= ac108_prepare,
 	.trigger	= ac108_trigger,
-	.digital_mute	= ac108_aif_mute,
+	.mute_stream	= ac108_aif_mute,
 
 	/*DAI format configuration*/
 	.set_fmt	= ac108_set_fmt,
 
 	// .hw_free = ac108_hw_free,
+	.no_capture_mute = 1,
 };
 
 static  struct snd_soc_dai_driver ac108_dai0 = {
