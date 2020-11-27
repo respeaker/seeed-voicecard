@@ -31,7 +31,11 @@
 #define snd_soc_codec_get_dapm     snd_soc_component_get_dapm
 #define snd_soc_codec_get_bias_level snd_soc_component_get_bias_level
 #define snd_soc_kcontrol_codec     snd_soc_kcontrol_component
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+#define snd_soc_read               snd_soc_component_read
+#else
 #define snd_soc_read               snd_soc_component_read32
+#endif
 #define snd_soc_register_codec     snd_soc_register_component
 #define snd_soc_unregister_codec   snd_soc_unregister_component
 #define snd_soc_update_bits        snd_soc_component_update_bits
