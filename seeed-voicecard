@@ -21,13 +21,20 @@
 # THE SOFTWARE.
 
 set -x
-exec 1>/var/log/$(basename $0).log 2>&1
+LOGF=/var/log/$(basename $0).log
+exec 1> >(tee $LOGF)
+exec 2>&1
+
+export PATH=$PATH:/opt/vc/bin
+OVERLAYS=/boot/overlays
+[ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
+
 #enable i2c interface
-dtparam i2c_arm=on
+dtparam -d $OVERLAYS i2c_arm=on
 modprobe i2c-dev
 
 #enable spi interface
-dtparam spi=on
+dtparam -d $OVERLAYS spi=on
 
 _VER_RUN=
 function get_kernel_version() {
@@ -44,6 +51,8 @@ function get_kernel_version() {
 }
 
 CONFIG=/boot/config.txt
+[ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
+
 get_overlay() {
     ov=$1
     if grep -q -E "^dtoverlay=$ov" $CONFIG; then
@@ -102,18 +111,18 @@ if [ "x${is_1a}" != "x" ] && [ "x${is_35}" == "x" ] ; then
 fi
 
 if [ "x${is_3b}" != "x" ] && [ "x${is_35}" == "x" ] ; then
-    echo "install 4mic"
     if [ -f $audioconfig ] ; then
         sudo rm $audioconfig
     fi
     echo 'Respeaker-4-Mic' >> $audioconfig
     echo "create 4mic asound configure file"
-    #Force 3.5mm ('headphone') jack
-    amixer cset numid=3 1
     overlay=seeed-4mic-voicecard
     asound_conf=/etc/voicecard/asound_4mic.conf
     asound_rc=/etc/voicecard/asound_4mic.conf
     asound_state=/etc/voicecard/ac108_asound.state
+    if aplay -l | grep -q "bcm2835 ALSA"; then
+      amixer cset numid=3 1 || true
+    fi
 fi
 
 if [ "x${is_3b}" != "x" ] && [ "x${is_35}" != "x" ] ; then
@@ -143,7 +152,7 @@ if [ "$overlay" ]; then
 
     # TODO: dynamic dtoverlay Bug of v4.19.x
     #       no DT node phandle inserted.
-    if [[ "$kernel_ver" =~ ^4\.19.*$ ]]; then
+    if [[ "$kernel_ver" =~ ^4\.19.*$ || "$kernel_ver" =~ ^5\.*$ ]]; then
         for i in $RPI_HATS; do
             if [ "$i" == "$overlay" ]; then
                 do_overlay $overlay 0
@@ -155,12 +164,11 @@ if [ "$overlay" ]; then
     fi
 EOF
     #make sure the driver loads correctly
-    dtoverlay $overlay || true
+    dtoverlay -d $OVERLAYS $overlay || true
 
 
     echo "create $overlay asound configure file"
     ln -s $asound_conf /etc/asound.conf
-    sudo cp /etc/asound.conf /home/pi/.asoundrc
     echo "create $overlay asound status file"
     ln -s $asound_state /var/lib/alsa/asound.state
 fi
@@ -168,4 +176,14 @@ fi
 alsactl restore
 
 #Force 3.5mm ('headphone') jack
-amixer cset numid=3 1
+#   The Raspberry Pi 4, released on 24th Jun 2019, has two HDMI ports,
+#   and can drive two displays with audios for two users simultaneously,
+#   in a "multiseat" configuration. The earlier single virtual ALSA
+#   option for re-directing audio playback between headphone jack and HDMI
+#   via a 'Routing' mixer setting was turned off eventually to allow
+#   simultaneous usage of all 3 playback devices.
+if aplay -l | grep -q "bcm2835 ALSA"; then
+    amixer cset numid=3 1 || true
+fi
+
+exit 0
