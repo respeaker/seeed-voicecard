@@ -1,0 +1,236 @@
+diff --git a/ac101.c b/ac101.c
+index be9b1d8..343f030 100644
+--- a/ac101.c
++++ b/ac101.c
+@@ -955,10 +955,10 @@ void ac101_aif_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai
+ 
+ 	AC101_DBG("stream = %s, play: %d, capt: %d, active: %d\n", 
+ 		snd_pcm_stream_str(substream),
+-		codec_dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], codec_dai->stream_active[SNDRV_PCM_STREAM_CAPTURE],
+-		snd_soc_dai_active(codec_dai));
++		codec_dai->playback_active, codec_dai->capture_active,
++		codec_dai->active);
+ 
+-	if (snd_soc_dai_active(codec_dai)) {
++	if (!codec_dai->active) {
+ 		ac10x->aif1_clken = 1;
+ 		ac101_aif1clk(codec, SND_SOC_DAPM_POST_PMD, 0);
+ 	} else {
+@@ -1080,7 +1080,7 @@ int ac101_hw_params(struct snd_pcm_substream *substream,
+ 	freq_out = _FREQ_24_576K;
+ 	for (i = 0; i < ARRAY_SIZE(codec_aif1_fs); i++) {
+ 		if (codec_aif1_fs[i].samp_rate == params_rate(params)) {
+-			if (codec_dai->stream_active[SNDRV_PCM_STREAM_CAPTURE] && dmic_used && codec_aif1_fs[i].samp_rate == 44100) {
++			if (codec_dai->capture_active && dmic_used && codec_aif1_fs[i].samp_rate == 44100) {
+ 				ac101_update_bits(codec, AIF_SR_CTRL, (0xf<<AIF1_FS), (0x4<<AIF1_FS));
+ 			} else {
+ 				ac101_update_bits(codec, AIF_SR_CTRL, (0xf<<AIF1_FS), ((codec_aif1_fs[i].srbit)<<AIF1_FS));
+diff --git a/ac108.c b/ac108.c
+index 4663df0..12ab27b 100644
+--- a/ac108.c
++++ b/ac108.c
+@@ -653,7 +653,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 
+ 	dev_dbg(dai->dev, "%s() stream=%s play:%d capt:%d +++\n", __func__,
+ 			snd_pcm_stream_str(substream),
+-			dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], dai->stream_active[SNDRV_PCM_STREAM_CAPTURE]);
++			dai->playback_active, dai->capture_active);
+ 
+ 	if (ac10x->i2c101) {
+ 		ret = ac101_hw_params(substream, params, dai);
+@@ -664,8 +664,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 		}
+ 	}
+ 
+-	if ((substream->stream == SNDRV_PCM_STREAM_CAPTURE && dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK])
+-	 || (substream->stream == SNDRV_PCM_STREAM_PLAYBACK && dai->stream_active[SNDRV_PCM_STREAM_CAPTURE])) {
++	if ((substream->stream == SNDRV_PCM_STREAM_CAPTURE && dai->playback_active)
++	 || (substream->stream == SNDRV_PCM_STREAM_PLAYBACK && dai->capture_active)) {
+ 		/* not configure hw_param twice */
+ 		/* return 0; */
+ 	}
+@@ -1124,7 +1124,7 @@ void ac108_aif_shutdown(struct snd_pcm_substream *substream,
+ 	}
+ }
+ 
+-int ac108_aif_mute(struct snd_soc_dai *dai, int mute, int direction) {
++int ac108_aif_mute(struct snd_soc_dai *dai, int mute) {
+ 	struct snd_soc_codec *codec = dai->codec;
+ 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
+ 
+@@ -1145,13 +1145,12 @@ static const struct snd_soc_dai_ops ac108_dai_ops = {
+ 	.hw_params	= ac108_hw_params,
+ 	.prepare	= ac108_prepare,
+ 	.trigger	= ac108_trigger,
+-	.mute_stream	= ac108_aif_mute,
++	.digital_mute	= ac108_aif_mute,
+ 
+ 	/*DAI format configuration*/
+ 	.set_fmt	= ac108_set_fmt,
+ 
+ 	// .hw_free = ac108_hw_free,
+-	.no_capture_mute = 1,
+ };
+ 
+ static  struct snd_soc_dai_driver ac108_dai0 = {
+diff --git a/seeed-voicecard.c b/seeed-voicecard.c
+index c6d9048..43535aa 100644
+--- a/seeed-voicecard.c
++++ b/seeed-voicecard.c
+@@ -96,16 +96,16 @@ static int seeed_voice_card_startup(struct snd_pcm_substream *substream)
+ 	if (ret)
+ 		clk_disable_unprepare(dai_props->cpu_dai.clk);
+ 
+-	if (asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_min) {
+-		priv->channels_playback_default = asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_min;
++	if (rtd->cpu_dai->driver->playback.channels_min) {
++		priv->channels_playback_default = rtd->cpu_dai->driver->playback.channels_min;
+ 	}
+-	if (asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_min) {
+-		priv->channels_capture_default = asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_min;
++	if (rtd->cpu_dai->driver->capture.channels_min) {
++		priv->channels_capture_default = rtd->cpu_dai->driver->capture.channels_min;
+ 	}
+-	asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_min = priv->channels_playback_override;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_max = priv->channels_playback_override;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_min = priv->channels_capture_override;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_max = priv->channels_capture_override;
++	rtd->cpu_dai->driver->playback.channels_min = priv->channels_playback_override;
++	rtd->cpu_dai->driver->playback.channels_max = priv->channels_playback_override;
++	rtd->cpu_dai->driver->capture.channels_min = priv->channels_capture_override;
++	rtd->cpu_dai->driver->capture.channels_max = priv->channels_capture_override;
+ 
+ 	return ret;
+ }
+@@ -117,10 +117,10 @@ static void seeed_voice_card_shutdown(struct snd_pcm_substream *substream)
+ 	struct seeed_dai_props *dai_props =
+ 		seeed_priv_to_props(priv, rtd->num);
+ 
+-	asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_min = priv->channels_playback_default;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_max = priv->channels_playback_default;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_min = priv->channels_capture_default;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_max = priv->channels_capture_default;
++	rtd->cpu_dai->driver->playback.channels_min = priv->channels_playback_default;
++	rtd->cpu_dai->driver->playback.channels_max = priv->channels_playback_default;
++	rtd->cpu_dai->driver->capture.channels_min = priv->channels_capture_default;
++	rtd->cpu_dai->driver->capture.channels_max = priv->channels_capture_default;
+ 
+ 	clk_disable_unprepare(dai_props->cpu_dai.clk);
+ 
+@@ -131,8 +131,8 @@ static int seeed_voice_card_hw_params(struct snd_pcm_substream *substream,
+ 				      struct snd_pcm_hw_params *params)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+-	struct snd_soc_dai *codec_dai = asoc_rtd_to_codec(rtd, 0);
+-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
++	struct snd_soc_dai *codec_dai = rtd->codec_dai;
++	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+ 	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
+ 	struct seeed_dai_props *dai_props =
+ 		seeed_priv_to_props(priv, rtd->num);
+@@ -196,7 +196,7 @@ static void work_cb_codec_clk(struct work_struct *work)
+ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+-	struct snd_soc_dai *dai = asoc_rtd_to_codec(rtd, 0);
++	struct snd_soc_dai *dai = rtd->codec_dai;
+ 	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
+ 	#if CONFIG_AC10X_TRIG_LOCK
+ 	unsigned long flags;
+@@ -205,7 +205,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
+ 
+ 	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d\n",
+ 		__FUNCTION__, snd_pcm_stream_str(substream), cmd,
+-		dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], dai->stream_active[SNDRV_PCM_STREAM_CAPTURE]);
++		dai->playback_active, dai->capture_active);
+ 
+ 	switch (cmd) {
+ 	case SNDRV_PCM_TRIGGER_START:
+@@ -227,7 +227,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
+ 	case SNDRV_PCM_TRIGGER_SUSPEND:
+ 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+ 		/* capture channel resync, if overrun */
+-		if (dai->stream_active[SNDRV_PCM_STREAM_CAPTURE] && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
++		if (dai->capture_active && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+ 			break;
+ 		}
+ 
+@@ -337,8 +337,8 @@ static int asoc_simple_init_dai(struct snd_soc_dai *dai,
+ static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
+ {
+ 	struct seeed_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
+-	struct snd_soc_dai *codec = asoc_rtd_to_codec(rtd, 0);
+-	struct snd_soc_dai *cpu = asoc_rtd_to_cpu(rtd, 0);
++	struct snd_soc_dai *codec = rtd->codec_dai;
++	struct snd_soc_dai *cpu = rtd->cpu_dai;
+ 	struct seeed_dai_props *dai_props =
+ 		seeed_priv_to_props(priv, rtd->num);
+ 	int ret;
+@@ -636,11 +636,11 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+ 	 * Use snd_soc_dai_link_component instead of legacy style
+ 	 * It is codec only. but cpu/platform will be supported in the future.
+ 	 * see
+-	 *      soc-core.c :: snd_soc_init_multicodec()
++	 *	soc-core.c :: snd_soc_init_multicodec()
+ 	 *
+ 	 * "platform" might be removed
+ 	 * see
+-	 *      simple-card-utils.c :: asoc_simple_canonicalize_platform()
++	 *	simple-card-utils.c :: asoc_simple_canonicalize_platform()
+ 	 */
+ 	for (i = 0; i < num; i++) {
+ 		dai_link[i].cpus		= &dai_props[i].cpus;
+diff --git a/sound-compatible-4.18.h b/sound-compatible-4.18.h
+index 080325b..eefa7de 100644
+--- a/sound-compatible-4.18.h
++++ b/sound-compatible-4.18.h
+@@ -16,6 +16,10 @@
+ #endif
+ 
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)
++#ifndef __has_attribute
++# define __has_attribute(x) __GCC4_has_attribute_##x
++# define __GCC4_has_attribute___fallthrough__         0
++#endif
+ #if __has_attribute(__fallthrough__)
+ # define fallthrough                    __attribute__((__fallthrough__))
+ #else
+@@ -31,11 +35,7 @@
+ #define snd_soc_codec_get_dapm     snd_soc_component_get_dapm
+ #define snd_soc_codec_get_bias_level snd_soc_component_get_bias_level
+ #define snd_soc_kcontrol_codec     snd_soc_kcontrol_component
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+-#define snd_soc_read               snd_soc_component_read
+-#else
+ #define snd_soc_read               snd_soc_component_read32
+-#endif
+ #define snd_soc_register_codec     snd_soc_register_component
+ #define snd_soc_unregister_codec   snd_soc_unregister_component
+ #define snd_soc_update_bits        snd_soc_component_update_bits
+diff --git a/wm8960.c b/wm8960.c
+index 465c6dc..34d4dad 100644
+--- a/wm8960.c
++++ b/wm8960.c
+@@ -796,7 +796,7 @@ static int wm8960_hw_free(struct snd_pcm_substream *substream,
+ 	return 0;
+ }
+ 
+-static int wm8960_mute(struct snd_soc_dai *dai, int mute, int direction)
++static int wm8960_mute(struct snd_soc_dai *dai, int mute)
+ {
+ 	struct snd_soc_codec *codec = dai->codec;
+ 
+@@ -1236,12 +1236,11 @@ static int wm8960_set_dai_sysclk(struct snd_soc_dai *dai, int clk_id,
+ static const struct snd_soc_dai_ops wm8960_dai_ops = {
+ 	.hw_params = wm8960_hw_params,
+ 	.hw_free = wm8960_hw_free,
+-	.mute_stream = wm8960_mute,
++	.digital_mute = wm8960_mute,
+ 	.set_fmt = wm8960_set_dai_fmt,
+ 	.set_clkdiv = wm8960_set_dai_clkdiv,
+ 	.set_pll = wm8960_set_dai_pll,
+ 	.set_sysclk = wm8960_set_dai_sysclk,
+-	.no_capture_mute = 1,
+ };
+ 
+ static struct snd_soc_dai_driver wm8960_dai = {
