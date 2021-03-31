@@ -1,0 +1,667 @@
+diff --git a/README.md b/README.md
+index e884227..1b74317 100644
+--- a/README.md
++++ b/README.md
+@@ -9,10 +9,9 @@ Get the seeed voice card source code. and install all linux kernel drivers
+ ```bash
+ git clone https://github.com/respeaker/seeed-voicecard
+ cd seeed-voicecard
+-sudo ./install.sh
++sudo ./install.sh 
+ sudo reboot
+ ```
+-It may probably happen that the driver won't compile with the latest kernel when raspbian rolls out new patches to the kernel. If so, please try `sudo ./install.sh --compat-kernel` which uses an older kernel but ensures that the driver can work. 
+ 
+ ## ReSpeaker Mic Hat
+ 
+@@ -196,22 +195,7 @@ plughw:CARD=seeed8micvoicec,DEV=0
+ In contrast to 6-Mics Circular Array Kit for Raspberry Pi,
+ the difference is only first 4 input channels are valid capture data.
+ 
+-
+ ### Usage:
+-
+-```bash
+-#Query sound card number
+-# The sound card number used as arecord/aplay argument,
+-# ( like '-D hw:N' and '-D plughw:N', where N is the number )
+-# could be found by command:
+-  aplay -l
+-#or
+-  arecord -l
+-# Find the line in the command output which near below form:
+-card 1: seeed2micvoicec [seeed-2mic-voicecard], device 0: ...
+-# The number between first word `card` and char `:` is the Sound Card Number, here it's 1.
+-```
+-
+ ```bash
+ #for ReSpeaker 2-mic
+ #It will capture sound an playback on hw:1
+diff --git a/ac101.c b/ac101.c
+index be9b1d8..343f030 100644
+--- a/ac101.c
++++ b/ac101.c
+@@ -955,10 +955,10 @@ void ac101_aif_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai
+ 
+ 	AC101_DBG("stream = %s, play: %d, capt: %d, active: %d\n", 
+ 		snd_pcm_stream_str(substream),
+-		codec_dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], codec_dai->stream_active[SNDRV_PCM_STREAM_CAPTURE],
+-		snd_soc_dai_active(codec_dai));
++		codec_dai->playback_active, codec_dai->capture_active,
++		codec_dai->active);
+ 
+-	if (snd_soc_dai_active(codec_dai)) {
++	if (!codec_dai->active) {
+ 		ac10x->aif1_clken = 1;
+ 		ac101_aif1clk(codec, SND_SOC_DAPM_POST_PMD, 0);
+ 	} else {
+@@ -1080,7 +1080,7 @@ int ac101_hw_params(struct snd_pcm_substream *substream,
+ 	freq_out = _FREQ_24_576K;
+ 	for (i = 0; i < ARRAY_SIZE(codec_aif1_fs); i++) {
+ 		if (codec_aif1_fs[i].samp_rate == params_rate(params)) {
+-			if (codec_dai->stream_active[SNDRV_PCM_STREAM_CAPTURE] && dmic_used && codec_aif1_fs[i].samp_rate == 44100) {
++			if (codec_dai->capture_active && dmic_used && codec_aif1_fs[i].samp_rate == 44100) {
+ 				ac101_update_bits(codec, AIF_SR_CTRL, (0xf<<AIF1_FS), (0x4<<AIF1_FS));
+ 			} else {
+ 				ac101_update_bits(codec, AIF_SR_CTRL, (0xf<<AIF1_FS), ((codec_aif1_fs[i].srbit)<<AIF1_FS));
+diff --git a/ac108.c b/ac108.c
+index 4663df0..29e0a94 100644
+--- a/ac108.c
++++ b/ac108.c
+@@ -653,7 +653,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 
+ 	dev_dbg(dai->dev, "%s() stream=%s play:%d capt:%d +++\n", __func__,
+ 			snd_pcm_stream_str(substream),
+-			dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], dai->stream_active[SNDRV_PCM_STREAM_CAPTURE]);
++			dai->playback_active, dai->capture_active);
+ 
+ 	if (ac10x->i2c101) {
+ 		ret = ac101_hw_params(substream, params, dai);
+@@ -664,8 +664,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 		}
+ 	}
+ 
+-	if ((substream->stream == SNDRV_PCM_STREAM_CAPTURE && dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK])
+-	 || (substream->stream == SNDRV_PCM_STREAM_PLAYBACK && dai->stream_active[SNDRV_PCM_STREAM_CAPTURE])) {
++	if ((substream->stream == SNDRV_PCM_STREAM_CAPTURE && dai->playback_active)
++	 || (substream->stream == SNDRV_PCM_STREAM_PLAYBACK && dai->capture_active)) {
+ 		/* not configure hw_param twice */
+ 		/* return 0; */
+ 	}
+@@ -810,9 +810,6 @@ static int ac108_set_sysclk(struct snd_soc_dai *dai, int clk_id, unsigned int fr
+ 
+ 	struct ac10x_priv *ac10x = snd_soc_dai_get_drvdata(dai);
+ 
+-	if (freq != 24000000 || clk_id != SYSCLK_SRC_PLL)
+-		dev_warn(dai->dev, "ac108_set_sysclk freq = %d clk = %d\n", freq, clk_id);
+-
+ 	freq = 24000000;
+ 	clk_id = SYSCLK_SRC_PLL;
+ 
+@@ -1124,7 +1121,7 @@ void ac108_aif_shutdown(struct snd_pcm_substream *substream,
+ 	}
+ }
+ 
+-int ac108_aif_mute(struct snd_soc_dai *dai, int mute, int direction) {
++int ac108_aif_mute(struct snd_soc_dai *dai, int mute) {
+ 	struct snd_soc_codec *codec = dai->codec;
+ 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
+ 
+@@ -1145,13 +1142,12 @@ static const struct snd_soc_dai_ops ac108_dai_ops = {
+ 	.hw_params	= ac108_hw_params,
+ 	.prepare	= ac108_prepare,
+ 	.trigger	= ac108_trigger,
+-	.mute_stream	= ac108_aif_mute,
++	.digital_mute	= ac108_aif_mute,
+ 
+ 	/*DAI format configuration*/
+ 	.set_fmt	= ac108_set_fmt,
+ 
+ 	// .hw_free = ac108_hw_free,
+-	.no_capture_mute = 1,
+ };
+ 
+ static  struct snd_soc_dai_driver ac108_dai0 = {
+diff --git a/install.sh b/install.sh
+index 8c84be9..52f1ba7 100755
+--- a/install.sh
++++ b/install.sh
+@@ -31,8 +31,11 @@ fi
+ # - check for /boot/overlays
+ # - dtparam and dtoverlay is available
+ errorFound=0
++
++# Try Raspbian, Ubuntu, then LibreELEC location for OVERLAYS:
+ OVERLAYS=/boot/overlays
+ [ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
++[ -d /flash/overlays ] && OVERLAYS=/flash/overlays
+ 
+ if [ ! -d $OVERLAYS ] ; then
+   echo "$OVERLAYS not found or not a directory" 1>&2
+@@ -175,9 +178,12 @@ grep -q "^snd-soc-ac108$" /etc/modules || \
+ grep -q "^snd-soc-wm8960$" /etc/modules || \
+   echo "snd-soc-wm8960" >> /etc/modules  
+ 
+-#set dtoverlays
++#set dtoverlays - Raspbian:
+ CONFIG=/boot/config.txt
++# Ubuntu:
+ [ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
++# LibreELEC:
++[ -f /flash/distroconfig.txt ] && CONFIG=/flash/distroconfig.txt
+ 
+ sed -i -e 's:#dtparam=i2c_arm=on:dtparam=i2c_arm=on:g'  $CONFIG || true
+ grep -q "^dtoverlay=i2s-mmap$" $CONFIG || \
+diff --git a/seeed-voicecard b/seeed-voicecard
+index 9a135a1..e437c87 100755
+--- a/seeed-voicecard
++++ b/seeed-voicecard
+@@ -24,8 +24,11 @@ set -x
+ #exec 1>/var/log/$(basename $0).log 2>&1
+ 
+ export PATH=$PATH:/opt/vc/bin
++
++# Try Raspbian, Ubuntu, then LibreELEC location for OVERLAYS:
+ OVERLAYS=/boot/overlays
+ [ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
++[ -d /flash/overlays ] && OVERLAYS=/flash/overlays
+ 
+ #enable i2c interface
+ dtparam -d $OVERLAYS i2c_arm=on
+@@ -48,8 +51,12 @@ function get_kernel_version() {
+     return 0
+ }
+ 
++# Raspbian:
+ CONFIG=/boot/config.txt
++# Ubuntu:
+ [ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
++# LibreELEC:
++[ -f /flash/distroconfig.txt ] && CONFIG=/flash/distroconfig.txt
+ 
+ get_overlay() {
+     ov=$1
+diff --git a/seeed-voicecard.c b/seeed-voicecard.c
+index c6d9048..f08fbd8 100644
+--- a/seeed-voicecard.c
++++ b/seeed-voicecard.c
+@@ -28,8 +28,6 @@
+ #include <sound/simple_card_utils.h>
+ #include "ac10x.h"
+ 
+-#define LINUX_VERSION_IS_GEQ(x1,x2,x3)	(LINUX_VERSION_CODE >= KERNEL_VERSION(x1,x2,x3))
+-
+ /*
+  * single codec:
+  *	0 - allow multi codec
+@@ -42,9 +40,6 @@ struct seeed_card_data {
+ 	struct seeed_dai_props {
+ 		struct asoc_simple_dai cpu_dai;
+ 		struct asoc_simple_dai codec_dai;
+-		struct snd_soc_dai_link_component cpus;   /* single cpu */
+-		struct snd_soc_dai_link_component codecs; /* single codec */
+-		struct snd_soc_dai_link_component platforms;
+ 		unsigned int mclk_fs;
+ 	} *dai_props;
+ 	unsigned int mclk_fs;
+@@ -96,16 +91,16 @@ static int seeed_voice_card_startup(struct snd_pcm_substream *substream)
+ 	if (ret)
+ 		clk_disable_unprepare(dai_props->cpu_dai.clk);
+ 
+-	if (asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_min) {
+-		priv->channels_playback_default = asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_min;
++	if (rtd->cpu_dai->driver->playback.channels_min) {
++		priv->channels_playback_default = rtd->cpu_dai->driver->playback.channels_min;
+ 	}
+-	if (asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_min) {
+-		priv->channels_capture_default = asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_min;
++	if (rtd->cpu_dai->driver->capture.channels_min) {
++		priv->channels_capture_default = rtd->cpu_dai->driver->capture.channels_min;
+ 	}
+-	asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_min = priv->channels_playback_override;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_max = priv->channels_playback_override;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_min = priv->channels_capture_override;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_max = priv->channels_capture_override;
++	rtd->cpu_dai->driver->playback.channels_min = priv->channels_playback_override;
++	rtd->cpu_dai->driver->playback.channels_max = priv->channels_playback_override;
++	rtd->cpu_dai->driver->capture.channels_min = priv->channels_capture_override;
++	rtd->cpu_dai->driver->capture.channels_max = priv->channels_capture_override;
+ 
+ 	return ret;
+ }
+@@ -117,10 +112,10 @@ static void seeed_voice_card_shutdown(struct snd_pcm_substream *substream)
+ 	struct seeed_dai_props *dai_props =
+ 		seeed_priv_to_props(priv, rtd->num);
+ 
+-	asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_min = priv->channels_playback_default;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->playback.channels_max = priv->channels_playback_default;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_min = priv->channels_capture_default;
+-	asoc_rtd_to_cpu(rtd, 0)->driver->capture.channels_max = priv->channels_capture_default;
++	rtd->cpu_dai->driver->playback.channels_min = priv->channels_playback_default;
++	rtd->cpu_dai->driver->playback.channels_max = priv->channels_playback_default;
++	rtd->cpu_dai->driver->capture.channels_min = priv->channels_capture_default;
++	rtd->cpu_dai->driver->capture.channels_max = priv->channels_capture_default;
+ 
+ 	clk_disable_unprepare(dai_props->cpu_dai.clk);
+ 
+@@ -131,8 +126,8 @@ static int seeed_voice_card_hw_params(struct snd_pcm_substream *substream,
+ 				      struct snd_pcm_hw_params *params)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+-	struct snd_soc_dai *codec_dai = asoc_rtd_to_codec(rtd, 0);
+-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
++	struct snd_soc_dai *codec_dai = rtd->codec_dai;
++	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+ 	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
+ 	struct seeed_dai_props *dai_props =
+ 		seeed_priv_to_props(priv, rtd->num);
+@@ -196,7 +191,7 @@ static void work_cb_codec_clk(struct work_struct *work)
+ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd)
+ {
+ 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+-	struct snd_soc_dai *dai = asoc_rtd_to_codec(rtd, 0);
++	struct snd_soc_dai *dai = rtd->codec_dai;
+ 	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
+ 	#if CONFIG_AC10X_TRIG_LOCK
+ 	unsigned long flags;
+@@ -205,7 +200,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
+ 
+ 	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d\n",
+ 		__FUNCTION__, snd_pcm_stream_str(substream), cmd,
+-		dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], dai->stream_active[SNDRV_PCM_STREAM_CAPTURE]);
++		dai->playback_active, dai->capture_active);
+ 
+ 	switch (cmd) {
+ 	case SNDRV_PCM_TRIGGER_START:
+@@ -227,7 +222,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
+ 	case SNDRV_PCM_TRIGGER_SUSPEND:
+ 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+ 		/* capture channel resync, if overrun */
+-		if (dai->stream_active[SNDRV_PCM_STREAM_CAPTURE] && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
++		if (dai->capture_active && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+ 			break;
+ 		}
+ 
+@@ -255,99 +250,20 @@ static struct snd_soc_ops seeed_voice_card_ops = {
+ 	.trigger = seeed_voice_card_trigger,
+ };
+ 
+-static int asoc_simple_parse_dai(struct device_node *node,
+-				 struct snd_soc_dai_link_component *dlc,
+-				 int *is_single_link)
+-{
+-	struct of_phandle_args args;
+-	int ret;
+-
+-	if (!node)
+-		return 0;
+-
+-	/*
+-	 * Get node via "sound-dai = <&phandle port>"
+-	 * it will be used as xxx_of_node on soc_bind_dai_link()
+-	 */
+-	ret = of_parse_phandle_with_args(node, DAI, CELL, 0, &args);
+-	if (ret)
+-		return ret;
+-
+-	/*
+-	 * FIXME
+-	 *
+-	 * Here, dlc->dai_name is pointer to CPU/Codec DAI name.
+-	 * If user unbinded CPU or Codec driver, but not for Sound Card,
+-	 * dlc->dai_name is keeping unbinded CPU or Codec
+-	 * driver's pointer.
+-	 *
+-	 * If user re-bind CPU or Codec driver again, ALSA SoC will try
+-	 * to rebind Card via snd_soc_try_rebind_card(), but because of
+-	 * above reason, it might can't bind Sound Card.
+-	 * Because Sound Card is pointing to released dai_name pointer.
+-	 *
+-	 * To avoid this rebind Card issue,
+-	 * 1) It needs to alloc memory to keep dai_name eventhough
+-	 *    CPU or Codec driver was unbinded, or
+-	 * 2) user need to rebind Sound Card everytime
+-	 *    if he unbinded CPU or Codec.
+-	 */
+-	ret = snd_soc_of_get_dai_name(node, &dlc->dai_name);
+-	if (ret < 0)
+-		return ret;
+-
+-	dlc->of_node = args.np;
+-
+-	if (is_single_link)
+-		*is_single_link = !args.args_count;
+-
+-	return 0;
+-}
+-
+-static int asoc_simple_init_dai(struct snd_soc_dai *dai,
+-				     struct asoc_simple_dai *simple_dai)
+-{
+-	int ret;
+-
+-	if (!simple_dai)
+-		return 0;
+-
+-	if (simple_dai->sysclk) {
+-		ret = snd_soc_dai_set_sysclk(dai, 0, simple_dai->sysclk,
+-					     simple_dai->clk_direction);
+-		if (ret && ret != -ENOTSUPP) {
+-			dev_err(dai->dev, "simple-card: set_sysclk error\n");
+-			return ret;
+-		}
+-	}
+-
+-	if (simple_dai->slots) {
+-		ret = snd_soc_dai_set_bclk_ratio(dai,
+-					       simple_dai->slots *
+-					       simple_dai->slot_width);
+-		if (ret && ret != -ENOTSUPP) {
+-			dev_err(dai->dev, "simple-card: set_tdm_slot error\n");
+-			return ret;
+-		}
+-	}
+-
+-	return 0;
+-}
+-
+ static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
+ {
+ 	struct seeed_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
+-	struct snd_soc_dai *codec = asoc_rtd_to_codec(rtd, 0);
+-	struct snd_soc_dai *cpu = asoc_rtd_to_cpu(rtd, 0);
++	struct snd_soc_dai *codec = rtd->codec_dai;
++	struct snd_soc_dai *cpu = rtd->cpu_dai;
+ 	struct seeed_dai_props *dai_props =
+ 		seeed_priv_to_props(priv, rtd->num);
+ 	int ret;
+ 
+-	ret = asoc_simple_init_dai(codec, &dai_props->codec_dai);
++	ret = asoc_simple_card_init_dai(codec, &dai_props->codec_dai);
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	ret = asoc_simple_init_dai(cpu, &dai_props->cpu_dai);
++	ret = asoc_simple_card_init_dai(cpu, &dai_props->cpu_dai);
+ 	if (ret < 0)
+ 		return ret;
+ 
+@@ -396,19 +312,20 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
+ 		goto dai_link_of_err;
+ 	}
+ 
+-	ret = asoc_simple_parse_daifmt(dev, node, codec,
++	ret = asoc_simple_card_parse_daifmt(dev, node, codec,
+ 					    prefix, &dai_link->dai_fmt);
+ 	if (ret < 0)
+ 		goto dai_link_of_err;
+ 
+ 	of_property_read_u32(node, "mclk-fs", &dai_props->mclk_fs);
+ 
+-	ret = asoc_simple_parse_cpu(cpu, dai_link, &single_cpu);
++	ret = asoc_simple_card_parse_cpu(cpu, dai_link,
++					 DAI, CELL, &single_cpu);
+ 	if (ret < 0)
+ 		goto dai_link_of_err;
+ 
+ 	#if _SINGLE_CODEC
+-	ret = asoc_simple_parse_codec(codec, dai_link);
++	ret = asoc_simple_card_parse_codec(codec, dai_link, DAI, CELL);
+ 	if (ret < 0)
+ 		goto dai_link_of_err;
+ 	#else
+@@ -420,7 +337,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
+ 	dev_dbg(dev, "dai_link num_codecs = %d\n", dai_link->num_codecs);
+ 	#endif
+ 
+-	ret = asoc_simple_parse_platform(plat, dai_link);
++	ret = asoc_simple_card_parse_platform(plat, dai_link, DAI, CELL);
+ 	if (ret < 0)
+ 		goto dai_link_of_err;
+ 
+@@ -445,7 +362,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
+ 	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
+ 	ret = asoc_simple_card_parse_clk_cpu(cpu, dai_link, cpu_dai);
+ 	#else
+-	ret = asoc_simple_parse_clk_cpu(dev, cpu, dai_link, cpu_dai);
++	ret = asoc_simple_card_parse_clk_cpu(dev, cpu, dai_link, cpu_dai);
+ 	#endif
+ 	if (ret < 0)
+ 		goto dai_link_of_err;
+@@ -453,20 +370,22 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
+ 	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
+ 	ret = asoc_simple_card_parse_clk_codec(codec, dai_link, codec_dai);
+ 	#else
+-	ret = asoc_simple_parse_clk_codec(dev, codec, dai_link, codec_dai);
++	ret = asoc_simple_card_parse_clk_codec(dev, codec, dai_link, codec_dai);
+ 	#endif
+ 	if (ret < 0)
+ 		goto dai_link_of_err;
+ 
+ 	#if _SINGLE_CODEC
+-	asoc_simple_canonicalize_platform(dai_link);
++	ret = asoc_simple_card_canonicalize_dailink(dai_link);
++	if (ret < 0)
++		goto dai_link_of_err;
+ 	#endif
+ 
+-	ret = asoc_simple_set_dailink_name(dev, dai_link,
++	ret = asoc_simple_card_set_dailink_name(dev, dai_link,
+ 						"%s-%s",
+-						dai_link->cpus->dai_name,
++						dai_link->cpu_dai_name,
+ 						#if _SINGLE_CODEC
+-						dai_link->codecs->dai_name
++						dai_link->codec_dai_name
+ 						#else
+ 						dai_link->codecs[0].dai_name
+ 						#endif
+@@ -480,17 +399,17 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
+ 	dev_dbg(dev, "\tname : %s\n", dai_link->stream_name);
+ 	dev_dbg(dev, "\tformat : %04x\n", dai_link->dai_fmt);
+ 	dev_dbg(dev, "\tcpu : %s / %d\n",
+-		dai_link->cpus->dai_name,
++		dai_link->cpu_dai_name,
+ 		dai_props->cpu_dai.sysclk);
+ 	dev_dbg(dev, "\tcodec : %s / %d\n",
+ 		#if _SINGLE_CODEC
+-		dai_link->codecs->dai_name,
++		dai_link->codec_dai_name,
+ 		#else
+ 		dai_link->codecs[0].dai_name,
+ 		#endif
+ 		dai_props->codec_dai.sysclk);
+ 
+-	asoc_simple_canonicalize_cpu(dai_link, single_cpu);
++	asoc_simple_card_canonicalize_cpu(dai_link, single_cpu);
+ 
+ dai_link_of_err:
+ 	of_node_put(cpu);
+@@ -522,7 +441,7 @@ static int seeed_voice_card_parse_aux_devs(struct device_node *node,
+ 		aux_node = of_parse_phandle(node, PREFIX "aux-devs", i);
+ 		if (!aux_node)
+ 			return -EINVAL;
+-		priv->snd_card.aux_dev[i].dlc.of_node = aux_node;
++		priv->snd_card.aux_dev[i].codec_of_node = aux_node;
+ 	}
+ 
+ 	priv->snd_card.num_aux_devs = n;
+@@ -582,7 +501,7 @@ static int seeed_voice_card_parse_of(struct device_node *node,
+ 			goto card_parse_end;
+ 	}
+ 
+-	ret = asoc_simple_parse_card_name(&priv->snd_card, PREFIX);
++	ret = asoc_simple_card_parse_card_name(&priv->snd_card, PREFIX);
+ 	if (ret < 0)
+ 		goto card_parse_end;
+ 
+@@ -614,7 +533,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+ 	struct seeed_dai_props *dai_props;
+ 	struct device_node *np = pdev->dev.of_node;
+ 	struct device *dev = &pdev->dev;
+-	int num, ret, i;
++	int num, ret;
+ 
+ 	/* Get the number of DAI links */
+ 	if (np && of_get_child_by_name(np, PREFIX "dai-link"))
+@@ -632,25 +551,6 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+ 	if (!dai_props || !dai_link)
+ 		return -ENOMEM;
+ 
+-	/*
+-	 * Use snd_soc_dai_link_component instead of legacy style
+-	 * It is codec only. but cpu/platform will be supported in the future.
+-	 * see
+-	 *      soc-core.c :: snd_soc_init_multicodec()
+-	 *
+-	 * "platform" might be removed
+-	 * see
+-	 *      simple-card-utils.c :: asoc_simple_canonicalize_platform()
+-	 */
+-	for (i = 0; i < num; i++) {
+-		dai_link[i].cpus		= &dai_props[i].cpus;
+-		dai_link[i].num_cpus		= 1;
+-		dai_link[i].codecs		= &dai_props[i].codecs;
+-		dai_link[i].num_codecs		= 1;
+-		dai_link[i].platforms		= &dai_props[i].platforms;
+-		dai_link[i].num_platforms	= 1;
+-	}
+-
+ 	priv->dai_props			= dai_props;
+ 	priv->dai_link			= dai_link;
+ 
+@@ -669,9 +569,6 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+ 		}
+ 	} else {
+ 		struct seeed_card_info *cinfo;
+-		struct snd_soc_dai_link_component *cpus;
+-		struct snd_soc_dai_link_component *codecs;
+-		struct snd_soc_dai_link_component *platform;
+ 
+ 		cinfo = dev->platform_data;
+ 		if (!cinfo) {
+@@ -688,19 +585,13 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+ 			return -EINVAL;
+ 		}
+ 
+-		cpus			= dai_link->cpus;
+-		cpus->dai_name		= cinfo->cpu_dai.name;
+-
+-		codecs			= dai_link->codecs;
+-		codecs->name		= cinfo->codec;
+-		codecs->dai_name	= cinfo->codec_dai.name;
+-
+-		platform		= dai_link->platforms;
+-		platform->name		= cinfo->platform;
+-
+ 		priv->snd_card.name	= (cinfo->card) ? cinfo->card : cinfo->name;
+ 		dai_link->name		= cinfo->name;
+ 		dai_link->stream_name	= cinfo->name;
++		dai_link->platform_name	= cinfo->platform;
++		dai_link->codec_name	= cinfo->codec;
++		dai_link->cpu_dai_name	= cinfo->cpu_dai.name;
++		dai_link->codec_dai_name = cinfo->codec_dai.name;
+ 		dai_link->dai_fmt	= cinfo->daifmt;
+ 		dai_link->init		= seeed_voice_card_dai_init;
+ 		memcpy(&priv->dai_props->cpu_dai, &cinfo->cpu_dai,
+@@ -722,7 +613,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+ 		return ret;
+ 
+ err:
+-	asoc_simple_clean_reference(&priv->snd_card);
++	asoc_simple_card_clean_reference(&priv->snd_card);
+ 
+ 	return ret;
+ }
+@@ -734,7 +625,7 @@ static int seeed_voice_card_remove(struct platform_device *pdev)
+ 
+ 	if (cancel_work_sync(&priv->work_codec_clk) != 0) {
+ 	}
+-	return asoc_simple_clean_reference(card);
++	return asoc_simple_card_clean_reference(card);
+ }
+ 
+ static const struct of_device_id seeed_voice_of_match[] = {
+diff --git a/sound-compatible-4.18.h b/sound-compatible-4.18.h
+index 080325b..eefa7de 100644
+--- a/sound-compatible-4.18.h
++++ b/sound-compatible-4.18.h
+@@ -16,6 +16,10 @@
+ #endif
+ 
+ #if LINUX_VERSION_CODE < KERNEL_VERSION(5,4,0)
++#ifndef __has_attribute
++# define __has_attribute(x) __GCC4_has_attribute_##x
++# define __GCC4_has_attribute___fallthrough__         0
++#endif
+ #if __has_attribute(__fallthrough__)
+ # define fallthrough                    __attribute__((__fallthrough__))
+ #else
+@@ -31,11 +35,7 @@
+ #define snd_soc_codec_get_dapm     snd_soc_component_get_dapm
+ #define snd_soc_codec_get_bias_level snd_soc_component_get_bias_level
+ #define snd_soc_kcontrol_codec     snd_soc_kcontrol_component
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+-#define snd_soc_read               snd_soc_component_read
+-#else
+ #define snd_soc_read               snd_soc_component_read32
+-#endif
+ #define snd_soc_register_codec     snd_soc_register_component
+ #define snd_soc_unregister_codec   snd_soc_unregister_component
+ #define snd_soc_update_bits        snd_soc_component_update_bits
+diff --git a/uninstall.sh b/uninstall.sh
+index adbebfc..916e728 100755
+--- a/uninstall.sh
++++ b/uninstall.sh
+@@ -13,8 +13,12 @@ fi
+ 
+ uname_r=$(uname -r)
+ 
++# Raspbian:
+ CONFIG=/boot/config.txt
++# Ubuntu:
+ [ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
++# LibreELEC:
++[ -f /flash/distroconfig.txt ] && CONFIG=/flash/distroconfig.txt
+ 
+ get_overlay() {
+     ov=$1
+@@ -58,8 +62,11 @@ echo "remove dtbos"
+ for i in $RPI_HATS; do
+     dtoverlay -r $i
+ done
++
++# Try Raspbian, Ubuntu, then LibreELEC location for OVERLAYS:
+ OVERLAYS=/boot/overlays
+ [ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
++[ -d /flash/overlays ] && OVERLAYS=/flash/overlays
+ 
+ rm  ${OVERLAYS}/seeed-2mic-voicecard.dtbo || true
+ rm  ${OVERLAYS}/seeed-4mic-voicecard.dtbo || true
+diff --git a/wm8960.c b/wm8960.c
+index 465c6dc..34d4dad 100644
+--- a/wm8960.c
++++ b/wm8960.c
+@@ -796,7 +796,7 @@ static int wm8960_hw_free(struct snd_pcm_substream *substream,
+ 	return 0;
+ }
+ 
+-static int wm8960_mute(struct snd_soc_dai *dai, int mute, int direction)
++static int wm8960_mute(struct snd_soc_dai *dai, int mute)
+ {
+ 	struct snd_soc_codec *codec = dai->codec;
+ 
+@@ -1236,12 +1236,11 @@ static int wm8960_set_dai_sysclk(struct snd_soc_dai *dai, int clk_id,
+ static const struct snd_soc_dai_ops wm8960_dai_ops = {
+ 	.hw_params = wm8960_hw_params,
+ 	.hw_free = wm8960_hw_free,
+-	.mute_stream = wm8960_mute,
++	.digital_mute = wm8960_mute,
+ 	.set_fmt = wm8960_set_dai_fmt,
+ 	.set_clkdiv = wm8960_set_dai_clkdiv,
+ 	.set_pll = wm8960_set_dai_pll,
+ 	.set_sysclk = wm8960_set_dai_sysclk,
+-	.no_capture_mute = 1,
+ };
+ 
+ static struct snd_soc_dai_driver wm8960_dai = {
