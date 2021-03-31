@@ -1,42 +1,3 @@
-diff --git a/README.md b/README.md
-index e884227..1b74317 100644
---- a/README.md
-+++ b/README.md
-@@ -9,10 +9,9 @@ Get the seeed voice card source code. and install all linux kernel drivers
- ```bash
- git clone https://github.com/respeaker/seeed-voicecard
- cd seeed-voicecard
--sudo ./install.sh
-+sudo ./install.sh 
- sudo reboot
- ```
--It may probably happen that the driver won't compile with the latest kernel when raspbian rolls out new patches to the kernel. If so, please try `sudo ./install.sh --compat-kernel` which uses an older kernel but ensures that the driver can work. 
- 
- ## ReSpeaker Mic Hat
- 
-@@ -196,22 +195,7 @@ plughw:CARD=seeed8micvoicec,DEV=0
- In contrast to 6-Mics Circular Array Kit for Raspberry Pi,
- the difference is only first 4 input channels are valid capture data.
- 
--
- ### Usage:
--
--```bash
--#Query sound card number
--# The sound card number used as arecord/aplay argument,
--# ( like '-D hw:N' and '-D plughw:N', where N is the number )
--# could be found by command:
--  aplay -l
--#or
--  arecord -l
--# Find the line in the command output which near below form:
--card 1: seeed2micvoicec [seeed-2mic-voicecard], device 0: ...
--# The number between first word `card` and char `:` is the Sound Card Number, here it's 1.
--```
--
- ```bash
- #for ReSpeaker 2-mic
- #It will capture sound an playback on hw:1
 diff --git a/ac101.c b/ac101.c
 index be9b1d8..343f030 100644
 --- a/ac101.c
@@ -122,65 +83,6 @@ index 4663df0..29e0a94 100644
  };
  
  static  struct snd_soc_dai_driver ac108_dai0 = {
-diff --git a/install.sh b/install.sh
-index 8c84be9..52f1ba7 100755
---- a/install.sh
-+++ b/install.sh
-@@ -31,8 +31,11 @@ fi
- # - check for /boot/overlays
- # - dtparam and dtoverlay is available
- errorFound=0
-+
-+# Try Raspbian, Ubuntu, then LibreELEC location for OVERLAYS:
- OVERLAYS=/boot/overlays
- [ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
-+[ -d /flash/overlays ] && OVERLAYS=/flash/overlays
- 
- if [ ! -d $OVERLAYS ] ; then
-   echo "$OVERLAYS not found or not a directory" 1>&2
-@@ -175,9 +178,12 @@ grep -q "^snd-soc-ac108$" /etc/modules || \
- grep -q "^snd-soc-wm8960$" /etc/modules || \
-   echo "snd-soc-wm8960" >> /etc/modules  
- 
--#set dtoverlays
-+#set dtoverlays - Raspbian:
- CONFIG=/boot/config.txt
-+# Ubuntu:
- [ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
-+# LibreELEC:
-+[ -f /flash/distroconfig.txt ] && CONFIG=/flash/distroconfig.txt
- 
- sed -i -e 's:#dtparam=i2c_arm=on:dtparam=i2c_arm=on:g'  $CONFIG || true
- grep -q "^dtoverlay=i2s-mmap$" $CONFIG || \
-diff --git a/seeed-voicecard b/seeed-voicecard
-index 9a135a1..e437c87 100755
---- a/seeed-voicecard
-+++ b/seeed-voicecard
-@@ -24,8 +24,11 @@ set -x
- #exec 1>/var/log/$(basename $0).log 2>&1
- 
- export PATH=$PATH:/opt/vc/bin
-+
-+# Try Raspbian, Ubuntu, then LibreELEC location for OVERLAYS:
- OVERLAYS=/boot/overlays
- [ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
-+[ -d /flash/overlays ] && OVERLAYS=/flash/overlays
- 
- #enable i2c interface
- dtparam -d $OVERLAYS i2c_arm=on
-@@ -48,8 +51,12 @@ function get_kernel_version() {
-     return 0
- }
- 
-+# Raspbian:
- CONFIG=/boot/config.txt
-+# Ubuntu:
- [ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
-+# LibreELEC:
-+[ -f /flash/distroconfig.txt ] && CONFIG=/flash/distroconfig.txt
- 
- get_overlay() {
-     ov=$1
 diff --git a/seeed-voicecard.c b/seeed-voicecard.c
 index c6d9048..f08fbd8 100644
 --- a/seeed-voicecard.c
@@ -609,35 +511,6 @@ index 080325b..eefa7de 100644
  #define snd_soc_register_codec     snd_soc_register_component
  #define snd_soc_unregister_codec   snd_soc_unregister_component
  #define snd_soc_update_bits        snd_soc_component_update_bits
-diff --git a/uninstall.sh b/uninstall.sh
-index adbebfc..916e728 100755
---- a/uninstall.sh
-+++ b/uninstall.sh
-@@ -13,8 +13,12 @@ fi
- 
- uname_r=$(uname -r)
- 
-+# Raspbian:
- CONFIG=/boot/config.txt
-+# Ubuntu:
- [ -f /boot/firmware/usercfg.txt ] && CONFIG=/boot/firmware/usercfg.txt
-+# LibreELEC:
-+[ -f /flash/distroconfig.txt ] && CONFIG=/flash/distroconfig.txt
- 
- get_overlay() {
-     ov=$1
-@@ -58,8 +62,11 @@ echo "remove dtbos"
- for i in $RPI_HATS; do
-     dtoverlay -r $i
- done
-+
-+# Try Raspbian, Ubuntu, then LibreELEC location for OVERLAYS:
- OVERLAYS=/boot/overlays
- [ -d /boot/firmware/overlays ] && OVERLAYS=/boot/firmware/overlays
-+[ -d /flash/overlays ] && OVERLAYS=/flash/overlays
- 
- rm  ${OVERLAYS}/seeed-2mic-voicecard.dtbo || true
- rm  ${OVERLAYS}/seeed-4mic-voicecard.dtbo || true
 diff --git a/wm8960.c b/wm8960.c
 index 465c6dc..34d4dad 100644
 --- a/wm8960.c
