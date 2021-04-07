@@ -1,0 +1,71 @@
+diff --git a/ac108.c b/ac108.c
+index 4663df0..67edeae 100644
+--- a/ac108.c
++++ b/ac108.c
+@@ -1124,7 +1124,7 @@ void ac108_aif_shutdown(struct snd_pcm_substream *substream,
+ 	}
+ }
+ 
+-int ac108_aif_mute(struct snd_soc_dai *dai, int mute, int direction) {
++int ac108_aif_mute(struct snd_soc_dai *dai, int mute) {
+ 	struct snd_soc_codec *codec = dai->codec;
+ 	struct ac10x_priv *ac10x = snd_soc_codec_get_drvdata(codec);
+ 
+@@ -1145,13 +1145,12 @@ static const struct snd_soc_dai_ops ac108_dai_ops = {
+ 	.hw_params	= ac108_hw_params,
+ 	.prepare	= ac108_prepare,
+ 	.trigger	= ac108_trigger,
+-	.mute_stream	= ac108_aif_mute,
++	.digital_mute	= ac108_aif_mute,
+ 
+ 	/*DAI format configuration*/
+ 	.set_fmt	= ac108_set_fmt,
+ 
+ 	// .hw_free = ac108_hw_free,
+-	.no_capture_mute = 1,
+ };
+ 
+ static  struct snd_soc_dai_driver ac108_dai0 = {
+diff --git a/sound-compatible-4.18.h b/sound-compatible-4.18.h
+index 080325b..faed848 100644
+--- a/sound-compatible-4.18.h
++++ b/sound-compatible-4.18.h
+@@ -31,11 +31,7 @@
+ #define snd_soc_codec_get_dapm     snd_soc_component_get_dapm
+ #define snd_soc_codec_get_bias_level snd_soc_component_get_bias_level
+ #define snd_soc_kcontrol_codec     snd_soc_kcontrol_component
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,9,0)
+-#define snd_soc_read               snd_soc_component_read
+-#else
+ #define snd_soc_read               snd_soc_component_read32
+-#endif
+ #define snd_soc_register_codec     snd_soc_register_component
+ #define snd_soc_unregister_codec   snd_soc_unregister_component
+ #define snd_soc_update_bits        snd_soc_component_update_bits
+diff --git a/wm8960.c b/wm8960.c
+index 465c6dc..34d4dad 100644
+--- a/wm8960.c
++++ b/wm8960.c
+@@ -796,7 +796,7 @@ static int wm8960_hw_free(struct snd_pcm_substream *substream,
+ 	return 0;
+ }
+ 
+-static int wm8960_mute(struct snd_soc_dai *dai, int mute, int direction)
++static int wm8960_mute(struct snd_soc_dai *dai, int mute)
+ {
+ 	struct snd_soc_codec *codec = dai->codec;
+ 
+@@ -1236,12 +1236,11 @@ static int wm8960_set_dai_sysclk(struct snd_soc_dai *dai, int clk_id,
+ static const struct snd_soc_dai_ops wm8960_dai_ops = {
+ 	.hw_params = wm8960_hw_params,
+ 	.hw_free = wm8960_hw_free,
+-	.mute_stream = wm8960_mute,
++	.digital_mute = wm8960_mute,
+ 	.set_fmt = wm8960_set_dai_fmt,
+ 	.set_clkdiv = wm8960_set_dai_clkdiv,
+ 	.set_pll = wm8960_set_dai_pll,
+ 	.set_sysclk = wm8960_set_dai_sysclk,
+-	.no_capture_mute = 1,
+ };
+ 
+ static struct snd_soc_dai_driver wm8960_dai = {
