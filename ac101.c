@@ -958,7 +958,7 @@ void ac101_aif_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai 
 		codec_dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], codec_dai->stream_active[SNDRV_PCM_STREAM_CAPTURE],
 		snd_soc_dai_active(codec_dai));
 
-	if (snd_soc_dai_active(codec_dai)) {
+	if (!snd_soc_dai_active(codec_dai)) {
 		ac10x->aif1_clken = 1;
 		ac101_aif1clk(codec, SND_SOC_DAPM_POST_PMD, 0);
 	} else {
