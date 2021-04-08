@@ -108,7 +108,7 @@ if [[ $? -eq 0 ]]; then
   apt-get -y install raspberrypi-kernel-headers raspberrypi-kernel 
   # Ubuntu kernel packages
   apt-get -y install linux-raspi linux-headers-raspi linux-image-raspi
-  apt-get -y install dkms git i2c-tools libasound2-plugins
+  apt-get -y install dkms git i2c-tools
   # rpi-update checker
   check_kernel_headers
 fi
