@@ -1058,8 +1058,6 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 		snd_pcm_stream_str(substream),
 		cmd);
 
-	spin_lock_irqsave(&ac10x->lock, flags);
-
 	if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
 		ac101_trigger(substream, cmd, dai);
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -1071,12 +1069,14 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		spin_lock_irqsave(&ac10x->lock, flags);
 		/* disable global clock if lrck disabled */
 		ac10x_read(I2S_CTRL, &r, ac10x->i2cmap[_MASTER_INDEX]);
 		if ((r & (0x01 << BCLK_IOEN)) && (r & (0x01 << LRCK_IOEN)) == 0) {
 			/* disable global clock */
 			ac108_multi_update_bits(I2S_CTRL, 0x1 << TXEN | 0x1 << GEN, 0x0 << TXEN | 0x0 << GEN, ac10x);
 		}
+		spin_unlock_irqrestore(&ac10x->lock, flags);
 
 		/* delayed clock starting, move to machine trigger() */
 		break;
@@ -1089,8 +1089,6 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 	}
 
 __ret:
-	spin_unlock_irqrestore(&ac10x->lock, flags);
-
 	return ret;
 }
 
