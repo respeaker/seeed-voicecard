@@ -607,6 +607,77 @@ card_parse_end:
 	return ret;
 }
 
+#ifdef DEBUG
+inline void asoc_simple_debug_dai(struct asoc_simple_priv *priv,
+				  char *name,
+				  struct asoc_simple_dai *dai)
+{
+	struct device *dev = simple_priv_to_dev(priv);
+
+	if (dai->name)
+		dev_dbg(dev, "%s dai name = %s\n",
+			name, dai->name);
+	if (dai->sysclk)
+		dev_dbg(dev, "%s sysclk = %d\n",
+			name, dai->sysclk);
+
+	dev_dbg(dev, "%s direction = %s\n",
+		name, dai->clk_direction ? "OUT" : "IN");
+
+	if (dai->slots)
+		dev_dbg(dev, "%s slots = %d\n", name, dai->slots);
+	if (dai->slot_width)
+		dev_dbg(dev, "%s slot width = %d\n", name, dai->slot_width);
+	if (dai->tx_slot_mask)
+		dev_dbg(dev, "%s tx slot mask = %d\n", name, dai->tx_slot_mask);
+	if (dai->rx_slot_mask)
+		dev_dbg(dev, "%s rx slot mask = %d\n", name, dai->rx_slot_mask);
+	if (dai->clk)
+		dev_dbg(dev, "%s clk %luHz\n", name, clk_get_rate(dai->clk));
+}
+
+inline void asoc_simple_debug_info(struct asoc_simple_priv *priv)
+{
+	struct snd_soc_card *card = simple_priv_to_card(priv);
+	struct device *dev = simple_priv_to_dev(priv);
+
+	int i;
+
+	if (card->name)
+		dev_dbg(dev, "Card Name: %s\n", card->name);
+
+	for (i = 0; i < card->num_links; i++) {
+		struct simple_dai_props *props = simple_priv_to_props(priv, i);
+		struct snd_soc_dai_link *link = simple_priv_to_link(priv, i);
+
+		dev_dbg(dev, "DAI%d\n", i);
+
+		asoc_simple_debug_dai(priv, "cpu", props->cpu_dai);
+		asoc_simple_debug_dai(priv, "codec", props->codec_dai);
+
+		if (link->name)
+			dev_dbg(dev, "dai name = %s\n", link->name);
+
+		dev_dbg(dev, "dai format = %04x\n", link->dai_fmt);
+
+		if (props->adata.convert_rate)
+			dev_dbg(dev, "convert_rate = %d\n",
+				props->adata.convert_rate);
+		if (props->adata.convert_channels)
+			dev_dbg(dev, "convert_channels = %d\n",
+				props->adata.convert_channels);
+		if (props->codec_conf && props->codec_conf->name_prefix)
+			dev_dbg(dev, "name prefix = %s\n",
+				props->codec_conf->name_prefix);
+		if (props->mclk_fs)
+			dev_dbg(dev, "mclk-fs = %d\n",
+				props->mclk_fs);
+	}
+}
+#else
+#define  asoc_simple_debug_info(priv)
+#endif /* DEBUG */
+
 static int seeed_voice_card_probe(struct platform_device *pdev)
 {
 	struct seeed_card_data *priv;
@@ -716,6 +787,8 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
 	#endif
 
 	INIT_WORK(&priv->work_codec_clk, work_cb_codec_clk);
+
+	asoc_simple_debug_info(priv);
 
 	ret = devm_snd_soc_register_card(&pdev->dev, &priv->snd_card);
 	if (ret >= 0)
