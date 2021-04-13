@@ -335,8 +335,7 @@ static int asoc_simple_init_dai(struct snd_soc_dai *dai,
 	return 0;
 }
 
-static int asoc_simple_init_dai_link_params(struct snd_soc_pcm_runtime *rtd,
-					    struct simple_dai_props *dai_props)
+static int asoc_simple_init_dai_link_params(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
 	struct snd_soc_component *component;
@@ -396,7 +395,7 @@ static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret < 0)
 		return ret;
 
-	ret = asoc_simple_init_dai_link_params(rtd, dai_props);
+	ret = asoc_simple_init_dai_link_params(rtd);
 	if (ret < 0)
 		return ret;
 
