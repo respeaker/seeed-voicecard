@@ -399,6 +399,7 @@ static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret < 0)
 		return ret;
 
+	dev_dbg(rtd->card->dev, "codec \"%s\" mapping to cpu \"%s\"\n", codec->name, cpu->name);
 	return 0;
 }
 
