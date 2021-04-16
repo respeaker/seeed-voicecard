@@ -506,10 +506,6 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 	if (ret < 0)
 		goto dai_link_of_err;
 
-	#if _SINGLE_CODEC
-	asoc_simple_canonicalize_platform(dai_link);
-	#endif
-
 	ret = asoc_simple_set_dailink_name(dev, dai_link,
 						"%s-%s",
 						dai_link->cpus->dai_name,
@@ -539,6 +535,9 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		dai_props->codec_dai.sysclk);
 
 	asoc_simple_canonicalize_cpu(dai_link, single_cpu);
+	#if _SINGLE_CODEC
+	asoc_simple_canonicalize_platform(dai_link);
+	#endif
 
 dai_link_of_err:
 	of_node_put(cpu);
