@@ -339,6 +339,7 @@ static int asoc_simple_init_dai(struct snd_soc_dai *dai,
 	return 0;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
 static int asoc_simple_init_dai_link_params(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_dai_link *dai_link = rtd->dai_link;
@@ -381,6 +382,7 @@ static int asoc_simple_init_dai_link_params(struct snd_soc_pcm_runtime *rtd)
 
 	return 0;
 }
+#endif
 
 static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
@@ -399,9 +401,11 @@ static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret < 0)
 		return ret;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
 	ret = asoc_simple_init_dai_link_params(rtd);
 	if (ret < 0)
 		return ret;
+#endif
 
 	dev_dbg(rtd->card->dev, "codec \"%s\" mapping to cpu \"%s\"\n", codec->name, cpu->name);
 	return 0;
