@@ -130,10 +130,10 @@ if [ "$overlay" ]; then
     if [[ "$kernel_ver" =~ ^4\.19.*$ || "$kernel_ver" =~ ^5\.*$ ]]; then
         for i in $RPI_HATS; do
             if [ "$i" == "$overlay" ]; then
-                do_overlay $overlay 0
+                /bin/true #do_overlay $overlay 0
             else
                 echo Uninstall $i ...
-                do_overlay $i 1
+                /bin/true #do_overlay $i 1
             fi
         done
     fi
