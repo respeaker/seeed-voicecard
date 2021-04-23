@@ -1289,6 +1289,9 @@ int ac101_trigger(struct snd_pcm_substream *substream, int cmd,
 	default:
 		ret = -EINVAL;
 	}
+	AC101_DBG("stream=%s  cmd=%d;finished %d\n",
+		snd_pcm_stream_str(substream),
+		cmd, ret);
 	return ret;
 }
 

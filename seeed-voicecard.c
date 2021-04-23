@@ -246,6 +246,10 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
 		ret = -EINVAL;
 	}
 
+	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d;finished %d\n",
+		__FUNCTION__, snd_pcm_stream_str(substream), cmd,
+		dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], dai->stream_active[SNDRV_PCM_STREAM_CAPTURE], ret);
+
 	return ret;
 }
 

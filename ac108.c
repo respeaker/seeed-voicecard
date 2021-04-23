@@ -1089,6 +1089,10 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 	}
 
 __ret:
+	dev_dbg(dai->dev, "%s() stream=%s  cmd=%d; finished %d\n",
+		__FUNCTION__,
+		snd_pcm_stream_str(substream),
+		cmd, ret);
 	return ret;
 }
 
