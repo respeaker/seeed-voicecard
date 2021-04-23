@@ -1058,7 +1058,7 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 		snd_pcm_stream_str(substream),
 		cmd);
 
-	if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
+	if (!cmd && ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
 		ac101_trigger(substream, cmd, dai);
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		       goto __ret;
