@@ -134,9 +134,9 @@ index c6d9048..43535aa 100644
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 -	struct snd_soc_dai *dai = asoc_rtd_to_codec(rtd, 0);
 +	struct snd_soc_dai *dai = rtd->codec_dai;
+ 	struct ac10x_priv *ac10x = snd_soc_dai_get_drvdata(dai);
  	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
  	#if CONFIG_AC10X_TRIG_LOCK
- 	unsigned long flags;
 @@ -205,7 +205,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
  
  	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d\n",
@@ -155,6 +155,15 @@ index c6d9048..43535aa 100644
  			break;
  		}
  
+@@ -252,7 +247,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
+ 
+ 	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d;finished %d\n",
+ 		__FUNCTION__, snd_pcm_stream_str(substream), cmd,
+-		dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], dai->stream_active[SNDRV_PCM_STREAM_CAPTURE], ret);
++		dai->playback_active, dai->capture_active, ret);
+ 
+ 	return ret;
+ }
 @@ -337,8 +337,8 @@ static int asoc_simple_init_dai(struct snd_soc_dai *dai,
  static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
  {
