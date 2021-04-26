@@ -134,9 +134,9 @@ index c6d9048..43535aa 100644
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 -	struct snd_soc_dai *dai = asoc_rtd_to_codec(rtd, 0);
 +	struct snd_soc_dai *dai = rtd->codec_dai;
- 	struct ac10x_priv *ac10x = snd_soc_dai_get_drvdata(dai);
  	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
  	#if CONFIG_AC10X_TRIG_LOCK
+ 	unsigned long flags;
 @@ -205,7 +205,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
  
  	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d\n",

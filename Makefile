@@ -14,7 +14,7 @@ ifneq ($(KERNELRELEASE),)
 
 snd-soc-wm8960-objs := wm8960.o
 snd-soc-ac108-objs := ac108.o ac101.o
-snd-soc-seeed-voicecard-objs := seeed-voicecard.o ac101.o
+snd-soc-seeed-voicecard-objs := seeed-voicecard.o
 
 
 obj-m += snd-soc-wm8960.o

@@ -198,7 +198,6 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *dai = asoc_rtd_to_codec(rtd, 0);
-	struct ac10x_priv *ac10x = snd_soc_dai_get_drvdata(dai);
 	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
 	#if CONFIG_AC10X_TRIG_LOCK
 	unsigned long flags;
@@ -218,9 +217,6 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
 		/* I know it will degrades performance, but I have no choice */
 		spin_lock_irqsave(&priv->lock, flags);
 		#endif
-		if (cmd && ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
-			ac101_trigger(substream, cmd, dai);
-		}
 		if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](1);
 		if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](1);
 		#if CONFIG_AC10X_TRIG_LOCK
