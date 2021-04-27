@@ -1,5 +1,5 @@
 diff --git a/ac101.c b/ac101.c
-index be9b1d8..343f030 100644
+index 23837a7..41c15f3 100644
 --- a/ac101.c
 +++ b/ac101.c
 @@ -955,10 +955,10 @@ void ac101_aif_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai
@@ -26,7 +26,7 @@ index be9b1d8..343f030 100644
  			} else {
  				ac101_update_bits(codec, AIF_SR_CTRL, (0xf<<AIF1_FS), ((codec_aif1_fs[i].srbit)<<AIF1_FS));
 diff --git a/ac108.c b/ac108.c
-index 4663df0..29e0a94 100644
+index d5dd12d..0a8c462 100644
 --- a/ac108.c
 +++ b/ac108.c
 @@ -653,7 +653,7 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
@@ -84,7 +84,7 @@ index 4663df0..29e0a94 100644
  
  static  struct snd_soc_dai_driver ac108_dai0 = {
 diff --git a/seeed-voicecard.c b/seeed-voicecard.c
-index c6d9048..f08fbd8 100644
+index b90af93..af6db74 100644
 --- a/seeed-voicecard.c
 +++ b/seeed-voicecard.c
 @@ -28,8 +28,6 @@
@@ -106,7 +106,7 @@ index c6d9048..f08fbd8 100644
  		unsigned int mclk_fs;
  	} *dai_props;
  	unsigned int mclk_fs;
-@@ -96,16 +91,16 @@ static int seeed_voice_card_startup(struct snd_pcm_substream *substream)
+@@ -97,16 +92,16 @@ static int seeed_voice_card_startup(struct snd_pcm_substream *substream)
  	if (ret)
  		clk_disable_unprepare(dai_props->cpu_dai.clk);
  
@@ -131,7 +131,7 @@ index c6d9048..f08fbd8 100644
  
  	return ret;
  }
-@@ -117,10 +112,10 @@ static void seeed_voice_card_shutdown(struct snd_pcm_substream *substream)
+@@ -118,10 +113,10 @@ static void seeed_voice_card_shutdown(struct snd_pcm_substream *substream)
  	struct seeed_dai_props *dai_props =
  		seeed_priv_to_props(priv, rtd->num);
  
@@ -146,7 +146,7 @@ index c6d9048..f08fbd8 100644
  
  	clk_disable_unprepare(dai_props->cpu_dai.clk);
  
-@@ -131,8 +126,8 @@ static int seeed_voice_card_hw_params(struct snd_pcm_substream *substream,
+@@ -132,8 +127,8 @@ static int seeed_voice_card_hw_params(struct snd_pcm_substream *substream,
  				      struct snd_pcm_hw_params *params)
  {
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -157,7 +157,7 @@ index c6d9048..f08fbd8 100644
  	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
  	struct seeed_dai_props *dai_props =
  		seeed_priv_to_props(priv, rtd->num);
-@@ -196,7 +191,7 @@ static void work_cb_codec_clk(struct work_struct *work)
+@@ -197,7 +192,7 @@ static void work_cb_codec_clk(struct work_struct *work)
  static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd)
  {
  	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -166,7 +166,7 @@ index c6d9048..f08fbd8 100644
  	struct seeed_card_data *priv = snd_soc_card_get_drvdata(rtd->card);
  	#if CONFIG_AC10X_TRIG_LOCK
  	unsigned long flags;
-@@ -205,7 +200,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
+@@ -206,7 +201,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
  
  	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d\n",
  		__FUNCTION__, snd_pcm_stream_str(substream), cmd,
@@ -175,7 +175,7 @@ index c6d9048..f08fbd8 100644
  
  	switch (cmd) {
  	case SNDRV_PCM_TRIGGER_START:
-@@ -227,7 +222,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
+@@ -228,7 +223,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
  	case SNDRV_PCM_TRIGGER_SUSPEND:
  	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
  		/* capture channel resync, if overrun */
@@ -184,89 +184,16 @@ index c6d9048..f08fbd8 100644
  			break;
  		}
  
-@@ -255,99 +250,20 @@ static struct snd_soc_ops seeed_voice_card_ops = {
- 	.trigger = seeed_voice_card_trigger,
- };
+@@ -248,7 +243,7 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
  
--static int asoc_simple_parse_dai(struct device_node *node,
--				 struct snd_soc_dai_link_component *dlc,
--				 int *is_single_link)
--{
--	struct of_phandle_args args;
--	int ret;
--
--	if (!node)
--		return 0;
--
--	/*
--	 * Get node via "sound-dai = <&phandle port>"
--	 * it will be used as xxx_of_node on soc_bind_dai_link()
--	 */
--	ret = of_parse_phandle_with_args(node, DAI, CELL, 0, &args);
--	if (ret)
--		return ret;
--
--	/*
--	 * FIXME
--	 *
--	 * Here, dlc->dai_name is pointer to CPU/Codec DAI name.
--	 * If user unbinded CPU or Codec driver, but not for Sound Card,
--	 * dlc->dai_name is keeping unbinded CPU or Codec
--	 * driver's pointer.
--	 *
--	 * If user re-bind CPU or Codec driver again, ALSA SoC will try
--	 * to rebind Card via snd_soc_try_rebind_card(), but because of
--	 * above reason, it might can't bind Sound Card.
--	 * Because Sound Card is pointing to released dai_name pointer.
--	 *
--	 * To avoid this rebind Card issue,
--	 * 1) It needs to alloc memory to keep dai_name eventhough
--	 *    CPU or Codec driver was unbinded, or
--	 * 2) user need to rebind Sound Card everytime
--	 *    if he unbinded CPU or Codec.
--	 */
--	ret = snd_soc_of_get_dai_name(node, &dlc->dai_name);
--	if (ret < 0)
--		return ret;
--
--	dlc->of_node = args.np;
--
--	if (is_single_link)
--		*is_single_link = !args.args_count;
--
--	return 0;
--}
--
--static int asoc_simple_init_dai(struct snd_soc_dai *dai,
--				     struct asoc_simple_dai *simple_dai)
--{
--	int ret;
--
--	if (!simple_dai)
--		return 0;
--
--	if (simple_dai->sysclk) {
--		ret = snd_soc_dai_set_sysclk(dai, 0, simple_dai->sysclk,
--					     simple_dai->clk_direction);
--		if (ret && ret != -ENOTSUPP) {
--			dev_err(dai->dev, "simple-card: set_sysclk error\n");
--			return ret;
--		}
--	}
--
--	if (simple_dai->slots) {
--		ret = snd_soc_dai_set_bclk_ratio(dai,
--					       simple_dai->slots *
--					       simple_dai->slot_width);
--		if (ret && ret != -ENOTSUPP) {
--			dev_err(dai->dev, "simple-card: set_tdm_slot error\n");
--			return ret;
--		}
--	}
--
--	return 0;
--}
--
+ 	dev_dbg(rtd->card->dev, "%s() stream=%s  cmd=%d play:%d, capt:%d;finished %d\n",
+ 		__FUNCTION__, snd_pcm_stream_str(substream), cmd,
+-		dai->stream_active[SNDRV_PCM_STREAM_PLAYBACK], dai->stream_active[SNDRV_PCM_STREAM_CAPTURE], ret);
++		dai->playback_active, dai->capture_active, ret);
+ 
+ 	return ret;
+ }
+@@ -387,8 +382,8 @@ static int asoc_simple_init_dai_link_params(struct snd_soc_pcm_runtime *rtd)
  static int seeed_voice_card_dai_init(struct snd_soc_pcm_runtime *rtd)
  {
  	struct seeed_card_data *priv =	snd_soc_card_get_drvdata(rtd->card);
@@ -277,18 +204,7 @@ index c6d9048..f08fbd8 100644
  	struct seeed_dai_props *dai_props =
  		seeed_priv_to_props(priv, rtd->num);
  	int ret;
- 
--	ret = asoc_simple_init_dai(codec, &dai_props->codec_dai);
-+	ret = asoc_simple_card_init_dai(codec, &dai_props->codec_dai);
- 	if (ret < 0)
- 		return ret;
- 
--	ret = asoc_simple_init_dai(cpu, &dai_props->cpu_dai);
-+	ret = asoc_simple_card_init_dai(cpu, &dai_props->cpu_dai);
- 	if (ret < 0)
- 		return ret;
- 
-@@ -396,19 +312,20 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
+@@ -453,19 +448,20 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
  		goto dai_link_of_err;
  	}
  
@@ -312,7 +228,7 @@ index c6d9048..f08fbd8 100644
  	if (ret < 0)
  		goto dai_link_of_err;
  	#else
-@@ -420,7 +337,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
+@@ -477,7 +473,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
  	dev_dbg(dev, "dai_link num_codecs = %d\n", dai_link->num_codecs);
  	#endif
  
@@ -321,7 +237,7 @@ index c6d9048..f08fbd8 100644
  	if (ret < 0)
  		goto dai_link_of_err;
  
-@@ -445,7 +362,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
+@@ -502,7 +498,7 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
  	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
  	ret = asoc_simple_card_parse_clk_cpu(cpu, dai_link, cpu_dai);
  	#else
@@ -330,7 +246,7 @@ index c6d9048..f08fbd8 100644
  	#endif
  	if (ret < 0)
  		goto dai_link_of_err;
-@@ -453,20 +370,22 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
+@@ -510,16 +506,16 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
  	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
  	ret = asoc_simple_card_parse_clk_codec(codec, dai_link, codec_dai);
  	#else
@@ -339,13 +255,6 @@ index c6d9048..f08fbd8 100644
  	#endif
  	if (ret < 0)
  		goto dai_link_of_err;
- 
- 	#if _SINGLE_CODEC
--	asoc_simple_canonicalize_platform(dai_link);
-+	ret = asoc_simple_card_canonicalize_dailink(dai_link);
-+	if (ret < 0)
-+		goto dai_link_of_err;
- 	#endif
  
 -	ret = asoc_simple_set_dailink_name(dev, dai_link,
 +	ret = asoc_simple_card_set_dailink_name(dev, dai_link,
@@ -358,7 +267,7 @@ index c6d9048..f08fbd8 100644
  						#else
  						dai_link->codecs[0].dai_name
  						#endif
-@@ -480,17 +399,17 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
+@@ -533,19 +529,21 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
  	dev_dbg(dev, "\tname : %s\n", dai_link->stream_name);
  	dev_dbg(dev, "\tformat : %04x\n", dai_link->dai_fmt);
  	dev_dbg(dev, "\tcpu : %s / %d\n",
@@ -376,10 +285,15 @@ index c6d9048..f08fbd8 100644
  
 -	asoc_simple_canonicalize_cpu(dai_link, single_cpu);
 +	asoc_simple_card_canonicalize_cpu(dai_link, single_cpu);
+ 	#if _SINGLE_CODEC
+-	asoc_simple_canonicalize_platform(dai_link);
++	ret = asoc_simple_card_canonicalize_dailink(dai_link);
++	if (ret < 0)
++		goto dai_link_of_err;
+ 	#endif
  
  dai_link_of_err:
- 	of_node_put(cpu);
-@@ -522,7 +441,7 @@ static int seeed_voice_card_parse_aux_devs(struct device_node *node,
+@@ -578,7 +576,7 @@ static int seeed_voice_card_parse_aux_devs(struct device_node *node,
  		aux_node = of_parse_phandle(node, PREFIX "aux-devs", i);
  		if (!aux_node)
  			return -EINVAL;
@@ -388,7 +302,7 @@ index c6d9048..f08fbd8 100644
  	}
  
  	priv->snd_card.num_aux_devs = n;
-@@ -582,7 +501,7 @@ static int seeed_voice_card_parse_of(struct device_node *node,
+@@ -638,7 +636,7 @@ static int seeed_voice_card_parse_of(struct device_node *node,
  			goto card_parse_end;
  	}
  
@@ -397,7 +311,7 @@ index c6d9048..f08fbd8 100644
  	if (ret < 0)
  		goto card_parse_end;
  
-@@ -614,7 +533,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+@@ -743,7 +741,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
  	struct seeed_dai_props *dai_props;
  	struct device_node *np = pdev->dev.of_node;
  	struct device *dev = &pdev->dev;
@@ -406,7 +320,7 @@ index c6d9048..f08fbd8 100644
  
  	/* Get the number of DAI links */
  	if (np && of_get_child_by_name(np, PREFIX "dai-link"))
-@@ -632,25 +551,6 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+@@ -761,25 +759,6 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
  	if (!dai_props || !dai_link)
  		return -ENOMEM;
  
@@ -432,7 +346,7 @@ index c6d9048..f08fbd8 100644
  	priv->dai_props			= dai_props;
  	priv->dai_link			= dai_link;
  
-@@ -669,9 +569,6 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+@@ -798,9 +777,6 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
  		}
  	} else {
  		struct seeed_card_info *cinfo;
@@ -442,7 +356,7 @@ index c6d9048..f08fbd8 100644
  
  		cinfo = dev->platform_data;
  		if (!cinfo) {
-@@ -688,19 +585,13 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+@@ -817,19 +793,13 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
  			return -EINVAL;
  		}
  
@@ -466,7 +380,7 @@ index c6d9048..f08fbd8 100644
  		dai_link->dai_fmt	= cinfo->daifmt;
  		dai_link->init		= seeed_voice_card_dai_init;
  		memcpy(&priv->dai_props->cpu_dai, &cinfo->cpu_dai,
-@@ -722,7 +613,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
+@@ -853,7 +823,7 @@ static int seeed_voice_card_probe(struct platform_device *pdev)
  		return ret;
  
  err:
@@ -475,7 +389,7 @@ index c6d9048..f08fbd8 100644
  
  	return ret;
  }
-@@ -734,7 +625,7 @@ static int seeed_voice_card_remove(struct platform_device *pdev)
+@@ -865,7 +835,7 @@ static int seeed_voice_card_remove(struct platform_device *pdev)
  
  	if (cancel_work_sync(&priv->work_codec_clk) != 0) {
  	}
@@ -485,7 +399,7 @@ index c6d9048..f08fbd8 100644
  
  static const struct of_device_id seeed_voice_of_match[] = {
 diff --git a/sound-compatible-4.18.h b/sound-compatible-4.18.h
-index 080325b..eefa7de 100644
+index 550b3a7..6c1a014 100644
 --- a/sound-compatible-4.18.h
 +++ b/sound-compatible-4.18.h
 @@ -16,6 +16,10 @@
