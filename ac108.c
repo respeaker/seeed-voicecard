@@ -991,7 +991,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt) {
 /*
  * due to miss channels order in cpu_dai, we meed defer the clock starting.
  */
-static int ac108_set_clock(int y_start_n_stop) {
+static int ac108_set_clock(int y_start_n_stop, struct snd_pcm_substream *substream, int cmd, struct snd_soc_dai *dai) {
 	u8 reg;
 	int ret = 0;
 
@@ -999,6 +999,9 @@ static int ac108_set_clock(int y_start_n_stop) {
 
 	/* spin_lock move to machine trigger */
 
+	if (y_start_n_stop && ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
+		ac101_trigger(substream, cmd, dai);
+	}
 	if (y_start_n_stop && ac10x->sysclk_en == 0) {
 		/* enable lrck clock */
 		ac10x_read(I2S_CTRL, &reg, ac10x->i2cmap[_MASTER_INDEX]);
@@ -1058,13 +1061,6 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 		snd_pcm_stream_str(substream),
 		cmd);
 
-	if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
-		ac101_trigger(substream, cmd, dai);
-		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		       goto __ret;
-		}
-	}
-
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
@@ -1083,12 +1079,14 @@ static int ac108_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		if (ac10x->i2c101 && _MASTER_MULTI_CODEC == _MASTER_AC101) {
+			ac101_trigger(substream, cmd, dai);
+		}
 		break;
 	default:
 		ret = -EINVAL;
 	}
 
-__ret:
 	dev_dbg(dai->dev, "%s() stream=%s  cmd=%d; finished %d\n",
 		__FUNCTION__,
 		snd_pcm_stream_str(substream),

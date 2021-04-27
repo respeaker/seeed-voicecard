@@ -1237,7 +1237,7 @@ int ac101_audio_startup(struct snd_pcm_substream *substream,
 }
 
 #if _MASTER_MULTI_CODEC == _MASTER_AC101
-static int ac101_set_clock(int y_start_n_stop) {
+static int ac101_set_clock(int y_start_n_stop, struct snd_pcm_substream *substream, int cmd, struct snd_soc_dai *dai) {
 	int r;
 
 	if (y_start_n_stop) {

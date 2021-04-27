@@ -163,9 +163,9 @@ err:
 }
 
 #define _SET_CLOCK_CNT		2
-static int (* _set_clock[_SET_CLOCK_CNT])(int y_start_n_stop);
+static int (* _set_clock[_SET_CLOCK_CNT])(int y_start_n_stop, struct snd_pcm_substream *substream, int cmd, struct snd_soc_dai *dai);
 
-int seeed_voice_card_register_set_clock(int stream, int (*set_clock)(int)) {
+int seeed_voice_card_register_set_clock(int stream, int (*set_clock)(int, struct snd_pcm_substream *, int, struct snd_soc_dai *)) {
 	if (! _set_clock[stream]) {
 		_set_clock[stream] = set_clock;
 	}
@@ -182,10 +182,10 @@ static void work_cb_codec_clk(struct work_struct *work)
 	int r = 0;
 
 	if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) {
-		r = r || _set_clock[SNDRV_PCM_STREAM_CAPTURE](0);
+		r = r || _set_clock[SNDRV_PCM_STREAM_CAPTURE](0, NULL, 0, NULL); /* not using 2nd to 4th arg if 1st == 0 */
 	}
 	if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) {
-		r = r || _set_clock[SNDRV_PCM_STREAM_PLAYBACK](0);
+		r = r || _set_clock[SNDRV_PCM_STREAM_PLAYBACK](0, NULL, 0, NULL); /* not using 2nd to 4th arg if 1st == 0 */
 	}
 
 	if (r && priv->try_stop++ < TRY_STOP_MAX) {
@@ -217,8 +217,8 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
 		/* I know it will degrades performance, but I have no choice */
 		spin_lock_irqsave(&priv->lock, flags);
 		#endif
-		if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](1);
-		if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](1);
+		if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](1, substream, cmd, dai);
+		if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](1, substream, cmd, dai);
 		#if CONFIG_AC10X_TRIG_LOCK
 		spin_unlock_irqrestore(&priv->lock, flags);
 		#endif
@@ -238,8 +238,8 @@ static int seeed_voice_card_trigger(struct snd_pcm_substream *substream, int cmd
 			if (0 != schedule_work(&priv->work_codec_clk)) {
 			}
 		} else {
-			if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](0);
-			if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](0);
+			if (_set_clock[SNDRV_PCM_STREAM_CAPTURE]) _set_clock[SNDRV_PCM_STREAM_CAPTURE](0, NULL, 0, NULL); /* not using 2nd to 4th arg if 1st == 0 */
+			if (_set_clock[SNDRV_PCM_STREAM_PLAYBACK]) _set_clock[SNDRV_PCM_STREAM_PLAYBACK](0, NULL, 0, NULL); /* not using 2nd to 4th arg if 1st == 0 */
 		}
 		break;
 	default:

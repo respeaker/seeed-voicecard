@@ -119,7 +119,7 @@ void ac101_shutdown(struct i2c_client *i2c);
 int ac101_remove(struct i2c_client *i2c);
 
 /* seeed voice card export */
-int seeed_voice_card_register_set_clock(int stream, int (*set_clock)(int));
+int seeed_voice_card_register_set_clock(int stream, int (*set_clock)(int, struct snd_pcm_substream *, int, struct snd_soc_dai *));
 
 int ac10x_fill_regcache(struct device* dev, struct regmap* map);
 
