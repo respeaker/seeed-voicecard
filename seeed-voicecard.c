@@ -694,7 +694,7 @@ inline void seeed_debug_dai(struct seeed_card_data *priv,
 
 inline void seeed_debug_info(struct seeed_card_data *priv)
 {
-	struct snd_soc_card *card = simple_priv_to_card(priv);
+	struct snd_soc_card *card = seeed_priv_to_card(priv);
 	struct device *dev = seeed_priv_to_dev(priv);
 
 	int i;
