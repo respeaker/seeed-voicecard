@@ -13,7 +13,7 @@
 #
 #   This derived from my command history on ubuntu 20.04.1 .YMMV
 
-sudo apt install -y git gcc make alsa-utils cmake
+sudo apt install -y git gcc g++ make alsa-utils cmake
 
 git clone git://github.com/raspberrypi/userland.git
 pushd userland/
