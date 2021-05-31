@@ -1259,7 +1259,11 @@ static struct snd_soc_dai_driver wm8960_dai = {
 		.rates = WM8960_RATES,
 		.formats = WM8960_FORMATS,},
 	.ops = &wm8960_dai_ops,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
+	.symmetric_rate = 1,
+#else
 	.symmetric_rates = 1,
+#endif
 };
 
 static int wm8960_probe(struct snd_soc_codec *codec)
