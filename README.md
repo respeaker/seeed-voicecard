@@ -48,7 +48,19 @@ Thank you!
 
 Enjoy !
 
-### FAQ
+### Technical support
 
-When you encounter any installation and use problems when you start your ReSpeaker Pi hat, please use the following image for testing. We have installed seeed-voicecard based on the latest PI image, which can be used by burning it directly on SD. If this still cannot solve your problem, you can ask in the issue. We will try our best to solve your problem.
+For hardware testing purposes we made a Rasperry Pi OS 5.10.17-v7l+ 32-bit image with reSpeaker drivers pre-installed, which you can download by clicking on [this link](https://files.seeedstudio.com/linux/Raspberry%20Pi%204%20reSpeaker/2021-05-07-raspios-buster-armhf-lite-respeaker.img.xz).
+
+We provide official support for using reSpeaker with the following OS:
+- 32-bit Raspberry Pi OS
+- 64-bit Raspberry Pi OS
+
+And following hardware platforms:
+- Raspberry Pi 3 (all models), Raspberry Pi 4 (all models)
+
+Anything beyond the scope of official support is considered to be community supported. Support for other OS/hardware platforms can be added, provided MOQ requirements can be met. 
+
+If you have a technical problem when using reSpeaker with one of the officially supported platforms/OS, feel free to create an issue on Github. For general questions or suggestions, please use [Seeed forum](https://forum.seeedstudio.com/c/products/respeaker/15). 
+
 
