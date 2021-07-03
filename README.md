@@ -10,8 +10,6 @@ cd seeed-voicecard
 sudo ./install.sh
 sudo reboot
 ```
-It may probably happen that the driver won't compile with the latest kernel when raspbian rolls out new patches to the kernel. If so, please try `sudo ./install.sh --compat-kernel` which uses an older kernel but ensures that the driver can work. 
-
 ## ReSpeaker Documentation
 
 Up to date documentation for reSpeaker products can be found in [Seeed Studio Wiki](https://wiki.seeedstudio.com/ReSpeaker/)!
