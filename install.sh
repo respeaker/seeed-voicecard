@@ -52,6 +52,9 @@ if [ $errorFound = 1 ] ; then
   exit 1
 fi
 
+#because https://github.com/raspberrypi/linux/commit/14075fb3b561869c760a096a92ca0fab1f573174, remove snd-soc-wm8960.ko first
+find /lib/modules -name "snd-soc-wm8960.ko" -exec rm -rf {} \;
+
 ver="0.3"
 uname_r=$(uname -r)
 
