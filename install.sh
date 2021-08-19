@@ -130,7 +130,7 @@ base_ver=$(get_kernel_version)
 base_ver=${base_ver%%[-+]*}
 #kernels="${base_ver}+ ${base_ver}-v7+ ${base_ver}-v7l+"
 kernels=$(uname -r)
-kernel_base_ver=${kernels%[-+]*}
+kernel_base_ver=${kernels%%[-+]*}
 
 if [[ "$base_ver" != "$kernel_base_ver" ]] ; then
   echo "------------------------------------------------------"
@@ -169,11 +169,7 @@ function install_module {
   mkdir -p /var/lib/dkms/$mod/$ver/$marker
 }
 
-#because https://github.com/raspberrypi/linux/commit/14075fb3b561869c760a096a92ca0fab1f573174, remove snd-soc-wm8960.ko first
-#find /lib/modules -name "snd-soc-wm8960.ko" -exec rm -rf {} \;
-
 install_module "./" "seeed-voicecard"
-
 
 # install dtbos
 cp seeed-2mic-voicecard.dtbo $OVERLAYS
