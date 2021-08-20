@@ -10,7 +10,8 @@ cd seeed-voicecard
 sudo ./install.sh
 sudo reboot
 ```
-It may probably happen that the driver won't compile with the latest kernel when raspbian rolls out new patches to the kernel. If so, please try `sudo ./install.sh --compat-kernel` which uses an older kernel but ensures that the driver can work. 
+
+**Note** If you have 64-bit version of Rasperry Pi OS, use install_arm64.sh script for driver installation. 
 
 ## ReSpeaker Documentation
 
@@ -54,10 +55,10 @@ For hardware testing purposes we made a Rasperry Pi OS 5.10.17-v7l+ 32-bit image
 
 We provide official support for using reSpeaker with the following OS:
 - 32-bit Raspberry Pi OS
-- 64-bit Raspberry Pi OS
+- 64-bit Raspberry Pi OS (experimental support)
 
 And following hardware platforms:
-- Raspberry Pi 3 (all models), Raspberry Pi 4 (all models)
+- Raspberry Pi 3 (all models), Raspberry Pi 4 (all models), Raspberry Pi Zero and Zero W
 
 Anything beyond the scope of official support is considered to be community supported. Support for other OS/hardware platforms can be added, provided MOQ requirements can be met. 
 
