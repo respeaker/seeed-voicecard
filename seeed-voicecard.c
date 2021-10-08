@@ -30,6 +30,20 @@
 
 #define LINUX_VERSION_IS_GEQ(x1,x2,x3)	(LINUX_VERSION_CODE >= KERNEL_VERSION(x1,x2,x3))
 
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,13,0)
+#define asoc_simple_parse_clk_cpu(dev, node, dai_link, simple_dai)      \
+  asoc_simple_parse_clk(dev, node, simple_dai, dai_link->cpus)
+#define asoc_simple_parse_clk_codec(dev, node, dai_link, simple_dai)    \
+  asoc_simple_parse_clk(dev, node, simple_dai, dai_link->codecs)
+#define asoc_simple_parse_cpu(node, dai_link, is_single_link)           \
+  asoc_simple_parse_dai(node, dai_link->cpus, is_single_link)
+#define asoc_simple_parse_codec(node, dai_link)                         \
+  asoc_simple_parse_dai(node, dai_link->codecs, NULL)
+#define asoc_simple_parse_platform(node, dai_link)                      \
+  asoc_simple_parse_dai(node, dai_link->platforms, NULL)
+#endif
+
 /*
  * single codec:
  *	0 - allow multi codec
