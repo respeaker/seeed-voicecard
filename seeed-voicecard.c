@@ -557,10 +557,17 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		#endif
 		dai_props->codec_dai.sysclk);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,13,0)
+	asoc_simple_canonicalize_cpu(dai_link->cpus, single_cpu);
+	#if _SINGLE_CODEC
+	asoc_simple_canonicalize_platform(dai_link->platforms, dai_link->cpus);
+	#endif
+#else
 	asoc_simple_canonicalize_cpu(dai_link, single_cpu);
 	#if _SINGLE_CODEC
 	asoc_simple_canonicalize_platform(dai_link);
 	#endif
+#endif
 
 dai_link_of_err:
 	of_node_put(cpu);
