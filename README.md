@@ -15,8 +15,6 @@
 - **Organization**: Cisco DevNet, Developer Success (managed by Paul Zimmerman)
 
 
-- **Date**: August 16, 2021
-
 
 - **Concept**: Three ringable metal bells (see image below under Equipment) will a simple and small three ring coat rack. At least one sensor will be placed near the bells and measure sound / frequency so that each bell can be differentiated from the others and will be able to activate a process in a unique way (assuming each bell rings at a sperate frequency from each other, as well as from any sounds in the immediate environment.
 
