@@ -56,6 +56,10 @@ def data_grabber():
     stream.start_stream() # start data stream
     channel_data = [[]]*chans # data array
     [stream.read(CHUNK,exception_on_overflow=False) for ii in range(0,1)] # clears buffer
+    print('****************************************************')
+    print('                   It Works!!!                      ')
+    print('****************************************************')
+    print('QUIT BY CLICKING "X" ON UPPER-RIGHT CORNER OF GRAPH')
     for frame in range(0,int(np.ceil((samp_rate*record_length)/CHUNK))):
         # if frame==0:
             # print('Recording Started...')
@@ -65,13 +69,8 @@ def data_grabber():
         for chan in range(chans): # loop through all channels
             channel_data[chan] = np.append(channel_data[chan],
                                         data[chan::chans]) # separate channels
-    # print('Recording Stopped')
-    print('****************************************************')
-    print('                   It Works!!!                      ')
-    print('****************************************************')
-    print('QUIT BY CLICKING "X" ON UPPER-RIGHT CORNER OF GRAPH')
-
-
+    # Channel data example below
+    #[array([ 27.,  40.,  66., ..., -41.,  13., -41.]), array([-14., -14., -14., ...,  13.,  26., -27.]), array([-27., -54., -27., ...,  26., -14.,  27.]), array([ 26.,  13.,  67., ..., -54., -81.,  13.])]
     return channel_data
 #
 ##############################################
@@ -85,7 +84,7 @@ def plotter():
     fig,ax = plt.subplots(figsize=(12,8)) # create figure
     fig.canvas.set_window_title('QuadMic Tap Test')
     ax.set_ylabel('Amplitude',fontsize=16) # amplitude label
-    ax.set_ylim([-2**16,2**16]) # set 16-bit limits
+    ax.set_ylim([-2**16,2**16]) # set 16-bit limits*********************************')                   
     fig.canvas.draw() # draw initial plot
     ax_bgnd = fig.canvas.copy_from_bbox(ax.bbox) # get background
     lines = [] # line array for updating
