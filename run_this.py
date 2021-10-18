@@ -70,7 +70,14 @@ def data_grabber():
             channel_data[chan] = np.append(channel_data[chan],
                                         data[chan::chans]) # separate channels
     # Channel data example below
+    
+    #silent
+
     #[array([ 27.,  40.,  66., ..., -41.,  13., -41.]), array([-14., -14., -14., ...,  13.,  26., -27.]), array([-27., -54., -27., ...,  26., -14.,  27.]), array([ 26.,  13.,  67., ..., -54., -81.,  13.])]
+    
+    #noise
+
+    #[array([-27.,  -1.,  40., ..., 523., 549., 535.]), array([  0., -55.,  13., ..., -14., -54., -54.]), array([  0.,  13.,  26., ...,  26., -27., -55.]), array([-148., -161.,  -80., ...,  335.,  402.,  549.])]
     return channel_data
 #
 ##############################################
