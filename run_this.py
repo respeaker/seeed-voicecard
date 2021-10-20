@@ -116,6 +116,8 @@ def plot_updater():
         ax.draw_artist(lines[chan]) # draw line
     fig.canvas.blit(ax.bbox) # blitting (for speed)
     fig.canvas.flush_events() # required for blitting
+    # print('\nlines = ', lines)
+    # lines = [<matplotlib.lines.Line2D object at 0xacef99f0>, <matplotlib.lines.Line2D object at 0xacf0eef0>, <matplotlib.lines.Line2D object at 0xacf0e490>, <matplotlib.lines.Line2D object at 0xad2e1590>]
     return lines
 #
 ##############################################
@@ -143,4 +145,6 @@ if __name__=="__main__":
 
     while True:
         data_chunks = data_grabber() # grab the data    
+        # print('data_chunks = ', data_chunks)
+        # example of data_chunks =  [array([27., 26., 40., ..., -1., 13., 26.]), array([-27.,  13.,  26., ...,  26.,  13.,  26.]), array([-27., -27., -54., ...,  26.,  40.,  26.]), array([26., 53., 13., ..., 13., 53., 26.])]
         lines = plot_updater() # update plot with new data
