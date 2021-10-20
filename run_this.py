@@ -47,6 +47,8 @@ def audio_dev_formatter():
                         input=True,frames_per_buffer=CHUNK) # audio stream
     stream.stop_stream() # stop streaming to prevent overload
     print('\nstream = ', stream)
+    print(type(stream))
+    print(dir(stream))
     return stream
 #
 ##############################################
