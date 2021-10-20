@@ -31,7 +31,7 @@ def indx_getter():
             print('Device Name: {}'.format(dev['name'])) # device name
             print('Device Input Channels: {}'.format(dev['maxInputChannels'])) # channels
             quadmic_indx = int(indx)
-            channels = dev['maxInputChannels']
+            channels = dev['maxInputChannels'] 
     if quadmic_indx == []:
         print('No QuadMic Found')
         sys.exit() # exit the script if no QuadMic found
@@ -45,7 +45,8 @@ def audio_dev_formatter():
     stream = audio.open(format=pyaudio_format,rate=samp_rate,
                         channels=chans,input_device_index=quadmic_indx,
                         input=True,frames_per_buffer=CHUNK) # audio stream
-    stream.stop_stream() # stop streaming to prevent overloa
+    stream.stop_stream() # stop streaming to prevent overload
+    print('\nstream = ', stream)
     return stream
 #
 ##############################################
@@ -56,10 +57,10 @@ def data_grabber():
     stream.start_stream() # start data stream
     channel_data = [[]]*chans # data array
     [stream.read(CHUNK,exception_on_overflow=False) for ii in range(0,1)] # clears buffer
-    print('****************************************************')
-    print('                   It Works!!!                      ')
-    print('****************************************************')
-    print('QUIT BY CLICKING "X" ON UPPER-RIGHT CORNER OF GRAPH')
+    # print('****************************************************')
+    # print('                   It Works!!!                      ')
+    # print('****************************************************')
+    # print('QUIT BY CLICKING "X" ON UPPER-RIGHT CORNER OF GRAPH')
     for frame in range(0,int(np.ceil((samp_rate*record_length)/CHUNK))):
         # if frame==0:
             # print('Recording Started...')
@@ -89,7 +90,7 @@ def plotter():
     # ---- time series for all mics
     plt.style.use('ggplot') # plot formatting
     fig,ax = plt.subplots(figsize=(12,8)) # create figure
-    fig.canvas.set_window_title('QuadMic Tap Test')
+    fig.canvas.manager.set_window_title('QuadMic Tap Test')
     ax.set_ylabel('Amplitude',fontsize=16) # amplitude label
     ax.set_ylim([-2**16,2**16]) # set 16-bit limits*********************************')                   
     fig.canvas.draw() # draw initial plot
@@ -103,6 +104,7 @@ def plotter():
               bbox_to_anchor=(0.5,-0.05),ncol=chans,
               fontsize=14) # legend for mic labels
     fig.show() # show plot
+    print('\nfig = ', fig)
     return fig,ax,ax_bgnd,lines
 
 def plot_updater():
