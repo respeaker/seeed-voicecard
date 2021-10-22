@@ -12,6 +12,12 @@ import aubio
 import numpy as num
 import pyaudio
 import sys
+import PySimpleGUI as sg
+import requests
+import json
+import datetime
+from tkinter import *
+import time
 
 # Some constants for setting the PyAudio and the
 # Aubio.
@@ -47,7 +53,7 @@ def main(args):
         # Always listening to the microphone.
         data = mic.read(PERIOD_SIZE_IN_FRAME)
         # Convert into number that Aubio understand.
-        samples = num.fromstring(data,
+        samples = num.frombuffer(data,
             dtype=aubio.float_type)
         # Finally get the pitch.
         pitch = pDetection(samples)[0]
@@ -61,4 +67,8 @@ def main(args):
         # Finally print the pitch and the volume.
         print(str(pitch) + " " + str(volume))
 
+
+
 if __name__ == "__main__": main(sys.argv)
+
+
