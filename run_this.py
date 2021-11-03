@@ -81,11 +81,21 @@ def data_grabber():
     #noise
 
     #[array([-27.,  -1.,  40., ..., 523., 549., 535.]), array([  0., -55.,  13., ..., -14., -54., -54.]), array([  0.,  13.,  26., ...,  26., -27., -55.]), array([-148., -161.,  -80., ...,  335.,  402.,  549.])]
-    print(f'Channel 1: {channel_data[0]}')
-    print(f'Channel 2: {channel_data[1]}')
-    print(f'Channel 3: {channel_data[2]}')
-    print(f'Channel 4: {channel_data[3]}')
+    
+    # chan_1_data = channel_data[0]  
+    # chan_2_data = channel_data[1]    
+    # chan_3_data = channel_data[2]  
+    # chan_4_data = channel_data[3]
+    
+    # print(f'Channel 1: {chan_1_data}')
+    # print(f'Channel 2: {chan_2_data}')
+    # print(f'Channel 3: {chan_3_data}')
+    # print(f'Channel 4: {chan_4_data}')
+  
+    
     return channel_data
+
+
 #
 ##############################################
 # functions for plotting data
@@ -150,7 +160,19 @@ if __name__=="__main__":
     fig,ax,ax_bgnd,lines = plotter() # establish initial plot
 
     while True:
-        data_chunks = data_grabber() # grab the data    
+        data_chunks = data_grabber() # grab the data  
+
+   
+        chan_1_data = data_chunks[0]
+        chan_2_data = data_chunks[1]  
+        chan_3_data = data_chunks[2]
+        chan_4_data = data_chunks[3]    
+
+        print(f'Channel 1: {chan_1_data}')
+        print(f'Channel 2: {chan_2_data}')
+        print(f'Channel 3: {chan_3_data}')
+        print(f'Channel 4: {chan_4_data}')
+
         # print('data_chunks = ', data_chunks)
         # example of data_chunks =  [array([27., 26., 40., ..., -1., 13., 26.]), array([-27.,  13.,  26., ...,  26.,  13.,  26.]), array([-27., -27., -54., ...,  26.,  40.,  26.]), array([26., 53., 13., ..., 13., 53., 26.])]
         lines = plot_updater() # update plot with new data
