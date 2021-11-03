@@ -81,6 +81,10 @@ def data_grabber():
     #noise
 
     #[array([-27.,  -1.,  40., ..., 523., 549., 535.]), array([  0., -55.,  13., ..., -14., -54., -54.]), array([  0.,  13.,  26., ...,  26., -27., -55.]), array([-148., -161.,  -80., ...,  335.,  402.,  549.])]
+    print(f'Channel 1: {channel_data[0]}')
+    print(f'Channel 2: {channel_data[1]}')
+    print(f'Channel 3: {channel_data[2]}')
+    print(f'Channel 4: {channel_data[3]}')
     return channel_data
 #
 ##############################################
