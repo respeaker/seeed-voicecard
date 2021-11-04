@@ -173,6 +173,11 @@ if __name__=="__main__":
         print(f'Channel 3: {chan_3_data}')
         print(f'Channel 4: {chan_4_data}')
 
+
         # print('data_chunks = ', data_chunks)
         # example of data_chunks =  [array([27., 26., 40., ..., -1., 13., 26.]), array([-27.,  13.,  26., ...,  26.,  13.,  26.]), array([-27., -27., -54., ...,  26.,  40.,  26.]), array([26., 53., 13., ..., 13., 53., 26.])]
         lines = plot_updater() # update plot with new data
+        
+        
+
+        
