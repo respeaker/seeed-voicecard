@@ -3,7 +3,6 @@ description: File a bug report
 title: "[Bug]: "
 labels: [bug, triage]
 assignees:
-  - AIWintermuteAI
   - Pillar1989
 body:
   - type: markdown
