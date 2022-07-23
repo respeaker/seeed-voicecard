@@ -15,7 +15,7 @@
 
 sudo apt install -y git gcc g++ make alsa-utils cmake
 
-git clone git://github.com/raspberrypi/userland.git
+git clone https://github.com/raspberrypi/userland.git
 pushd userland/
 
 arch=$(uname -m)

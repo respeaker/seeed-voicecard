@@ -460,12 +460,16 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 
 	of_property_read_u32(node, "mclk-fs", &dai_props->mclk_fs);
 
-	ret = asoc_simple_parse_cpu(cpu, dai_link, &single_cpu);
+	//ret = asoc_simple_parse_cpu(cpu, dai_link, &single_cpu);
+	//marco.gonnelli commented the line above and wrote the line below
+	ret = asoc_simple_parse_dai(cpu,dai_link->cpus,&single_cpu);
 	if (ret < 0)
 		goto dai_link_of_err;
 
 	#if _SINGLE_CODEC
-	ret = asoc_simple_parse_codec(codec, dai_link);
+	//ret = asoc_simple_parse_codec(codec, dai_link);
+	//marco.gonnelli commented the line above and wrote the line below
+	ret = asoc_simple_parse_dai(codec, dai_link->codecs,NULL);
 	if (ret < 0)
 		goto dai_link_of_err;
 	#else
@@ -477,7 +481,9 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 	dev_dbg(dev, "dai_link num_codecs = %d\n", dai_link->num_codecs);
 	#endif
 
-	ret = asoc_simple_parse_platform(plat, dai_link);
+	//ret = asoc_simple_parse_platform(plat, dai_link);
+	//marco.gonnelli commented the line above and wrote the line below
+	ret = asoc_simple_parse_dai(plat, dai_link->platforms,NULL);
 	if (ret < 0)
 		goto dai_link_of_err;
 
@@ -502,7 +508,9 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
 	ret = asoc_simple_card_parse_clk_cpu(cpu, dai_link, cpu_dai);
 	#else
-	ret = asoc_simple_parse_clk_cpu(dev, cpu, dai_link, cpu_dai);
+	//ret = asoc_simple_parse_clk_cpu(dev, cpu, dai_link, cpu_dai);
+	//marco.gonnelli commented the line above and wrote the line below
+	ret = asoc_simple_parse_clk(dev, cpu, cpu_dai, dai_link->cpus);
 	#endif
 	if (ret < 0)
 		goto dai_link_of_err;
@@ -510,7 +518,9 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 	#if LINUX_VERSION_CODE <= KERNEL_VERSION(4,10,0)
 	ret = asoc_simple_card_parse_clk_codec(codec, dai_link, codec_dai);
 	#else
-	ret = asoc_simple_parse_clk_codec(dev, codec, dai_link, codec_dai);
+	//ret = asoc_simple_parse_clk_codec(dev, codec, dai_link, codec_dai);
+	//marco.gonnelli commented the line above and wrote the line below
+	ret = asoc_simple_parse_clk(dev, codec, codec_dai, dai_link->codecs);
 	#endif
 	if (ret < 0)
 		goto dai_link_of_err;
@@ -543,9 +553,13 @@ static int seeed_voice_card_dai_link_of(struct device_node *node,
 		#endif
 		dai_props->codec_dai.sysclk);
 
-	asoc_simple_canonicalize_cpu(dai_link, single_cpu);
+	//asoc_simple_canonicalize_cpu(dai_link, single_cpu);
+	//marco.gonnelli commented the line above and wrote the line below
+	asoc_simple_canonicalize_cpu(dai_link->cpus, single_cpu);
 	#if _SINGLE_CODEC
-	asoc_simple_canonicalize_platform(dai_link);
+	//asoc_simple_canonicalize_platform(dai_link);
+	//marco.gonnelli commented the line above and wrote the line below
+	asoc_simple_canonicalize_platform(dai_link->platforms , dai_link->cpus);
 	#endif
 
 dai_link_of_err:
